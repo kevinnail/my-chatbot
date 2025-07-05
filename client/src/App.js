@@ -6,8 +6,7 @@ export default function App() {
   const [input, setInput] = useState('');
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(false);
-
-
+  const [contextPercent, setContextPercent] = useState(0);
 
   async function send() {
     if (!input.trim()) return;
@@ -21,13 +20,13 @@ export default function App() {
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({ user: userMsg })
       });
-      const { bot } = await res.json();
+      const { bot, context_percent } = await res.json();
       setLog(l => [...l, { text: bot }]);
+      if (typeof context_percent === 'number') setContextPercent(context_percent);
     } finally {
       setLoading(false);
     }
   }
-
 
   return (
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:'black'}}>
@@ -182,7 +181,7 @@ export default function App() {
           ))}
         </div>
         {loading ? (
-          <p className='loading-button' style={{color:'white',textAlign:'center', width:'100%',padding:'.5rem 0',borderRadius:'15px'}}>
+          <p className='loading-button'>
             Loading your response...
           </p>
         ) : null}
@@ -196,9 +195,75 @@ export default function App() {
           />
           {!loading && (
             <button 
-              style={{fontSize:'1.5rem', borderRadius:'15px',padding:'.25rem 1rem',marginTop:'0.5rem'}}
-              onClick={send}>Send</button>
+              style={{
+                fontSize: '1.1rem',
+                borderRadius: '15px',
+                padding: '.4rem 1.5rem',
+                margin: '0.5rem 15% 0 0',
+                background: 'linear-gradient(90deg, #4af 0%, #0fa 100%)',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 12px #0af4',
+                fontWeight: 'bold',
+                letterSpacing: '.08em',
+                cursor: 'pointer',
+                transition: 'background 0.3s, transform 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.7em',
+                disabled:loading? true:false,
+                alignSelf:'flex-end'
+              }}
+              // onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg, #0fa 0%, #4af 100%)'}
+              // onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #4af 0%, #0fa 100%)'}
+              onClick={send}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
+                <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white"/>
+              </svg>
+              Send
+            </button>
           )}
+        </div>
+        {/* Context Usage Progress Bar */}
+        <div style={{
+          width: '90%',
+          margin: '1.5rem auto 0 auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          flexDirection: 'row',
+          justifyContent: 'flex-start',
+        }}>
+          <div style={{
+            width: '220px',
+            height: '28px',
+            background: '#222',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            border: '2px solid #444',
+            position: 'relative',
+            boxShadow: '0 1px 6px #0006',
+          }}>
+            <div style={{
+              width: `${Math.min(100, contextPercent).toFixed(1)}%`,
+              height: '100%',
+              background: contextPercent < 70 ? 'linear-gradient(90deg,#4af,#0fa)' : contextPercent < 90 ? 'linear-gradient(90deg,#ff0,#fa0)' : 'linear-gradient(90deg,#f44,#a00)',
+              transition: 'width 0.5s cubic-bezier(.4,2,.6,1)',
+            }} />
+            <span style={{
+              position: 'absolute',
+              left: 0, right: 0, top: 0, bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              fontWeight: 'bold',
+              fontSize: '1.1rem',
+              textShadow: '0 1px 4px #000a',
+              pointerEvents: 'none',
+            }}>{contextPercent.toFixed(1)}% context used</span>
+          </div>
         </div>
       </main>
       {/* Footer */}
@@ -215,7 +280,7 @@ export default function App() {
         marginTop: '2rem',
       }}>
         <div>Powered by React/ Express/ Node/ WSL • <span style={{fontFamily:'monospace'}}>My Coding Assistant</span> &copy; {new Date().getFullYear()}</div>
-        <div style={{fontSize:'0.95rem',marginTop:'0.3em'}}>Open source project &mdash; <a href="#" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
+        <div style={{fontSize:'0.95rem',marginTop:'0.3em'}}>Open source project &mdash; <a href="#https://www.github.com/kevinnail" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
       </footer>
     </div>
   );
