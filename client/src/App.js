@@ -125,7 +125,7 @@ export default function App() {
                             overflowX: 'auto',
                             margin: '1em 0',
                             maxWidth: '100%',
-                            fontSize: '1.1em',
+                            fontSize: '.9em',
                           }}
                           {...props}
                         />
