@@ -36,10 +36,10 @@ export default function App() {
         width: '100%',
         background: '#181818',
         color: 'white',
-        padding: '.5rem 0',
+        padding: '.5rem 0 .5rem .5rem',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         borderTopLeftRadius: '0',
         borderTopRightRadius: '0',
         boxShadow: '0 2px 8px #0008',
@@ -48,8 +48,8 @@ export default function App() {
         letterSpacing: '.15rem',
         gap: '1rem',
       }}>
-        <span style={{fontSize:'1.5rem',userSelect:'none'}}>💬</span>
-        <span style={{fontSize:'1.5rem',userSelect:'none'}} >My Local Chatbot</span>
+        <span style={{fontSize:'1.5rem',userSelect:'none'}}><img width="40px" style={{borderRadius:'25%',transform:'translateY(5px)'}} alt='logo' src="./logo.png"/></span>
+        <span style={{fontSize:'1.5rem',userSelect:'none'}} >My Coding Assistant</span>
       </header>
       {/* Main chat area */}
       <main style={{
@@ -66,7 +66,7 @@ export default function App() {
         minHeight:'60vh',
         display:'flex',
         flexDirection:'column',
-        width:'70%'
+        width:'90%'
       }}>
 
         <div style={{display:'flex',flexDirection:'column',gap:'1rem',marginBottom:'1.5rem'}}>
@@ -188,7 +188,7 @@ export default function App() {
         ) : null}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.5rem',width:'100%'}}>
           <textarea
-            style={{width:'100%',fontSize:'1.5rem',height:'100px',display:loading?'none':'block'}}
+            style={{width:'70%',fontSize:'1.5rem',height:'100px',display:loading?'none':'block'}}
             value={input}
             disabled={loading? true:false}
             onChange={e=>setInput(e.target.value)}
@@ -214,7 +214,7 @@ export default function App() {
         boxShadow: '0 -2px 8px #0008',
         marginTop: '2rem',
       }}>
-        <div>Powered by React • <span style={{fontFamily:'monospace'}}>My Chatbot</span> &copy; {new Date().getFullYear()}</div>
+        <div>Powered by React/ Express/ Node/ WSL • <span style={{fontFamily:'monospace'}}>My Coding Assistant</span> &copy; {new Date().getFullYear()}</div>
         <div style={{fontSize:'0.95rem',marginTop:'0.3em'}}>Open source project &mdash; <a href="#" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
       </footer>
     </div>
