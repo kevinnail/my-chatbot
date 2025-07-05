@@ -22,15 +22,17 @@ body{
     background-size: 400% 400%;
     animation: gradientBG 15s ease infinite;
     border: none;
-    border-radius: 5px;
+    border-radius: 15px;
     color: white;
     cursor: not-allowed;
     font-size: 16px;
     padding: 10px 20px;
     text-align: center;
-    text-transform: uppercase;
     transition: background 0.3s ease;
-}
+    color:'white';
+   width:'100%';
+   padding:'.5rem 0';
+}`
 
 @keyframes gradientBG {
     0% {
