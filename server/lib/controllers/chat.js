@@ -1,9 +1,7 @@
 import { Router } from 'express';
-import fetch from 'node-fetch';
 
-const router = Router();
-
-router.post('/', async (req, res) => {
+module.exports = Router()
+.post('/', async (req, res) => {
   const { user } = req.body;
   const response = await fetch(`${process.env.OLLAMA_URL}/api/generate`, {
     method: 'POST',
@@ -36,4 +34,3 @@ router.post('/', async (req, res) => {
   });
 });
 
-export default router; 
