@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import {  useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import './App.css';
+import remarkGfm from 'remark-gfm'
+// import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter'
+import js from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript'
+import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+
+SyntaxHighlighter.registerLanguage('javascript', js)
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -101,6 +108,7 @@ export default function App() {
 
                 {i % 2 === 1 ? (
                   <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                     components={{
                       ul: ({ node, ...props }) => (
                         <ul style={{ margin: '1em 0', paddingLeft: '1.5em' }} {...props} />
@@ -121,29 +129,17 @@ export default function App() {
                       p: ({ node, ...props }) => (
                         <p style={{ margin: '1em 0',  }} {...props} />
                       ),
-                      pre: ({ node, ...props }) => (
-                        <pre
-                          style={{
-                            background: '#181818',
-                            color: '#fff',
-                            padding: '1em',
-                            borderRadius: '8px',
-                            overflowX: 'auto',
-                            margin: '1em 0',
-                            maxWidth: '100%',
-                            fontSize: '.9em',
-                          }}
-                          {...props}
-                        />
-                      ),
+                      a: ({ node, ...props }) => (
+                        <a style={{ color: '#4af', textDecoration: 'underline' }} {...props} >{props.children}</a>                      ),
+                      pre: ({ node, ...props }) => <>{props.children}</>,
                       code: ({ node, inline, className, children, ...props }) => {
-                        // Convert children to string
                         const codeString = Array.isArray(children) ? children.join('') : String(children);
-                        // Regex for JS/C-style (// ...) and Python (# ...) comments
-                        const commentRegex = /((?:\/\/|#).*$)/gm;
-                        // Replace comments with green span
-                        const html = codeString.replace(commentRegex, '<span style="color:#347a09;">$1</span>');
+                        const language = (className || '').replace('language-', '');
+
                         if (inline) {
+                          // Inline code: custom style and comment highlighting
+                          const commentRegex = /((?:\/\/|#).*$)/gm;
+                          const html = codeString.replace(commentRegex, '<span style="color:#347a09;">$1</span>');
                           return (
                             <code
                               style={{
@@ -160,29 +156,29 @@ export default function App() {
                             />
                           );
                         }
+
+                        // Block code: use SyntaxHighlighter
                         return (
                           <div style={{ position: 'relative', marginBottom: '0.5em' }}>
-                            <code
-                              style={{
-                                background: 'none',
-                                color: '#fffa',
-                                borderRadius: '5px',
-                                padding: 0,
-                                fontSize: '1em',
-                                fontFamily: 'monospace',
-                                whiteSpace: 'pre',
-                                display: 'block',
+                            <SyntaxHighlighter
+                              language={language || 'text'}
+                              style={vs2015}
+                              customStyle={{
+                                borderRadius: '8px',
+                                fontSize: '.95em',
+                                padding: '1em',
+                                background: '#181818',
+                                margin: 0,
                               }}
-                              dangerouslySetInnerHTML={{ __html: html }}
-                              {...props}
-                            />
-                            {/* Only show copy button if this is a bot message */}
+                            >
+                              {codeString}
+                            </SyntaxHighlighter>
                             {node?.position && m.role === 'bot' && (
                               <button
                                 style={{
                                   position: 'absolute',
-                                  top: 5,
-                                  right: 5,
+                                  top: 0,
+                                  right: 0,
                                   fontSize: '0.9em',
                                   padding: '0.2em 0.7em',
                                   borderRadius: '6px',
