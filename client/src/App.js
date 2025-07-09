@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import './App.css';
 
@@ -11,7 +11,7 @@ export default function App() {
   async function send() {
     if (!input.trim()) return;
     const userMsg = input;
-    setLog(l => [...l, { text: userMsg }]);
+    setLog(l => [...l, { text: userMsg, role: 'user' }]);
     setInput('');
     setLoading(true);
     try {
@@ -21,11 +21,17 @@ export default function App() {
         body: JSON.stringify({ user: userMsg })
       });
       const { bot, context_percent } = await res.json();
-      setLog(l => [...l, { text: bot }]);
+      setLog(l => [...l, { text: bot, role: 'bot' }]);
       if (typeof context_percent === 'number') setContextPercent(context_percent);
     } finally {
       setLoading(false);
     }
+  }
+
+  function copyButton(text) {
+    return () => {
+      navigator.clipboard.writeText(text);
+    };
   }
 
   return (
@@ -91,7 +97,8 @@ export default function App() {
                   wordBreak: 'break-word',
                   boxShadow: i % 2 === 0 ? '0 2px 8px #1118' : '0 2px 8px #2228',
                 }}
-              >
+                >
+
                 {i % 2 === 1 ? (
                   <ReactMarkdown
                     components={{
@@ -154,19 +161,41 @@ export default function App() {
                           );
                         }
                         return (
-                          <code
-                            style={{
-                              background: 'none',
-                              color: '#fffa',
-                              borderRadius: '5px',
-                              padding: 0,
-                              fontSize: '1em',
-                              fontFamily: 'monospace',
-                              whiteSpace: 'pre',
-                            }}
-                            dangerouslySetInnerHTML={{ __html: html }}
-                            {...props}
-                          />
+                          <div style={{ position: 'relative', marginBottom: '0.5em' }}>
+                            <code
+                              style={{
+                                background: 'none',
+                                color: '#fffa',
+                                borderRadius: '5px',
+                                padding: 0,
+                                fontSize: '1em',
+                                fontFamily: 'monospace',
+                                whiteSpace: 'pre',
+                                display: 'block',
+                              }}
+                              dangerouslySetInnerHTML={{ __html: html }}
+                              {...props}
+                            />
+                            {/* Only show copy button if this is a bot message */}
+                            {node?.position && m.role === 'bot' && (
+                              <button
+                                style={{
+                                  position: 'absolute',
+                                  top: 5,
+                                  right: 5,
+                                  fontSize: '0.9em',
+                                  padding: '0.2em 0.7em',
+                                  borderRadius: '6px',
+                                  background: '#222',
+                                  color: '#fff',
+                                  border: '1px solid #444',
+                                  cursor: 'pointer',
+                                  zIndex: 2,
+                                }}
+                                onClick={() => navigator.clipboard.writeText(codeString)}
+                              >Copy</button>
+                            )}
+                          </div>
                         );
                       },
                     }}
@@ -214,8 +243,6 @@ export default function App() {
                 disabled:loading? true:false,
                 alignSelf:'flex-end'
               }}
-              // onMouseOver={e => e.currentTarget.style.background = 'linear-gradient(90deg, #0fa 0%, #4af 100%)'}
-              // onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(90deg, #4af 0%, #0fa 100%)'}
               onClick={send}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
@@ -280,7 +307,7 @@ export default function App() {
         marginTop: '2rem',
       }}>
         <div>Powered by React/ Express/ Node/ WSL • <span style={{fontFamily:'monospace'}}>My Coding Assistant</span> &copy; {new Date().getFullYear()}</div>
-        <div style={{fontSize:'0.95rem',marginTop:'0.3em'}}>Open source project &mdash; <a href="#https://www.github.com/kevinnail" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
+        <div style={{fontSize:'0.95rem',marginTop:'0.3em'}}> <a href="#https://www.github.com/kevinnail" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
       </footer>
     </div>
   );
