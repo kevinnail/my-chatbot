@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import chatRouter from './controllers/chat.js';
+import notFound from './middleware/not-found.js';
+import errorHandler from './middleware/error.js';
 
 const app = express();
 app.use(
@@ -12,11 +15,11 @@ app.use(
   );
 app.use(express.json());
 
-// Temporary: /api/chat route will be moved to controllers
-app.use('/api/chat', require('./controllers/chat.js'));
+// Use the imported router
+app.use('/api/chat', chatRouter);
 
-app.use(require('./middleware/not-found'));
-app.use(require('./middleware/error'));
+app.use(notFound);
+app.use(errorHandler);
 
-module.exports = app;
+export default app;
 
