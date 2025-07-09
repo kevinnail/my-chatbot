@@ -35,11 +35,7 @@ export default function App() {
     }
   }
 
-  function copyButton(text) {
-    return () => {
-      navigator.clipboard.writeText(text);
-    };
-  }
+ 
 
   return (
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:'black'}}>
