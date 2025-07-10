@@ -3,7 +3,6 @@ import { getEmbedding } from '../utils/ollamaEmbed.js'
 
 export async function storeMessage({ userId, role, content }) {
   const embedding = await getEmbedding(content);
-
   await pool.query(`
     INSERT INTO chat_memory (user_id, role, content, embedding)
     VALUES ($1, $2, $3, $4)

@@ -7,7 +7,9 @@ export async function getEmbedding(input) {
       input
     })
   });
-
+  
   const data = await res.json();
-  return data.embedding; // array of 1024 floats
+  // Convert array to PostgreSQL vector format: [0.1, 0.2, 0.3]
+  const embedding = data.embeddings[0]; // array of 1024 floats
+  return `[${embedding.join(',')}]`; 
 }
