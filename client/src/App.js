@@ -365,7 +365,7 @@ export default function App() {
               fontSize: '0.85rem', 
               textShadow: '0 1px 4px #000a',
               pointerEvents: 'none',
-            }}>~{(contextPercent*128000).toFixed(0)} tokens left </span>
+              }}>~{(128000 * (1 - contextPercent/100)).toFixed(0)} tokens left </span>
         </div>
       </main>
       {/* Footer */}
