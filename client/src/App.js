@@ -53,7 +53,170 @@ export default function App() {
   const [contextPercent, setContextPercent] = useState(0);
   const [tokenCount, setTokenCount] = useState(0);
 
+  // State for tab flashing
+  const [originalTitle] = useState(document.title);
+  const [isTabVisible, setIsTabVisible] = useState(true);
+  const [flashInterval, setFlashInterval] = useState(null);
+  const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
 
+  // Request notification permission on component mount
+  useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        setNotificationPermission(permission);
+      });
+    }
+  }, []);
+
+  // Function to show browser notification
+  const showNotification = () => {
+    if (notificationPermission === 'granted' && !isTabVisible) {
+      const notification = new Notification('🤖 Response Ready!', {
+        body: 'Your coding assistant has finished responding.',
+        icon: notificationFavicon,
+        badge: notificationFavicon,
+        tag: 'chat-response', // Prevents duplicate notifications
+        requireInteraction: false,
+        silent: false
+      });
+
+      // Auto-close notification after 5 seconds
+      setTimeout(() => {
+        notification.close();
+      }, 5000);
+
+      // Focus tab when notification is clicked
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+    }
+  };
+
+  // Function to handle notification permission request
+  const handleNotificationClick = () => {
+    if (notificationPermission === 'default') {
+      Notification.requestPermission().then(permission => {
+        setNotificationPermission(permission);
+      });
+    } else if (notificationPermission === 'denied') {
+      alert('Notifications are blocked. Please enable them in your browser settings to get alerts when responses are ready.');
+    }
+  };
+
+  // Function to create a notification favicon
+  const createNotificationFavicon = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    
+    // Draw a simple red circle with white exclamation mark
+    ctx.fillStyle = '#ff4444';
+    ctx.beginPath();
+    ctx.arc(16, 16, 15, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Add white exclamation mark
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('!', 16, 16);
+    
+    return canvas.toDataURL();
+  };
+
+  // Function to change favicon
+  const changeFavicon = (src) => {
+    const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+    link.type = 'image/x-icon';
+    link.rel = 'shortcut icon';
+    link.href = src;
+    document.getElementsByTagName('head')[0].appendChild(link);
+  };
+
+  // Store original favicon
+  const [originalFavicon] = useState(() => {
+    const existingFavicon = document.querySelector("link[rel*='icon']");
+    return existingFavicon ? existingFavicon.href : './favicon.ico';
+  });
+
+  // Create notification favicon on component mount
+  const [notificationFavicon] = useState(() => createNotificationFavicon());
+
+  // Function to flash the tab title and favicon
+  const flashTab = () => {
+    // Only flash if user is not currently viewing the tab
+    if (isTabVisible) return;
+    
+    let flashCount = 0;
+    const maxFlashes = 100; // Flash for 5 seconds (10 flashes at 500ms each)
+    
+    const interval = setInterval(() => {
+      if (flashCount >= maxFlashes) {
+        document.title = originalTitle;
+        changeFavicon(originalFavicon);
+        clearInterval(interval);
+        setFlashInterval(null);
+        return;
+      }
+      
+      const isFlashState = flashCount % 2 === 0;
+      
+      if (isFlashState) {
+        document.title = '🔔 Response Ready';
+        changeFavicon(notificationFavicon);
+      } else {
+        document.title = originalTitle;
+        changeFavicon(originalFavicon);
+      }
+      
+      flashCount++;
+    }, 500);
+    
+    setFlashInterval(interval);
+  };
+
+  // Stop flashing when user returns to tab
+  const stopFlashing = () => {
+    if (flashInterval) {
+      clearInterval(flashInterval);
+      setFlashInterval(null);
+      document.title = originalTitle;
+      changeFavicon(originalFavicon);
+    }
+  };
+
+  // Page Visibility API to track if user is on the tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const visible = !document.hidden;
+      setIsTabVisible(visible);
+      
+      if (visible) {
+        stopFlashing();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      stopFlashing();
+    };
+  }, [flashInterval]);
+
+  // Flash tab when response completes
+  useEffect(() => {
+    // Check if loading just changed from true to false (response completed)
+    if (!loading && log.length > 0) {
+      // Small delay to ensure the response is fully rendered
+      setTimeout(() => {
+        flashTab();
+        showNotification(); // Show browser notification
+      }, 100);
+    }
+  }, [loading, log.length, isTabVisible]);
 
   function countTokensFromString(text) {
     // Very rough estimate: 1 token ≈ 4 characters in English
