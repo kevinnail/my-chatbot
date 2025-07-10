@@ -46,8 +46,7 @@ export default function App() {
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(false);
   const [contextPercent, setContextPercent] = useState(0);
-  const [hover, setHover] = useState(false);
-  const [mouseDown, setMouseDown] = useState(false);
+
   
   async function send() {
     if (!input.trim()) return;
