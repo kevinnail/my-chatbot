@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter'
 import js from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript'
 import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import React from 'react';
 
 SyntaxHighlighter.registerLanguage('javascript', js)
 
@@ -20,7 +21,7 @@ function CopyButton({ onClick }) {
         position: 'absolute',
         top: 5,
         right: 5,
-        fontSize: '1em',
+        fontSize: '.8em',
         padding: '0.14em 0.49em',
         borderRadius: '6px',
         background: mouseDown ? '#111' : hover ? '#222' : '#444',
@@ -94,14 +95,14 @@ export default function App() {
       </header>
       {/* Main chat area */}
       <main style={{
-        margin:'2rem auto',
+        margin:'1.4rem auto',
         fontFamily:'sans-serif',
-        fontSize:'1.05rem', 
-        letterSpacing:'.1rem',
+        fontSize:'1.2rem', 
+        letterSpacing:'.07rem',
         background:'black',
         color:'white',
-        padding:'1rem',
-        borderRadius:'15px',
+        padding:'0.7rem',
+        borderRadius:'10.5px',
         flex:'1 0 auto',
         boxShadow:'0 2px 16px #000a',
         minHeight:'60vh',
@@ -155,9 +156,24 @@ export default function App() {
                           {...props}
                         />
                       ),
-                      p: ({ node, ...props }) => (
-                        <p style={{ margin: '1em 0',  }} {...props} />
-                      ),
+                      p: ({ node, ...props }) => {
+                        let children = props.children;
+                        if (Array.isArray(children) && children.length > 1) {
+                          children = children.filter((child, idx, arr) => {
+                            // Remove if this child is a lone period and previous is a React element (likely a code block)
+                            if (
+                              typeof child === 'string' &&
+                              child.trim().match(/^\.*$/) &&
+                              idx > 0 &&
+                              React.isValidElement(arr[idx - 1])
+                            ) {
+                              return false;
+                            }
+                            return true;
+                          });
+                        }
+                        return <p style={{ margin: '1em 0' }}>{children}</p>;
+                      },
                       a: ({ node, ...props }) => (
                         <a style={{ color: '#4af', textDecoration: 'underline' }} {...props} >{props.children}</a>                      ),
                       pre: ({ node, ...props }) => <>{props.children}</>,
@@ -165,37 +181,56 @@ export default function App() {
                         const codeString = Array.isArray(children) ? children.join('') : String(children);
                         const language = (className || '').replace('language-', '');
 
-                        if (inline) {
-                          // Inline code: custom style and comment highlighting
+                        // Helper: is this a filename-like string?
+                        const isFilename = /^[\w\-./\\]+(\.[\w]+)?$/.test(codeString.trim());
+
+                        if (inline || isFilename) {
+                          // Split codeString into parts: comments and non-comments
                           const commentRegex = /((?:\/\/|#).*$)/gm;
-                          const html = codeString.replace(commentRegex, '<span style="color:#347a09;">$1</span>');
+                          const parts = [];
+                          let lastIndex = 0;
+                          let match;
+                          while ((match = commentRegex.exec(codeString)) !== null) {
+                            if (match.index > lastIndex) {
+                              parts.push(codeString.slice(lastIndex, match.index));
+                            }
+                            parts.push(
+                              <span key={match.index} style={{ color: '#347a09' }}>{match[0]}</span>
+                            );
+                            lastIndex = match.index + match[0].length;
+                          }
+                          if (lastIndex < codeString.length) {
+                            parts.push(codeString.slice(lastIndex));
+                          }
                           return (
                             <code
                               style={{
                                 background: '#222',
                                 color: '#fffa',
-                                borderRadius: '5px',
-                                padding: '0.14em 0.28em', 
-                                fontSize: '0.7em', 
+                                borderRadius: '3.5px',
+                                padding: '0.098em 0.196em',
+                                fontSize: '0.8em',
                                 fontFamily: 'monospace',
                                 whiteSpace: 'pre-wrap',
                               }}
-                              dangerouslySetInnerHTML={{ __html: html }}
                               {...props}
-                            />
+                            >
+                              {parts.length > 0 ? parts : codeString}
+                            </code>
                           );
                         }
 
+
                         // Block code: use SyntaxHighlighter
                         return (
-                          <div style={{ position: 'relative', marginBottom: '0.35em' }}>
+                          <div style={{ position: 'relative', marginBottom: '0.245em', marginTop: node?.position?.start?.offset > 0 ? '0.7em' : undefined }}>
                             <SyntaxHighlighter
                               language={language || 'text'}
                               style={vs2015}
                               customStyle={{
-                                borderRadius: '8px',
-                                fontSize: '.8em', 
-                                padding: '1em', 
+                                borderRadius: '5.6px',
+                                fontSize: '.8em',
+                                padding: '0.7em',
                                 background: '#181818',
                                 margin: 0,
                               }}
@@ -208,6 +243,7 @@ export default function App() {
                           </div>
                         );
                       },
+
                     }}
                   >
                     {m.text}
@@ -220,14 +256,15 @@ export default function App() {
           ))}
         </div>
         {loading ? (
-          <p className='loading-button'>
+          <p className='loading-button' style={{fontSize:'1rem'}}>
             Loading your response...
           </p>
         ) : null}
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.5rem',width:'100%'}}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.35rem',width:'100%'}}>
           <textarea
             style={{width:'70%',fontSize:'1.05rem',height:'70px',display:loading?'none':'block'}}
             value={input}
+            placeholder={`Let's code!  What can I help build for you? `}
             disabled={loading? true:false}
             onChange={e=>setInput(e.target.value)}
             onKeyDown={e=>e.key==='Enter'&&send()}
@@ -296,7 +333,7 @@ export default function App() {
               justifyContent: 'center',
               color: '#fff',
               fontWeight: 'bold',
-              fontSize: '0.77rem', 
+              fontSize: '0.85rem', 
               textShadow: '0 1px 4px #000a',
               pointerEvents: 'none',
             }}>{contextPercent.toFixed(1)}% context used</span>
