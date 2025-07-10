@@ -23,3 +23,15 @@ export async function getRelevantMessages({ userId, inputText, limit = 5 }) {
 
   return rows.map(({ role, content }) => ({ role, content }));
 }
+
+// New function to get all messages for context calculation
+export async function getAllMessages({ userId }) {
+  const { rows } = await pool.query(`
+    SELECT role, content
+    FROM chat_memory
+    WHERE user_id = $1
+    ORDER BY created_at ASC
+  `, [userId]);
+
+  return rows.map(({ role, content }) => ({ role, content }));
+}
