@@ -181,7 +181,10 @@ export default function App() {
                         const codeString = Array.isArray(children) ? children.join('') : String(children);
                         const language = (className || '').replace('language-', '');
 
-                        if (inline) {
+                        // Helper: is this a filename-like string?
+                        const isFilename = /^[\w\-./\\]+(\.[\w]+)?$/.test(codeString.trim());
+
+                        if (inline || isFilename) {
                           // Inline code: custom style and comment highlighting
                           const commentRegex = /((?:\/\/|#).*$)/gm;
                           const html = codeString.replace(commentRegex, '<span style="color:#347a09;">$1</span>');
@@ -192,7 +195,7 @@ export default function App() {
                                 color: '#fffa',
                                 borderRadius: '3.5px',
                                 padding: '0.098em 0.196em', 
-                                fontSize: '0.5em', 
+                                fontSize: '0.8em', 
                                 fontFamily: 'monospace',
                                 whiteSpace: 'pre-wrap',
                               }}
@@ -201,6 +204,7 @@ export default function App() {
                             />
                           );
                         }
+
 
                         // Block code: use SyntaxHighlighter
                         return (
@@ -237,7 +241,7 @@ export default function App() {
           ))}
         </div>
         {loading ? (
-          <p className='loading-button' style={{fontSize:'0.54rem'}}>
+          <p className='loading-button' style={{fontSize:'1rem'}}>
             Loading your response...
           </p>
         ) : null}
@@ -314,7 +318,7 @@ export default function App() {
               justifyContent: 'center',
               color: '#fff',
               fontWeight: 'bold',
-              fontSize: '0.77rem', 
+              fontSize: '0.85rem', 
               textShadow: '0 1px 4px #000a',
               pointerEvents: 'none',
             }}>{contextPercent.toFixed(1)}% context used</span>
