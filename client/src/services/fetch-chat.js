@@ -14,7 +14,9 @@ export   async function sendPrompt(input, setLog, setInput, setLoading, setConte
       });
       const { bot, context_percent } = await res.json();
       setLog(l => [...l, { text: bot, role: 'bot' }]);
-      if (typeof context_percent === 'number') setContextPercent(context_percent);
+      if (context_percent !== undefined && context_percent !== null) {
+        setContextPercent(Number(context_percent));
+      }
     } finally {
       setLoading(false);
     }
