@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { buildPromptWithMemory } from '../utils/buildPrompt.js';
-import { storeMessage } from '../Models/ChatMemory.js';
+import { storeMessage, getAllMessages } from '../Models/ChatMemory.js';
 
 const router = Router();
 
@@ -11,6 +11,10 @@ function countTokens(messages) {
 
 router.post('/', async (req, res) => {
   const { msg,userId } = req.body;
+  
+  // Store the user message first
+  await storeMessage({ userId, role: 'user', content: msg });
+  
   const memories = await buildPromptWithMemory({ userId, userInput: msg });
   const systemPrompt = `You are a senior software engineer specializing in React, Express, and Node.js with 10+ years of 
       experience. You provide precise, production-ready code solutions and technical guidance.
@@ -55,9 +59,17 @@ router.post('/', async (req, res) => {
   const reply = (data.message && typeof data.message.content === 'string')
   ? data.message.content.trim()
   : '';
+  
+  // Store the bot's response
   await storeMessage({ userId, role: 'bot', content: reply });
-  await storeMessage({ userId, role: 'user', content: msg });
-  const totalTokens = countTokens(messages);
+  
+  // Calculate context percentage based on ALL conversation history
+  const allMessages = await getAllMessages({ userId });
+  const allMessagesWithSystem = [
+    { role: 'system', content: systemPrompt },
+    ...allMessages
+  ];
+  const totalTokens = countTokens(allMessagesWithSystem);
   let contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
 
 
