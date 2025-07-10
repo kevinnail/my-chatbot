@@ -1,18 +1,57 @@
-import { useState } from 'react';
+import {  useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import './App.css';
+import remarkGfm from 'remark-gfm'
+// import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter'
+import js from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript'
+import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+
+SyntaxHighlighter.registerLanguage('javascript', js)
+
+// Add CopyButton component for per-button state
+function CopyButton({ onClick }) {
+  const [hover, setHover] = useState(false);
+  const [mouseDown, setMouseDown] = useState(false);
+
+  return (
+    <button
+      style={{
+        position: 'absolute',
+        top: 5,
+        right: 5,
+        fontSize: '1em',
+        padding: '0.14em 0.49em',
+        borderRadius: '6px',
+        background: mouseDown ? '#111' : hover ? '#222' : '#444',
+        color: '#fff',
+        border: '1px solid #444',
+        cursor: 'pointer',
+        zIndex: 2,
+        transition: 'background 0.1s',
+      }}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => { setHover(false); setMouseDown(false); }}
+      onMouseDown={() => setMouseDown(true)}
+      onMouseUp={() => setMouseDown(false)}
+    >
+      Copy
+    </button>
+  );
+}
 
 export default function App() {
   const [input, setInput] = useState('');
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [contextPercent, setContextPercent] = useState(0);
 
-
-
+  
   async function send() {
     if (!input.trim()) return;
     const userMsg = input;
-    setLog(l => [...l, { text: userMsg }]);
+    setLog(l => [...l, { text: userMsg, role: 'user' }]);
     setInput('');
     setLoading(true);
     try {
@@ -21,13 +60,15 @@ export default function App() {
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({ user: userMsg })
       });
-      const { bot } = await res.json();
-      setLog(l => [...l, { text: bot }]);
+      const { bot, context_percent } = await res.json();
+      setLog(l => [...l, { text: bot, role: 'bot' }]);
+      if (typeof context_percent === 'number') setContextPercent(context_percent);
     } finally {
       setLoading(false);
     }
   }
 
+ 
 
   return (
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:'black'}}>
@@ -43,19 +84,19 @@ export default function App() {
         borderTopLeftRadius: '0',
         borderTopRightRadius: '0',
         boxShadow: '0 2px 8px #0008',
-        fontSize: '2rem',
+        fontSize: '1.4rem', 
         fontWeight: 'bold',
         letterSpacing: '.15rem',
         gap: '1rem',
       }}>
-        <span style={{fontSize:'1.5rem',userSelect:'none'}}><img width="40px" style={{borderRadius:'25%',transform:'translateY(5px)'}} alt='logo' src="./logo.png"/></span>
-        <span style={{fontSize:'1.5rem',userSelect:'none'}} >My Coding Assistant</span>
+        <span style={{fontSize:'1.05rem',userSelect:'none'}}><img width="28px" style={{borderRadius:'25%',transform:'translateY(5px)'}} alt='logo' src="./logo.png"/></span>
+        <span style={{fontSize:'1.05rem',userSelect:'none'}} >My Coding Assistant</span>
       </header>
       {/* Main chat area */}
       <main style={{
         margin:'2rem auto',
         fontFamily:'sans-serif',
-        fontSize:'1.5rem',
+        fontSize:'1.05rem', 
         letterSpacing:'.1rem',
         background:'black',
         color:'white',
@@ -92,9 +133,11 @@ export default function App() {
                   wordBreak: 'break-word',
                   boxShadow: i % 2 === 0 ? '0 2px 8px #1118' : '0 2px 8px #2228',
                 }}
-              >
+                >
+
                 {i % 2 === 1 ? (
                   <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                     components={{
                       ul: ({ node, ...props }) => (
                         <ul style={{ margin: '1em 0', paddingLeft: '1.5em' }} {...props} />
@@ -115,37 +158,25 @@ export default function App() {
                       p: ({ node, ...props }) => (
                         <p style={{ margin: '1em 0',  }} {...props} />
                       ),
-                      pre: ({ node, ...props }) => (
-                        <pre
-                          style={{
-                            background: '#181818',
-                            color: '#fff',
-                            padding: '1em',
-                            borderRadius: '8px',
-                            overflowX: 'auto',
-                            margin: '1em 0',
-                            maxWidth: '100%',
-                            fontSize: '.9em',
-                          }}
-                          {...props}
-                        />
-                      ),
+                      a: ({ node, ...props }) => (
+                        <a style={{ color: '#4af', textDecoration: 'underline' }} {...props} >{props.children}</a>                      ),
+                      pre: ({ node, ...props }) => <>{props.children}</>,
                       code: ({ node, inline, className, children, ...props }) => {
-                        // Convert children to string
                         const codeString = Array.isArray(children) ? children.join('') : String(children);
-                        // Regex for JS/C-style (// ...) and Python (# ...) comments
-                        const commentRegex = /((?:\/\/|#).*$)/gm;
-                        // Replace comments with green span
-                        const html = codeString.replace(commentRegex, '<span style="color:#347a09;">$1</span>');
+                        const language = (className || '').replace('language-', '');
+
                         if (inline) {
+                          // Inline code: custom style and comment highlighting
+                          const commentRegex = /((?:\/\/|#).*$)/gm;
+                          const html = codeString.replace(commentRegex, '<span style="color:#347a09;">$1</span>');
                           return (
                             <code
                               style={{
                                 background: '#222',
                                 color: '#fffa',
                                 borderRadius: '5px',
-                                padding: '0.2em 0.4em',
-                                fontSize: '1em',
+                                padding: '0.14em 0.28em', 
+                                fontSize: '0.7em', 
                                 fontFamily: 'monospace',
                                 whiteSpace: 'pre-wrap',
                               }}
@@ -154,20 +185,27 @@ export default function App() {
                             />
                           );
                         }
+
+                        // Block code: use SyntaxHighlighter
                         return (
-                          <code
-                            style={{
-                              background: 'none',
-                              color: '#fffa',
-                              borderRadius: '5px',
-                              padding: 0,
-                              fontSize: '1em',
-                              fontFamily: 'monospace',
-                              whiteSpace: 'pre',
-                            }}
-                            dangerouslySetInnerHTML={{ __html: html }}
-                            {...props}
-                          />
+                          <div style={{ position: 'relative', marginBottom: '0.35em' }}>
+                            <SyntaxHighlighter
+                              language={language || 'text'}
+                              style={vs2015}
+                              customStyle={{
+                                borderRadius: '8px',
+                                fontSize: '.8em', 
+                                padding: '1em', 
+                                background: '#181818',
+                                margin: 0,
+                              }}
+                            >
+                              {codeString}
+                            </SyntaxHighlighter>
+                            {node?.position && m.role === 'bot' && (
+                              <CopyButton onClick={() => navigator.clipboard.writeText(codeString)} />
+                            )}
+                          </div>
                         );
                       },
                     }}
@@ -182,13 +220,13 @@ export default function App() {
           ))}
         </div>
         {loading ? (
-          <p className='loading-button' style={{color:'white',textAlign:'center', width:'100%',padding:'.5rem 0',borderRadius:'15px'}}>
+          <p className='loading-button'>
             Loading your response...
           </p>
         ) : null}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.5rem',width:'100%'}}>
           <textarea
-            style={{width:'70%',fontSize:'1.5rem',height:'100px',display:loading?'none':'block'}}
+            style={{width:'70%',fontSize:'1.05rem',height:'70px',display:loading?'none':'block'}}
             value={input}
             disabled={loading? true:false}
             onChange={e=>setInput(e.target.value)}
@@ -196,9 +234,73 @@ export default function App() {
           />
           {!loading && (
             <button 
-              style={{fontSize:'1.5rem', borderRadius:'15px',padding:'.25rem 1rem',marginTop:'0.5rem'}}
-              onClick={send}>Send</button>
+              style={{
+                fontSize: '0.77rem', 
+                borderRadius: '15px',
+                padding: '.28rem 1.05rem',
+                margin: '0.5rem 15% 0 0',
+                background: 'linear-gradient(90deg, #4af 0%, #0fa 100%)',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 12px #0af4',
+                fontWeight: 'bold',
+                letterSpacing: '.08em',
+                cursor: 'pointer',
+                transition: 'background 0.3s, transform 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.7em',
+                disabled:loading? true:false,
+                alignSelf:'flex-end'
+              }}
+              onClick={send}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
+                <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white"/>
+              </svg>
+              Send
+            </button>
           )}
+        </div>
+        {/* Context Usage Progress Bar */}
+        <div style={{
+          width: '90%',
+          margin: '1.5rem auto 0 auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          flexDirection: 'row',
+          justifyContent: 'flex-start',
+        }}>
+          <div style={{
+            width: '154px', 
+            height: '20px', 
+            background: '#222',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            border: '2px solid #444',
+            position: 'relative',
+            boxShadow: '0 1px 6px #0006',
+          }}>
+            <div style={{
+              width: `${Math.min(100, contextPercent).toFixed(1)}%`,
+              height: '100%',
+              background: contextPercent < 70 ? 'linear-gradient(90deg,#4af,#0fa)' : contextPercent < 90 ? 'linear-gradient(90deg,#ff0,#fa0)' : 'linear-gradient(90deg,#f44,#a00)',
+              transition: 'width 0.5s cubic-bezier(.4,2,.6,1)',
+            }} />
+            <span style={{
+              position: 'absolute',
+              left: 0, right: 0, top: 0, bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              fontWeight: 'bold',
+              fontSize: '0.77rem', 
+              textShadow: '0 1px 4px #000a',
+              pointerEvents: 'none',
+            }}>{contextPercent.toFixed(1)}% context used</span>
+          </div>
         </div>
       </main>
       {/* Footer */}
@@ -208,14 +310,14 @@ export default function App() {
         color: '#aaa',
         padding: '1rem 0',
         textAlign: 'center',
-        fontSize: '1.1rem',
+        fontSize: '0.77rem', 
         borderBottomLeftRadius: '0',
         borderBottomRightRadius: '0',
         boxShadow: '0 -2px 8px #0008',
         marginTop: '2rem',
       }}>
         <div>Powered by React/ Express/ Node/ WSL • <span style={{fontFamily:'monospace'}}>My Coding Assistant</span> &copy; {new Date().getFullYear()}</div>
-        <div style={{fontSize:'0.95rem',marginTop:'0.3em'}}>Open source project &mdash; <a href="#" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
+        <div style={{fontSize:'0.67rem',marginTop:'0.3em'}}> <a href="#https://www.github.com/kevinnail" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
       </footer>
     </div>
   );
