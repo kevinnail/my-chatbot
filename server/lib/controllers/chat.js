@@ -1,15 +1,18 @@
 import { Router } from 'express';
+import { buildPromptWithMemory } from '../utils/buildPrompt.js';
+import { storeMessage } from '../Models/ChatMemory.js';
 
 const router = Router();
 
 router.post('/', async (req, res) => {
-  const { user } = req.body;
+  const { msg,userId } = req.body;
+  const prompt = await buildPromptWithMemory({ userId, userInput: msg });
   const response = await fetch(`${process.env.OLLAMA_URL}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: process.env.OLLAMA_MODEL,
-      prompt: user,
+      prompt: prompt,
       system: `You are a senior software engineer specializing in React, Express, and Node.js with 10+ years of 
       experience. You provide precise, production-ready code solutions and technical guidance.
       Your expertise includes modern JavaScript/TypeScript, React 18+, Next.js, Express, RESTful APIs
@@ -40,9 +43,14 @@ router.post('/', async (req, res) => {
   });
 
   const data = await response.json();
+  const reply = data.response.trim();
+  await storeMessage({ userId, role: 'bot', content: reply });
+  await storeMessage({ userId, role: 'user', content: msg });
+
   const promptEvalCount = data.prompt_eval_count || 0;
-  let contextPercent = Math.min(100, (promptEvalCount / 128000) * 100);
-  contextPercent = contextPercent.toFixed(4);
+  let contextPercent = Math.min(100, (promptEvalCount / 128000) * 100).toFixed(4);
+
+
   res.json({ 
 
 
