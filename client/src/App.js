@@ -185,23 +185,38 @@ export default function App() {
                         const isFilename = /^[\w\-./\\]+(\.[\w]+)?$/.test(codeString.trim());
 
                         if (inline || isFilename) {
-                          // Inline code: custom style and comment highlighting
+                          // Split codeString into parts: comments and non-comments
                           const commentRegex = /((?:\/\/|#).*$)/gm;
-                          const html = codeString.replace(commentRegex, '<span style="color:#347a09;">$1</span>');
+                          const parts = [];
+                          let lastIndex = 0;
+                          let match;
+                          while ((match = commentRegex.exec(codeString)) !== null) {
+                            if (match.index > lastIndex) {
+                              parts.push(codeString.slice(lastIndex, match.index));
+                            }
+                            parts.push(
+                              <span key={match.index} style={{ color: '#347a09' }}>{match[0]}</span>
+                            );
+                            lastIndex = match.index + match[0].length;
+                          }
+                          if (lastIndex < codeString.length) {
+                            parts.push(codeString.slice(lastIndex));
+                          }
                           return (
                             <code
                               style={{
                                 background: '#222',
                                 color: '#fffa',
                                 borderRadius: '3.5px',
-                                padding: '0.098em 0.196em', 
-                                fontSize: '0.8em', 
+                                padding: '0.098em 0.196em',
+                                fontSize: '0.8em',
                                 fontFamily: 'monospace',
                                 whiteSpace: 'pre-wrap',
                               }}
-                              dangerouslySetInnerHTML={{ __html: html }}
                               {...props}
-                            />
+                            >
+                              {parts.length > 0 ? parts : codeString}
+                            </code>
                           );
                         }
 
@@ -214,8 +229,8 @@ export default function App() {
                               style={vs2015}
                               customStyle={{
                                 borderRadius: '5.6px',
-                                fontSize: '.8em', 
-                                padding: '0.7em', 
+                                fontSize: '.8em',
+                                padding: '0.7em',
                                 background: '#181818',
                                 margin: 0,
                               }}
