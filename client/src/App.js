@@ -155,8 +155,9 @@ export default function App() {
     
     const interval = setInterval(() => {
       if (flashCount >= maxFlashes) {
-        document.title = originalTitle;
-        changeFavicon(originalFavicon);
+        // Leave the notification active after flashing stops
+        document.title = '🔔 Response Ready';
+        changeFavicon(notificationFavicon);
         clearInterval(interval);
         setFlashInterval(null);
         return;
