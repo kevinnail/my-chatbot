@@ -151,7 +151,7 @@ export default function App() {
     if (isTabVisible) return;
     
     let flashCount = 0;
-    const maxFlashes = 10; // Flash for 5 seconds (10 flashes at 500ms each)
+    const maxFlashes = 100; // Flash for 5 seconds (10 flashes at 500ms each)
     
     const interval = setInterval(() => {
       if (flashCount >= maxFlashes) {
