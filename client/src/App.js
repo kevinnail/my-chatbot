@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter'
 import js from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript'
 import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import React from 'react';
 
 SyntaxHighlighter.registerLanguage('javascript', js)
 
@@ -155,9 +156,24 @@ export default function App() {
                           {...props}
                         />
                       ),
-                      p: ({ node, ...props }) => (
-                        <p style={{ margin: '1em 0'  }} {...props} />
-                      ),
+                      p: ({ node, ...props }) => {
+                        let children = props.children;
+                        if (Array.isArray(children) && children.length > 1) {
+                          children = children.filter((child, idx, arr) => {
+                            // Remove if this child is a lone period and previous is a React element (likely a code block)
+                            if (
+                              typeof child === 'string' &&
+                              child.trim().match(/^\.*$/) &&
+                              idx > 0 &&
+                              React.isValidElement(arr[idx - 1])
+                            ) {
+                              return false;
+                            }
+                            return true;
+                          });
+                        }
+                        return <p style={{ margin: '1em 0' }}>{children}</p>;
+                      },
                       a: ({ node, ...props }) => (
                         <a style={{ color: '#4af', textDecoration: 'underline' }} {...props} >{props.children}</a>                      ),
                       pre: ({ node, ...props }) => <>{props.children}</>,
