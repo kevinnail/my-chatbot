@@ -4,6 +4,11 @@ import { storeMessage } from '../Models/ChatMemory.js';
 
 const router = Router();
 
+function countTokens(messages) {
+  // Very rough estimate: 1 token ≈ 4 characters in English
+  return messages.reduce((acc, msg) => acc + Math.ceil(msg.content.length / 4), 0);
+}
+
 router.post('/', async (req, res) => {
   const { msg,userId } = req.body;
   const memories = await buildPromptWithMemory({ userId, userInput: msg });
@@ -52,14 +57,13 @@ router.post('/', async (req, res) => {
   : '';
   await storeMessage({ userId, role: 'bot', content: reply });
   await storeMessage({ userId, role: 'user', content: msg });
-
-  const promptEvalCount = data.prompt_eval_count || 0;
-  let contextPercent = Math.min(100, (promptEvalCount / 128000) * 100).toFixed(4);
+  const totalTokens = countTokens(messages);
+  let contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
 
 
   res.json({ 
     bot: (data.message && typeof data.message.content === 'string') ? data.message.content.trim() : '',
-    prompt_eval_count: promptEvalCount,
+    prompt_eval_count: data.prompt_eval_count || 0,
     context_percent: contextPercent,
   });
 });
