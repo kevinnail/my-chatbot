@@ -7,6 +7,7 @@ import { Light as SyntaxHighlighter } from 'react-syntax-highlighter'
 import js from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript'
 import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import React from 'react';
+import { sendPrompt } from './services/fetch-chat';
 
 SyntaxHighlighter.registerLanguage('javascript', js)
 
@@ -49,25 +50,7 @@ export default function App() {
   const [contextPercent, setContextPercent] = useState(0);
 
   
-  async function send() {
-    if (!input.trim()) return;
-    const userMsg = input;
-    setLog(l => [...l, { text: userMsg, role: 'user' }]);
-    setInput('');
-    setLoading(true);
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ user: userMsg })
-      });
-      const { bot, context_percent } = await res.json();
-      setLog(l => [...l, { text: bot, role: 'bot' }]);
-      if (typeof context_percent === 'number') setContextPercent(context_percent);
-    } finally {
-      setLoading(false);
-    }
-  }
+
 
  
 
@@ -267,7 +250,7 @@ export default function App() {
             placeholder={`Let's code!  What can I help build for you? `}
             disabled={loading? true:false}
             onChange={e=>setInput(e.target.value)}
-            onKeyDown={e=>e.key==='Enter'&&send()}
+            onKeyDown={e=>e.key==='Enter'&&sendPrompt(input, setLog, setInput, setLoading, setContextPercent)}
           />
           {!loading && (
             <button 
@@ -290,7 +273,7 @@ export default function App() {
                 disabled:loading? true:false,
                 alignSelf:'flex-end'
               }}
-              onClick={send}
+              onClick={()=>sendPrompt(input, setLog, setInput, setLoading, setContextPercent) }
             >
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
                 <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white"/>
