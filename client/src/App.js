@@ -14,7 +14,7 @@ export default function App() {
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(false);
   const [contextPercent, setContextPercent] = useState(0);
-
+  const [hover, setHover] = useState(false);
   async function send() {
     if (!input.trim()) return;
     const userMsg = input;
@@ -51,19 +51,19 @@ export default function App() {
         borderTopLeftRadius: '0',
         borderTopRightRadius: '0',
         boxShadow: '0 2px 8px #0008',
-        fontSize: '2rem',
+        fontSize: '1.4rem', 
         fontWeight: 'bold',
         letterSpacing: '.15rem',
         gap: '1rem',
       }}>
-        <span style={{fontSize:'1.5rem',userSelect:'none'}}><img width="40px" style={{borderRadius:'25%',transform:'translateY(5px)'}} alt='logo' src="./logo.png"/></span>
-        <span style={{fontSize:'1.5rem',userSelect:'none'}} >My Coding Assistant</span>
+        <span style={{fontSize:'1.05rem',userSelect:'none'}}><img width="28px" style={{borderRadius:'25%',transform:'translateY(5px)'}} alt='logo' src="./logo.png"/></span>
+        <span style={{fontSize:'1.05rem',userSelect:'none'}} >My Coding Assistant</span>
       </header>
       {/* Main chat area */}
       <main style={{
         margin:'2rem auto',
         fontFamily:'sans-serif',
-        fontSize:'1.5rem',
+        fontSize:'1.05rem', 
         letterSpacing:'.1rem',
         background:'black',
         color:'white',
@@ -142,8 +142,8 @@ export default function App() {
                                 background: '#222',
                                 color: '#fffa',
                                 borderRadius: '5px',
-                                padding: '0.2em 0.4em',
-                                fontSize: '1em',
+                                padding: '0.14em 0.28em', 
+                                fontSize: '0.7em', 
                                 fontFamily: 'monospace',
                                 whiteSpace: 'pre-wrap',
                               }}
@@ -155,14 +155,14 @@ export default function App() {
 
                         // Block code: use SyntaxHighlighter
                         return (
-                          <div style={{ position: 'relative', marginBottom: '0.5em' }}>
+                          <div style={{ position: 'relative', marginBottom: '0.35em' }}>
                             <SyntaxHighlighter
                               language={language || 'text'}
                               style={vs2015}
                               customStyle={{
                                 borderRadius: '8px',
-                                fontSize: '.95em',
-                                padding: '1em',
+                                fontSize: '.8em', 
+                                padding: '1em', 
                                 background: '#181818',
                                 margin: 0,
                               }}
@@ -173,18 +173,18 @@ export default function App() {
                               <button
                                 style={{
                                   position: 'absolute',
-                                  top: 0,
-                                  right: 0,
-                                  fontSize: '0.9em',
-                                  padding: '0.2em 0.7em',
+                                  top: 5,
+                                  right: 5,
+                                  fontSize: '1em', 
+                                  padding: '0.14em 0.49em', 
                                   borderRadius: '6px',
-                                  background: '#222',
+                                  background:hover? '#444' : '#222',
                                   color: '#fff',
                                   border: '1px solid #444',
                                   cursor: 'pointer',
                                   zIndex: 2,
                                 }}
-                                onClick={() => navigator.clipboard.writeText(codeString)}
+                                onClick={() => navigator.clipboard.writeText(codeString)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
                               >Copy</button>
                             )}
                           </div>
@@ -208,7 +208,7 @@ export default function App() {
         ) : null}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.5rem',width:'100%'}}>
           <textarea
-            style={{width:'70%',fontSize:'1.5rem',height:'100px',display:loading?'none':'block'}}
+            style={{width:'70%',fontSize:'1.05rem',height:'70px',display:loading?'none':'block'}}
             value={input}
             disabled={loading? true:false}
             onChange={e=>setInput(e.target.value)}
@@ -217,9 +217,9 @@ export default function App() {
           {!loading && (
             <button 
               style={{
-                fontSize: '1.1rem',
+                fontSize: '0.77rem', 
                 borderRadius: '15px',
-                padding: '.4rem 1.5rem',
+                padding: '.28rem 1.05rem',
                 margin: '0.5rem 15% 0 0',
                 background: 'linear-gradient(90deg, #4af 0%, #0fa 100%)',
                 color: '#fff',
@@ -237,7 +237,7 @@ export default function App() {
               }}
               onClick={send}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
                 <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white"/>
               </svg>
               Send
@@ -255,8 +255,8 @@ export default function App() {
           justifyContent: 'flex-start',
         }}>
           <div style={{
-            width: '220px',
-            height: '28px',
+            width: '154px', 
+            height: '20px', 
             background: '#222',
             borderRadius: '16px',
             overflow: 'hidden',
@@ -278,7 +278,7 @@ export default function App() {
               justifyContent: 'center',
               color: '#fff',
               fontWeight: 'bold',
-              fontSize: '1.1rem',
+              fontSize: '0.77rem', 
               textShadow: '0 1px 4px #000a',
               pointerEvents: 'none',
             }}>{contextPercent.toFixed(1)}% context used</span>
@@ -292,14 +292,14 @@ export default function App() {
         color: '#aaa',
         padding: '1rem 0',
         textAlign: 'center',
-        fontSize: '1.1rem',
+        fontSize: '0.77rem', 
         borderBottomLeftRadius: '0',
         borderBottomRightRadius: '0',
         boxShadow: '0 -2px 8px #0008',
         marginTop: '2rem',
       }}>
         <div>Powered by React/ Express/ Node/ WSL • <span style={{fontFamily:'monospace'}}>My Coding Assistant</span> &copy; {new Date().getFullYear()}</div>
-        <div style={{fontSize:'0.95rem',marginTop:'0.3em'}}> <a href="#https://www.github.com/kevinnail" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
+        <div style={{fontSize:'0.67rem',marginTop:'0.3em'}}> <a href="#https://www.github.com/kevinnail" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
       </footer>
     </div>
   );
