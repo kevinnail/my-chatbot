@@ -1,5 +1,5 @@
-import { pool } from '../db.js';
-import { getEmbedding } from '../utils/ollamaEmbed.js'; // this should wrap the /api/embed call
+import { pool } from '../utils/db.js';
+import { getEmbedding } from '../utils/ollamaEmbed.js'
 
 export async function storeMessage({ userId, role, content }) {
   const embedding = await getEmbedding(content);

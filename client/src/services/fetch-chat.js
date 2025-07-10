@@ -1,6 +1,5 @@
         const BASE_URL = process.env.REACT_APP_BASE_URL;
 
-
 export   async function sendPrompt(input, setLog, setInput, setLoading, setContextPercent) {
     if (!input.trim()) return;
     const userMsg = input;
