@@ -20,7 +20,7 @@ function CopyButton({ onClick }) {
         position: 'absolute',
         top: 5,
         right: 5,
-        fontSize: '1em',
+        fontSize: '.8em',
         padding: '0.14em 0.49em',
         borderRadius: '6px',
         background: mouseDown ? '#111' : hover ? '#222' : '#444',
@@ -94,14 +94,14 @@ export default function App() {
       </header>
       {/* Main chat area */}
       <main style={{
-        margin:'2rem auto',
+        margin:'1.4rem auto',
         fontFamily:'sans-serif',
-        fontSize:'1.05rem', 
-        letterSpacing:'.1rem',
+        fontSize:'1.2rem', 
+        letterSpacing:'.07rem',
         background:'black',
         color:'white',
-        padding:'1rem',
-        borderRadius:'15px',
+        padding:'0.7rem',
+        borderRadius:'10.5px',
         flex:'1 0 auto',
         boxShadow:'0 2px 16px #000a',
         minHeight:'60vh',
@@ -156,7 +156,7 @@ export default function App() {
                         />
                       ),
                       p: ({ node, ...props }) => (
-                        <p style={{ margin: '1em 0',  }} {...props} />
+                        <p style={{ margin: '1em 0'  }} {...props} />
                       ),
                       a: ({ node, ...props }) => (
                         <a style={{ color: '#4af', textDecoration: 'underline' }} {...props} >{props.children}</a>                      ),
@@ -174,9 +174,9 @@ export default function App() {
                               style={{
                                 background: '#222',
                                 color: '#fffa',
-                                borderRadius: '5px',
-                                padding: '0.14em 0.28em', 
-                                fontSize: '0.7em', 
+                                borderRadius: '3.5px',
+                                padding: '0.098em 0.196em', 
+                                fontSize: '0.5em', 
                                 fontFamily: 'monospace',
                                 whiteSpace: 'pre-wrap',
                               }}
@@ -188,14 +188,14 @@ export default function App() {
 
                         // Block code: use SyntaxHighlighter
                         return (
-                          <div style={{ position: 'relative', marginBottom: '0.35em' }}>
+                          <div style={{ position: 'relative', marginBottom: '0.245em' }}>
                             <SyntaxHighlighter
                               language={language || 'text'}
                               style={vs2015}
                               customStyle={{
-                                borderRadius: '8px',
+                                borderRadius: '5.6px',
                                 fontSize: '.8em', 
-                                padding: '1em', 
+                                padding: '0.7em', 
                                 background: '#181818',
                                 margin: 0,
                               }}
@@ -208,6 +208,7 @@ export default function App() {
                           </div>
                         );
                       },
+
                     }}
                   >
                     {m.text}
@@ -220,14 +221,15 @@ export default function App() {
           ))}
         </div>
         {loading ? (
-          <p className='loading-button'>
+          <p className='loading-button' style={{fontSize:'0.54rem'}}>
             Loading your response...
           </p>
         ) : null}
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.5rem',width:'100%'}}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.35rem',width:'100%'}}>
           <textarea
             style={{width:'70%',fontSize:'1.05rem',height:'70px',display:loading?'none':'block'}}
             value={input}
+            placeholder={`Let's code!  What can I help build for you? `}
             disabled={loading? true:false}
             onChange={e=>setInput(e.target.value)}
             onKeyDown={e=>e.key==='Enter'&&send()}
