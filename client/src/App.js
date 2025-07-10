@@ -1,4 +1,4 @@
-import {  useState } from 'react';
+import {  useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import './App.css';
 import remarkGfm from 'remark-gfm'
@@ -15,6 +15,9 @@ SyntaxHighlighter.registerLanguage('javascript', js)
 function CopyButton({ onClick }) {
   const [hover, setHover] = useState(false);
   const [mouseDown, setMouseDown] = useState(false);
+
+
+
 
   return (
     <button
@@ -48,8 +51,25 @@ export default function App() {
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(false);
   const [contextPercent, setContextPercent] = useState(0);
+  const [tokenCount, setTokenCount] = useState(0);
 
-  
+
+
+  function countTokensFromString(text) {
+    // Very rough estimate: 1 token ≈ 4 characters in English
+    return Math.ceil(text.length / 4);
+  }
+
+  function handleInputChange(e) {
+    const newInput = e.target.value;
+    setInput(newInput);
+    setTokenCount(countTokensFromString(newInput));
+  }
+
+  // Keep token count in sync with input (useful when input is cleared by other means)
+  useEffect(() => {
+    setTokenCount(countTokensFromString(input));
+  }, [input]);
 
 
  
@@ -249,37 +269,51 @@ export default function App() {
             value={input}
             placeholder={`Let's code!  What can I help build for you? `}
             disabled={loading? true:false}
-            onChange={e=>setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={e=>e.key==='Enter'&&sendPrompt(input, setLog, setInput, setLoading, setContextPercent)}
           />
           {!loading && (
-            <button 
-              style={{
-                fontSize: '0.77rem', 
-                borderRadius: '15px',
-                padding: '.28rem 1.05rem',
-                margin: '0.5rem 15% 0 0',
-                background: 'linear-gradient(90deg, #4af 0%, #0fa 100%)',
-                color: '#fff',
-                border: 'none',
-                boxShadow: '0 2px 12px #0af4',
-                fontWeight: 'bold',
-                letterSpacing: '.08em',
-                cursor: 'pointer',
-                transition: 'background 0.3s, transform 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.7em',
-                disabled:loading? true:false,
-                alignSelf:'flex-end'
-              }}
-              onClick={()=>sendPrompt(input, setLog, setInput, setLoading, setContextPercent) }
-            >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
-                <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white"/>
-              </svg>
-              Send
-            </button>
+            <div style={{
+              width: '70%',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: '0.5rem'
+            }}>
+              <div style={{
+                fontSize: '1rem',
+                color: '#888',
+                fontFamily: 'monospace',
+                letterSpacing: '0.05em'
+              }}>
+                ~{tokenCount} tokens in prompt
+              </div>
+              <button 
+                style={{
+                  fontSize: '0.77rem', 
+                  borderRadius: '15px',
+                  padding: '.28rem 1.05rem',
+                  background: 'linear-gradient(90deg, #4af 0%, #0fa 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  boxShadow: '0 2px 12px #0af4',
+                  fontWeight: 'bold',
+                  letterSpacing: '.08em',
+                  cursor: 'pointer',
+                  transition: 'background 0.3s, transform 0.15s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.7em',
+                  disabled:loading? true:false,
+                }}
+                onClick={()=>sendPrompt(input, setLog, setInput, setLoading, setContextPercent) }
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
+                  <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white"/>
+                </svg>
+                Send
+              </button>
+            </div>
           )}
         </div>
         {/* Context Usage Progress Bar */}
