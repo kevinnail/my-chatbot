@@ -11,7 +11,7 @@ export   async function sendPrompt(input, setLog, setInput, setLoading, setConte
       const res = await fetch(`${BASE_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ user: userMsg })
+        body: JSON.stringify({ msg: userMsg, userId: '1' }) //the point of this local, no need for sign in/ user id, userId default to 1
       });
       const { bot, context_percent } = await res.json();
       setLog(l => [...l, { text: bot, role: 'bot' }]);
