@@ -9,12 +9,46 @@ import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
 SyntaxHighlighter.registerLanguage('javascript', js)
 
+// Add CopyButton component for per-button state
+function CopyButton({ onClick }) {
+  const [hover, setHover] = useState(false);
+  const [mouseDown, setMouseDown] = useState(false);
+
+  return (
+    <button
+      style={{
+        position: 'absolute',
+        top: 5,
+        right: 5,
+        fontSize: '1em',
+        padding: '0.14em 0.49em',
+        borderRadius: '6px',
+        background: mouseDown ? '#111' : hover ? '#222' : '#444',
+        color: '#fff',
+        border: '1px solid #444',
+        cursor: 'pointer',
+        zIndex: 2,
+        transition: 'background 0.1s',
+      }}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => { setHover(false); setMouseDown(false); }}
+      onMouseDown={() => setMouseDown(true)}
+      onMouseUp={() => setMouseDown(false)}
+    >
+      Copy
+    </button>
+  );
+}
+
 export default function App() {
   const [input, setInput] = useState('');
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(false);
   const [contextPercent, setContextPercent] = useState(0);
   const [hover, setHover] = useState(false);
+  const [mouseDown, setMouseDown] = useState(false);
+  
   async function send() {
     if (!input.trim()) return;
     const userMsg = input;
@@ -170,22 +204,7 @@ export default function App() {
                               {codeString}
                             </SyntaxHighlighter>
                             {node?.position && m.role === 'bot' && (
-                              <button
-                                style={{
-                                  position: 'absolute',
-                                  top: 5,
-                                  right: 5,
-                                  fontSize: '1em', 
-                                  padding: '0.14em 0.49em', 
-                                  borderRadius: '6px',
-                                  background:hover? '#444' : '#222',
-                                  color: '#fff',
-                                  border: '1px solid #444',
-                                  cursor: 'pointer',
-                                  zIndex: 2,
-                                }}
-                                onClick={() => navigator.clipboard.writeText(codeString)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-                              >Copy</button>
+                              <CopyButton onClick={() => navigator.clipboard.writeText(codeString)} />
                             )}
                           </div>
                         );
