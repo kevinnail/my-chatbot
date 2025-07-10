@@ -6,14 +6,8 @@ const router = Router();
 
 router.post('/', async (req, res) => {
   const { msg,userId } = req.body;
-  const prompt = await buildPromptWithMemory({ userId, userInput: msg });
-  const response = await fetch(`${process.env.OLLAMA_URL}/api/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: process.env.OLLAMA_MODEL,
-      prompt: prompt,
-      system: `You are a senior software engineer specializing in React, Express, and Node.js with 10+ years of 
+  const memories = await buildPromptWithMemory({ userId, userInput: msg });
+  const systemPrompt = `You are a senior software engineer specializing in React, Express, and Node.js with 10+ years of 
       experience. You provide precise, production-ready code solutions and technical guidance.
       Your expertise includes modern JavaScript/TypeScript, React 18+, Next.js, Express, RESTful APIs
       , GraphQL, database integration, authentication, testing (Jest, Cypress), performance optimization,
@@ -30,7 +24,18 @@ router.post('/', async (req, res) => {
        can I help you solve?"
        You start each prompt with "Well Dude, " and use references to the movie "The Big Lebowski" to make analogies for 
        effective communication of difficult concepts. 
-       `,
+       `;
+  const messages = [
+     { role: 'system', content: systemPrompt },
+     ...memories,
+     { role: 'user', content: msg }
+   ];
+  const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: process.env.OLLAMA_MODEL,
+      messages,
       options: {
 
       
@@ -41,9 +46,10 @@ router.post('/', async (req, res) => {
       stream: false
     })
   });
-
   const data = await response.json();
-  const reply = data.response.trim();
+  const reply = (data.message && typeof data.message.content === 'string')
+  ? data.message.content.trim()
+  : '';
   await storeMessage({ userId, role: 'bot', content: reply });
   await storeMessage({ userId, role: 'user', content: msg });
 
@@ -52,9 +58,7 @@ router.post('/', async (req, res) => {
 
 
   res.json({ 
-
-
-    bot: data.response.trim(), 
+    bot: (data.message && typeof data.message.content === 'string') ? data.message.content.trim() : '',
     prompt_eval_count: promptEvalCount,
     context_percent: contextPercent,
   });
