@@ -188,7 +188,7 @@ export default function App() {
 
                         // Block code: use SyntaxHighlighter
                         return (
-                          <div style={{ position: 'relative', marginBottom: '0.245em' }}>
+                          <div style={{ position: 'relative', marginBottom: '0.245em', marginTop: node?.position?.start?.offset > 0 ? '0.7em' : undefined }}>
                             <SyntaxHighlighter
                               language={language || 'text'}
                               style={vs2015}
