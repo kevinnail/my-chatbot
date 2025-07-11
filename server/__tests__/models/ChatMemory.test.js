@@ -305,7 +305,7 @@ describe('ChatMemory model', () => {
       // Should be sorted by timestamp
       for (let i = 1; i < hybridMessages.length; i++) {
         expect(new Date(hybridMessages[i].timestamp).getTime())
-          .toBeGreaterThanOrEqual(new Date(hybridMessages[i-1].timestamp).getTime());
+          .toBeGreaterThanOrEqual(new Date(hybridMessages[i - 1].timestamp).getTime());
       }
     });
 
