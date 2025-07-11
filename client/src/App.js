@@ -7,41 +7,14 @@ import { Light as SyntaxHighlighter } from 'react-syntax-highlighter'
 import js from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript'
 import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import React from 'react';
-import {  sendPrompt } from './services/fetch-chat';
+import { sendPrompt } from './services/fetch-chat';
 import DeleteMessagesButton from './components/DeleteButton.js';
+import CopyButton from './components/CopyButton.js';
 
 SyntaxHighlighter.registerLanguage('javascript', js)
 
-// Add CopyButton component for per-button state
-function CopyButton({ onClick }) {
-  const [hover, setHover] = useState(false);
-  const [mouseDown, setMouseDown] = useState(false);
 
-  return (
-    <button
-      style={{
-        position: 'absolute',
-        top: 5,
-        right: 5,
-        fontSize: '.8em',
-        padding: '0.14em 0.49em',
-        borderRadius: '6px',
-        background: mouseDown ? '#111' : hover ? '#222' : '#444',
-        color: '#fff',
-        cursor: 'pointer',
-        zIndex: 2,
-        transition: 'background 0.1s',
-      }}
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => { setHover(false); setMouseDown(false); }}
-      onMouseDown={() => setMouseDown(true)}
-      onMouseUp={() => setMouseDown(false)}
-    >
-      Copy
-    </button>
-  );
-}
+
 
 
 
