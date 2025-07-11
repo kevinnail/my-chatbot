@@ -26,7 +26,7 @@ export async function buildPromptWithMemoryAndTime({ userId, userInput }) {
   const now = new Date();
   return memories.map(({ role, content, timestamp }) => {
     const timeAgo = Math.floor((now - new Date(timestamp)) / (1000 * 60)); // minutes ago
-    const timeContext = timeAgo < 60 ? `${timeAgo}m ago` : `${Math.floor(timeAgo/60)}h ago`;
+    const timeContext = timeAgo < 60 ? `${timeAgo}m ago` : `${Math.floor(timeAgo / 60)}h ago`;
     
     return { 
       role, 

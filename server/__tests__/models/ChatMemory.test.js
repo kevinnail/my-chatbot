@@ -2,14 +2,22 @@ import setup, { pool, cleanup } from '../../test-setup.js';
 import ChatMemory from '../../lib/models/ChatMemory.js';
 import { jest, describe, beforeEach, afterAll, it, expect } from '@jest/globals';
 
-// Mock the ollamaEmbed utility
-jest.mock('../../lib/utils/ollamaEmbed.js', () => ({
-  getEmbedding: jest.fn().mockResolvedValue(`[${new Array(1024).fill(0.1).join(',')}]`)
-}));
+// Mock the Ollama API
+global.fetch = jest.fn();
 
 describe('ChatMemory model', () => {
   beforeEach(async () => {
     await setup();
+
+    // Mock fetch for Ollama embedding API
+    fetch.mockClear();
+    fetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          embeddings: [new Array(1024).fill(0.1)],
+        }),
+    });
   });
 
   afterAll(async () => {
@@ -22,15 +30,14 @@ describe('ChatMemory model', () => {
       const messageData = {
         userId: 'test_user_store',
         role: 'user',
-        content: 'Test message for storage'
+        content: 'Test message for storage',
       };
 
       await ChatMemory.storeMessage(messageData);
 
-      const { rows } = await pool.query(
-        'SELECT * FROM chat_memory WHERE user_id = $1',
-        [messageData.userId]
-      );
+      const { rows } = await pool.query('SELECT * FROM chat_memory WHERE user_id = $1', [
+        messageData.userId,
+      ]);
 
       expect(rows).toHaveLength(1);
       expect(rows[0]).toEqual({
@@ -39,7 +46,7 @@ describe('ChatMemory model', () => {
         role: messageData.role,
         content: messageData.content,
         embedding: expect.any(String),
-        created_at: expect.any(Date)
+        created_at: expect.any(Date),
       });
     });
 
@@ -48,7 +55,7 @@ describe('ChatMemory model', () => {
       const messages = [
         { userId, role: 'user', content: 'First message' },
         { userId, role: 'bot', content: 'First response' },
-        { userId, role: 'user', content: 'Second message' }
+        { userId, role: 'user', content: 'Second message' },
       ];
 
       for (const message of messages) {
@@ -57,21 +64,21 @@ describe('ChatMemory model', () => {
 
       const { rows } = await pool.query(
         'SELECT role, content FROM chat_memory WHERE user_id = $1 ORDER BY created_at',
-        [userId]
+        [userId],
       );
 
       expect(rows).toHaveLength(3);
       expect(rows[0]).toEqual({
         role: 'user',
-        content: 'First message'
+        content: 'First message',
       });
       expect(rows[1]).toEqual({
         role: 'bot',
-        content: 'First response'
+        content: 'First response',
       });
       expect(rows[2]).toEqual({
         role: 'user',
-        content: 'Second message'
+        content: 'Second message',
       });
     });
   });
@@ -83,13 +90,13 @@ describe('ChatMemory model', () => {
         { userId, role: 'user', content: 'Message 1' },
         { userId, role: 'bot', content: 'Response 1' },
         { userId, role: 'user', content: 'Message 2' },
-        { userId, role: 'bot', content: 'Response 2' }
+        { userId, role: 'bot', content: 'Response 2' },
       ];
 
       for (const message of messages) {
         await ChatMemory.storeMessage(message);
         // Small delay to ensure different timestamps
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       const recentMessages = await ChatMemory.getRecentMessages({ userId, limit: 3 });
@@ -98,17 +105,17 @@ describe('ChatMemory model', () => {
       expect(recentMessages[0]).toEqual({
         role: 'bot',
         content: 'Response 1',
-        timestamp: expect.any(Date)
+        timestamp: expect.any(Date),
       });
       expect(recentMessages[1]).toEqual({
         role: 'user',
         content: 'Message 2',
-        timestamp: expect.any(Date)
+        timestamp: expect.any(Date),
       });
       expect(recentMessages[2]).toEqual({
         role: 'bot',
         content: 'Response 2',
-        timestamp: expect.any(Date)
+        timestamp: expect.any(Date),
       });
     });
 
@@ -119,12 +126,12 @@ describe('ChatMemory model', () => {
         { userId, role: 'bot', content: 'Response 1' },
         { userId, role: 'user', content: 'Message 2' },
         { userId, role: 'bot', content: 'Response 2' },
-        { userId, role: 'user', content: 'Message 3' }
+        { userId, role: 'user', content: 'Message 3' },
       ];
 
       for (const message of messages) {
         await ChatMemory.storeMessage(message);
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       const recentMessages = await ChatMemory.getRecentMessages({ userId, limit: 2 });
@@ -135,9 +142,9 @@ describe('ChatMemory model', () => {
     });
 
     it('should return empty array for non-existent user', async () => {
-      const recentMessages = await ChatMemory.getRecentMessages({ 
-        userId: 'non_existent_user', 
-        limit: 5 
+      const recentMessages = await ChatMemory.getRecentMessages({
+        userId: 'non_existent_user',
+        limit: 5,
       });
 
       expect(recentMessages).toEqual([]);
@@ -150,12 +157,12 @@ describe('ChatMemory model', () => {
       const messages = [
         { userId, role: 'user', content: 'First message' },
         { userId, role: 'bot', content: 'First response' },
-        { userId, role: 'user', content: 'Second message' }
+        { userId, role: 'user', content: 'Second message' },
       ];
 
       for (const message of messages) {
         await ChatMemory.storeMessage(message);
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       const allMessages = await ChatMemory.getAllMessages({ userId });
@@ -163,15 +170,15 @@ describe('ChatMemory model', () => {
       expect(allMessages).toHaveLength(3);
       expect(allMessages[0]).toEqual({
         role: 'user',
-        content: 'First message'
+        content: 'First message',
       });
       expect(allMessages[1]).toEqual({
         role: 'bot',
-        content: 'First response'
+        content: 'First response',
       });
       expect(allMessages[2]).toEqual({
         role: 'user',
-        content: 'Second message'
+        content: 'Second message',
       });
     });
 
@@ -208,15 +215,16 @@ describe('ChatMemory model', () => {
 
     it('should handle deletion of non-existent user gracefully', async () => {
       // This should not throw an error
-      await expect(ChatMemory.deleteUserMessages({ userId: 'non_existent_user' }))
-        .resolves.not.toThrow();
+      await expect(
+        ChatMemory.deleteUserMessages({ userId: 'non_existent_user' }),
+      ).resolves.not.toThrow();
     });
   });
 
   describe('getMessageCount', () => {
     it('should return correct message count for a user', async () => {
       const userId = 'test_user_count';
-      
+
       // Initially should be 0
       let count = await ChatMemory.getMessageCount(userId);
       expect(count).toBe(0);
@@ -244,32 +252,32 @@ describe('ChatMemory model', () => {
         { userId, role: 'user', content: 'I need help with React hooks' },
         { userId, role: 'bot', content: 'Here is how to use React hooks' },
         { userId, role: 'user', content: 'What about Express middleware?' },
-        { userId, role: 'bot', content: 'Express middleware works like this' }
+        { userId, role: 'bot', content: 'Express middleware works like this' },
       ];
 
       for (const message of messages) {
         await ChatMemory.storeMessage(message);
       }
 
-      const relevantMessages = await ChatMemory.getRelevantMessages({ 
-        userId, 
+      const relevantMessages = await ChatMemory.getRelevantMessages({
+        userId,
         inputText: 'React hooks usage',
-        limit: 2 
+        limit: 2,
       });
 
       expect(relevantMessages).toHaveLength(2);
       expect(relevantMessages[0]).toEqual({
         role: expect.any(String),
         content: expect.any(String),
-        timestamp: expect.any(Date)
+        timestamp: expect.any(Date),
       });
     });
 
     it('should return empty array for user with no messages', async () => {
-      const relevantMessages = await ChatMemory.getRelevantMessages({ 
-        userId: 'empty_user', 
+      const relevantMessages = await ChatMemory.getRelevantMessages({
+        userId: 'empty_user',
         inputText: 'test query',
-        limit: 5 
+        limit: 5,
       });
 
       expect(relevantMessages).toEqual([]);
@@ -284,40 +292,41 @@ describe('ChatMemory model', () => {
         { userId, role: 'bot', content: 'React hooks answer' },
         { userId, role: 'user', content: 'Express middleware question' },
         { userId, role: 'bot', content: 'Express middleware answer' },
-        { userId, role: 'user', content: 'Node.js streams question' }
+        { userId, role: 'user', content: 'Node.js streams question' },
       ];
 
       for (const message of messages) {
         await ChatMemory.storeMessage(message);
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
-      const hybridMessages = await ChatMemory.getHybridMessages({ 
-        userId, 
+      const hybridMessages = await ChatMemory.getHybridMessages({
+        userId,
         inputText: 'React hooks',
         relevantLimit: 2,
-        recentLimit: 3
+        recentLimit: 3,
       });
 
       expect(hybridMessages.length).toBeGreaterThan(0);
       expect(hybridMessages.length).toBeLessThanOrEqual(5);
-      
+
       // Should be sorted by timestamp
       for (let i = 1; i < hybridMessages.length; i++) {
-        expect(new Date(hybridMessages[i].timestamp).getTime())
-          .toBeGreaterThanOrEqual(new Date(hybridMessages[i-1].timestamp).getTime());
+        expect(new Date(hybridMessages[i].timestamp).getTime()).toBeGreaterThanOrEqual(
+          new Date(hybridMessages[i - 1].timestamp).getTime(),
+        );
       }
     });
 
     it('should return empty array for user with no messages', async () => {
-      const hybridMessages = await ChatMemory.getHybridMessages({ 
-        userId: 'empty_user', 
+      const hybridMessages = await ChatMemory.getHybridMessages({
+        userId: 'empty_user',
         inputText: 'test query',
         relevantLimit: 2,
-        recentLimit: 3
+        recentLimit: 3,
       });
 
       expect(hybridMessages).toEqual([]);
     });
   });
-}); 
+});

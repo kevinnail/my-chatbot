@@ -78,7 +78,7 @@ class ChatMemory {
   }
 
   // Additional utility methods
-  static async deleteUserMessages({userId}) {
+  static async deleteUserMessages({ userId }) {
     await pool.query(`
       DELETE FROM chat_memory WHERE user_id = $1
     `, [userId]);

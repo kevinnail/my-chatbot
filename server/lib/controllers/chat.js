@@ -12,7 +12,7 @@ function countTokens(messages) {
 
 router.post('/', async (req, res) => {
   try {
-    const { msg,userId } = req.body;
+    const { msg, userId } = req.body;
     
     // Store the user message first
     await storeMessage({ userId, role: 'user', content: msg });
@@ -36,10 +36,10 @@ router.post('/', async (req, res) => {
    
          `;
     const messages = [
-       { role: 'system', content: systemPrompt },
-       ...memories,
-       { role: 'user', content: msg }
-     ];
+      { role: 'system', content: systemPrompt },
+      ...memories,
+      { role: 'user', content: msg }
+    ];
     // Create AbortController for timeout handling
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minutes timeout
@@ -64,8 +64,8 @@ router.post('/', async (req, res) => {
     clearTimeout(timeoutId);
     const data = await response.json();
     const reply = (data.message && typeof data.message.content === 'string')
-    ? data.message.content.trim()
-    : '';
+      ? data.message.content.trim()
+      : '';
     
     // Store the bot's response
     await storeMessage({ userId, role: 'bot', content: reply });
@@ -77,7 +77,7 @@ router.post('/', async (req, res) => {
       ...allMessages
     ];
     const totalTokens = countTokens(allMessagesWithSystem);
-    let contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
+    const contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
 
 
     res.json({ 
@@ -105,14 +105,14 @@ router.post('/', async (req, res) => {
 
 router.delete('/:userId', async (req, res) => {
   try{
-  const { userId } = req.params;
-  await ChatMemory.deleteUserMessages({ userId });
-  res.json({ message: 'All messages deleted successfully' });
+    const { userId } = req.params;
+    await ChatMemory.deleteUserMessages({ userId });
+    res.json({ message: 'All messages deleted successfully' });
   }catch(error){
     console.error('Error in delete chat controller:', error);
     res.status(500).json({ error: error.message });
   }
-  })
+});
 
 export default router;
 

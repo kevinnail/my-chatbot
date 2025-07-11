@@ -1,0 +1,39 @@
+name: Jest Tests
+
+on:
+  push:
+    branches:
+      - main # Runs only when pushing to main
+  pull_request:
+    branches:
+      - main # Runs only when a PR is created or updated targeting main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: node:latest
+    services:
+      postgres:
+        image: ankane/pgvector
+        env:
+          POSTGRES_USER: knail
+          POSTGRES_PASSWORD: knail
+          POSTGRES_DB: chatbot_test
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm ci
+        working-directory: ./server
+      - run: npx eslint . --fix
+        working-directory: ./server
+      - run: npx eslint . --max-warnings 10
+        working-directory: ./server
+      - run: npm test -- -u
+        working-directory: ./server
+        env:
+          CI: true
+          NODE_OPTIONS: --experimental-vm-modules
+          DATABASE_URL: postgres://knail:knail@postgres:5432/knail
+          PG_USER: knail
+          PG_HOST: postgres
+          PG_PASSWORD: knail
+          PG_PORT: 5432

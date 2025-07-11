@@ -1,16 +1,27 @@
-import setup, { pool, cleanup } from '../../test-setup.js';
-import { buildPromptWithMemory, buildPromptWithMemoryAndTime } from '../../lib/utils/buildPrompt.js';
+import setup, { cleanup } from '../../test-setup.js';
+import {
+  buildPromptWithMemory,
+  buildPromptWithMemoryAndTime,
+} from '../../lib/utils/buildPrompt.js';
 import ChatMemory from '../../lib/models/ChatMemory.js';
 import { jest, describe, beforeEach, afterAll, it, expect } from '@jest/globals';
 
-// Mock the ollamaEmbed utility
-jest.mock('../../lib/utils/ollamaEmbed.js', () => ({
-  getEmbedding: jest.fn().mockResolvedValue(`[${new Array(1024).fill(0.1).join(',')}]`)
-}));
+// Mock the Ollama API
+global.fetch = jest.fn();
 
 describe('buildPrompt utilities', () => {
   beforeEach(async () => {
     await setup();
+
+    // Mock fetch for Ollama embedding API
+    fetch.mockClear();
+    fetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          embeddings: [new Array(1024).fill(0.1)],
+        }),
+    });
   });
 
   afterAll(async () => {
@@ -26,14 +37,22 @@ describe('buildPrompt utilities', () => {
       // Store some messages
       const messages = [
         { userId, role: 'user', content: 'What is React?' },
-        { userId, role: 'bot', content: 'React is a JavaScript library for building user interfaces' },
+        {
+          userId,
+          role: 'bot',
+          content: 'React is a JavaScript library for building user interfaces',
+        },
         { userId, role: 'user', content: 'How do I create components?' },
-        { userId, role: 'bot', content: 'You can create components using function or class syntax' }
+        {
+          userId,
+          role: 'bot',
+          content: 'You can create components using function or class syntax',
+        },
       ];
 
       for (const message of messages) {
         await ChatMemory.storeMessage(message);
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       const prompt = await buildPromptWithMemory({ userId, userInput });
@@ -42,10 +61,10 @@ describe('buildPrompt utilities', () => {
       expect(prompt.length).toBeGreaterThan(0);
 
       // Each message should have role and content
-      prompt.forEach(message => {
+      prompt.forEach((message) => {
         expect(message).toEqual({
           role: expect.stringMatching(/^(user|bot)$/),
-          content: expect.any(String)
+          content: expect.any(String),
         });
         // Should not include timestamp
         expect(message).not.toHaveProperty('timestamp');
@@ -53,9 +72,9 @@ describe('buildPrompt utilities', () => {
     });
 
     it('should return empty array for user with no messages', async () => {
-      const prompt = await buildPromptWithMemory({ 
-        userId: 'empty_user', 
-        userInput: 'test input' 
+      const prompt = await buildPromptWithMemory({
+        userId: 'empty_user',
+        userInput: 'test input',
       });
 
       expect(prompt).toEqual([]);
@@ -66,10 +85,10 @@ describe('buildPrompt utilities', () => {
       const userInput = 'test query';
 
       // Store only one message
-      await ChatMemory.storeMessage({ 
-        userId, 
-        role: 'user', 
-        content: 'Single message' 
+      await ChatMemory.storeMessage({
+        userId,
+        role: 'user',
+        content: 'Single message',
       });
 
       const prompt = await buildPromptWithMemory({ userId, userInput });
@@ -77,7 +96,7 @@ describe('buildPrompt utilities', () => {
       expect(prompt).toHaveLength(1);
       expect(prompt[0]).toEqual({
         role: 'user',
-        content: 'Single message'
+        content: 'Single message',
       });
     });
   });
@@ -90,12 +109,12 @@ describe('buildPrompt utilities', () => {
       // Store some messages
       const messages = [
         { userId, role: 'user', content: 'What is React?' },
-        { userId, role: 'bot', content: 'React is a JavaScript library' }
+        { userId, role: 'bot', content: 'React is a JavaScript library' },
       ];
 
       for (const message of messages) {
         await ChatMemory.storeMessage(message);
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
       const prompt = await buildPromptWithMemoryAndTime({ userId, userInput });
@@ -104,10 +123,10 @@ describe('buildPrompt utilities', () => {
       expect(prompt.length).toBeGreaterThan(0);
 
       // Each message should have role and content with time context
-      prompt.forEach(message => {
+      prompt.forEach((message) => {
         expect(message).toEqual({
           role: expect.stringMatching(/^(user|bot)$/),
-          content: expect.any(String)
+          content: expect.any(String),
         });
         // Content should include time context like "[0m ago]" or "[1h ago]"
         expect(message.content).toMatch(/^\[\d+[mh] ago\]/);
@@ -119,10 +138,10 @@ describe('buildPrompt utilities', () => {
       const userInput = 'test query';
 
       // Store a message
-      await ChatMemory.storeMessage({ 
-        userId, 
-        role: 'user', 
-        content: 'Recent message' 
+      await ChatMemory.storeMessage({
+        userId,
+        role: 'user',
+        content: 'Recent message',
       });
 
       const prompt = await buildPromptWithMemoryAndTime({ userId, userInput });
@@ -132,9 +151,9 @@ describe('buildPrompt utilities', () => {
     });
 
     it('should return empty array for user with no messages', async () => {
-      const prompt = await buildPromptWithMemoryAndTime({ 
-        userId: 'empty_user', 
-        userInput: 'test input' 
+      const prompt = await buildPromptWithMemoryAndTime({
+        userId: 'empty_user',
+        userInput: 'test input',
       });
 
       expect(prompt).toEqual([]);
@@ -155,7 +174,7 @@ describe('buildPrompt utilities', () => {
 
       for (const message of messages) {
         await ChatMemory.storeMessage(message);
-        await new Promise(resolve => setTimeout(resolve, 5));
+        await new Promise((resolve) => setTimeout(resolve, 5));
       }
 
       const prompt = await buildPromptWithMemory({ userId, userInput });
@@ -175,12 +194,12 @@ describe('buildPrompt utilities', () => {
         { userId, role: 'user', content: 'First message' },
         { userId, role: 'bot', content: 'First response' },
         { userId, role: 'user', content: 'Second message' },
-        { userId, role: 'bot', content: 'Second response' }
+        { userId, role: 'bot', content: 'Second response' },
       ];
 
       for (const message of messages) {
         await ChatMemory.storeMessage(message);
-        await new Promise(resolve => setTimeout(resolve, 20));
+        await new Promise((resolve) => setTimeout(resolve, 20));
       }
 
       const prompt = await buildPromptWithMemory({ userId, userInput });
@@ -196,4 +215,4 @@ describe('buildPrompt utilities', () => {
       }
     });
   });
-}); 
+});
