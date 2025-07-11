@@ -21,8 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: npm ci --dev
+        working-directory: ./server
       - run: npx eslint .
+        working-directory: ./server
       - run: npm test -- -u
+        working-directory: ./server
         env:
           CI: true
-          DATABASE_URL: postgres://knail:knail@postgres:5432/knail
+          DATABASE_URL: postgres://knail:knail@postgres:5432/knail 
