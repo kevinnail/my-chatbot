@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { deleteMessages } from '../services/fetch-chat.js';
+import { deleteMessages } from '../../services/fetch-chat.js';
 
 export default function DeleteMessagesButton({ userId }) {
     const [hover, setHover] = useState(false);
