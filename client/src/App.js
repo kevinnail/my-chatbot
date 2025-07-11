@@ -27,7 +27,6 @@ function CopyButton({ onClick }) {
         borderRadius: '6px',
         background: mouseDown ? '#111' : hover ? '#222' : '#444',
         color: '#fff',
-        border: '1px solid #444',
         cursor: 'pointer',
         zIndex: 2,
         transition: 'background 0.1s',
@@ -64,10 +63,9 @@ function DeleteMessagesButton({ userId }) {
         fontSize: '.7em',
         padding: '0.14em 0.49em',
         borderRadius: '6px',
-        background: mouseDown ? 'darkred' : hover ? 'red' : '#444',
+        background: mouseDown ? 'darkred' : hover ? 'red' : 'black',
         fontWeight: 'bold',
         color: '#fff',
-        border: '1px solid red',
         cursor: 'pointer',
         zIndex: 2,
         transition: 'background 0.1s',
@@ -179,8 +177,8 @@ export default function App() {
                 <div
                   style={{
                     alignSelf: isUser ? 'flex-end' : 'flex-start',
-                    background: isUser ? '#4f62cb' : isError ? '#4a1a1a' : '#1f33a7',
-                    color: '#ffffffe3',
+                    background: isUser ? '#4f62cb' : isError ? '#4a1a1a' : '#1f64a7',
+                    color: '#ffffffd3',
                     borderRadius: '10px',
                     padding: '.75rem 1.25rem',
                     maxWidth: '70%',
@@ -286,6 +284,11 @@ export default function App() {
                                   padding: '0.7em',
                                   background: '#181818',
                                   margin: 0,
+                                  border: '1px solid #444',
+                                  borderTopColor: '#aaa',
+                                  borderLeftColor: '#aaa',
+                                  borderRightColor: '#fff',
+                                  borderBottomColor: '#fff',
                                 }}
                               >
                                 {codeString}
