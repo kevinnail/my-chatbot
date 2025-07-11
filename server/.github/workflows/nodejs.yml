@@ -1,0 +1,28 @@
+name: Jest Tests
+
+on:
+  push:
+    branches:
+      - main # Runs only when pushing to main
+  pull_request:
+    branches:
+      - main # Runs only when a PR is created or updated targeting main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: node:latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: knail
+          POSTGRES_PASSWORD: knail
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm ci --dev
+      - run: npx eslint .
+      - run: npm test -- -u
+        env:
+          CI: true
+          DATABASE_URL: postgres://knail:knail@postgres:5432/knail
