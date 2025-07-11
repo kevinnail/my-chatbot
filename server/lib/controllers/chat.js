@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { buildPromptWithMemory } from '../utils/buildPrompt.js';
-import { storeMessage, getAllMessages } from '../Models/ChatMemory.js';
+import { storeMessage, getAllMessages } from '../models/ChatMemory.js';
+import ChatMemory from '../models/ChatMemory.js';
 
 const router = Router();
 
@@ -80,7 +81,7 @@ router.post('/', async (req, res) => {
 });
 
 router.delete('/:userId', async (req, res) => {
-  const { userId } = req.body;
+  const { userId } = req.params;
   await ChatMemory.deleteUserMessages({ userId });
   res.json({ message: 'All messages deleted successfully' });
 })
