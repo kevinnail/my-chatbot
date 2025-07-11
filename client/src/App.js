@@ -159,7 +159,7 @@ export default function App() {
                 <div
                   style={{
                     alignSelf: isUser ? 'flex-end' : 'flex-start',
-                    background: isUser ? '#222' : isError ? '#4a1a1a' : '#444',
+                    background: isUser ? '#4f62cb' : isError ? '#4a1a1a' : '#4e7891',
                     color: 'white',
                     borderRadius: '10px',
                     padding: '.75rem 1.25rem',
@@ -309,7 +309,16 @@ export default function App() {
         ) : null}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.35rem',width:'100%'}}>
           <textarea
-            style={{width:'70%',fontSize:'1.05rem',height:'70px',display:loading?'none':'block'}}
+            style={{
+              width:'70%',
+              fontSize:'1.05rem',
+              height:'70px',
+              display:loading?'none':'block',
+              color:'white',
+              backgroundColor:'black',
+              padding:'10px',
+              borderRadius:'10px',
+              border:'1px solid #4f62cb'}}
             value={input}
             placeholder={`Let's code!  What can I help build for you?`}
             disabled={loading? true:false}
