@@ -50,12 +50,7 @@ function DeleteMessagesButton({ userId }) {
   const handleDelete = async () => {
     try {
       await deleteMessages(userId);
-        // window.location.reload();
-      // setLog([]);
-      // setInput('');
-      // setContextPercent(0);
-      // setTokenCount(0);
-      // setLoading(false);
+      window.location.reload();
     } catch (err) {
       console.error('Error deleting messages:', err);
     }
@@ -64,9 +59,7 @@ function DeleteMessagesButton({ userId }) {
   return (
     <button
       style={{
-        // position: 'absolute',
-        // top: 8,
-        // right: 8,
+
         marginRight: '1.5rem',
         fontSize: '.7em',
         padding: '0.14em 0.49em',
