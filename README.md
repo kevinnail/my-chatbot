@@ -11,15 +11,27 @@ A full-stack AI-powered chatbot application built with React, Express.js, Postgr
 - **Context Tracking**: Real-time token counting and context percentage
 - **Modern UI**: React-based interface with markdown support and syntax highlighting
 
+## Screenshots
+
+Here are some examples of the chatbot application in action:
+
+![Chatbot Interface Example 1](<./client/public/screenshot-ex%20(1).png>)
+_Main chat interface showing conversation flow and AI responses_
+
+![Chatbot Interface Example 2](<./client/public/screenshot-ex%20(2).png>)
+_Chatbot interface with code syntax highlighting and technical assistance_
+
 ## System Requirements
 
 ### Windows Users (Recommended Setup)
+
 - **Windows 10/11** with WSL2 enabled
 - **Ubuntu 20.04 LTS or later** (via WSL2)
 - **8GB+ RAM** (16GB recommended for optimal performance)
 - **10GB+ free disk space**
 
 ### Alternative: Linux/macOS
+
 - **Ubuntu 18.04+**, **macOS 10.15+**, or other Unix-like systems
 - **Docker** (optional, for containerized PostgreSQL)
 
@@ -260,6 +272,7 @@ npm run start --watch
 ```
 
 This will start:
+
 - **Backend server** on `http://localhost:4000`
 - **Frontend client** on `http://localhost:3000`
 
@@ -272,6 +285,7 @@ The application includes a comprehensive test suite using Jest and Supertest for
 ### Test Setup
 
 1. **Create Test Database**:
+
 ```bash
 # Create a separate database for testing
 sudo -u postgres createdb chatbot_test
@@ -281,6 +295,7 @@ docker exec -it postgres-pgvector createdb -U chatbot_user chatbot_test
 ```
 
 2. **Set up Test Database Schema**:
+
 ```bash
 # From the server directory
 cd server
@@ -342,6 +357,7 @@ The test suite covers:
 ### Test Configuration
 
 Tests use the following environment:
+
 - Test database: `chatbot_test`
 - Vector dimensions: 1024 (matching your production setup)
 - Mocked external APIs for consistent results
@@ -361,25 +377,30 @@ For detailed test setup instructions, see `server/TEST_README.md`.
 ### Common Issues
 
 **1. "Backend server is not running" error**
+
 - Ensure PostgreSQL is running: `sudo systemctl status postgresql`
 - Check Ollama is running: `curl http://localhost:11434/api/tags`
 - Verify server is running on port 7890
 
 **2. "Embedding model not found" error**
+
 - Install the required embedding model: `ollama pull mxbai-embed-large`
 - Ensure Ollama service is running
 
 **3. Database connection issues**
+
 - Verify PostgreSQL credentials in `server/.env`
 - Check if pgvector extension is installed: `SELECT * FROM pg_extension WHERE extname = 'vector';`
 
 **4. Port conflicts**
+
 - Change ports in environment files if needed
 - Default ports: Frontend (3000), Backend (7890), PostgreSQL (5432), Ollama (11434)
 
 ### Performance Optimization
 
 **For better performance:**
+
 - Use smaller Ollama models if you have limited RAM (e.g., `llama3.1:8b` instead of `llama3.1:70b`)
 - Increase PostgreSQL shared memory settings for better vector search performance
 - Consider using GPU acceleration for Ollama if available
@@ -434,7 +455,8 @@ This project is licensed under the ISC License.
 ## Support
 
 For issues and questions:
+
 1. Check the troubleshooting section
 2. Verify all prerequisites are installed
 3. Check service status (PostgreSQL, Ollama)
-4. Review environment configuration 
+4. Review environment configuration
