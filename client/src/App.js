@@ -314,7 +314,13 @@ export default function App() {
             placeholder={`Let's code!  What can I help build for you?`}
             disabled={loading? true:false}
             onChange={handleInputChange}
-            onKeyDown={e=>e.key==='Enter'&&sendPrompt(userId,input, setLog, setInput, setLoading, setContextPercent)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendPrompt(userId, input, setLog, setInput, setLoading, setContextPercent);
+              }
+              // If Shift+Enter is pressed, allow default behavior (new line)
+            }}
           />
           {!loading && (
             <div style={{
