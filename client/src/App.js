@@ -116,6 +116,11 @@ export default function App() {
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:'black'}}>
       {/* Header */}
       <header style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
         width: '100%',
         background: '#181818',
         color: 'white',
