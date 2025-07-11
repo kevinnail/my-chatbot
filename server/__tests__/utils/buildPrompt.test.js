@@ -6,14 +6,22 @@ import {
 import ChatMemory from '../../lib/models/ChatMemory.js';
 import { jest, describe, beforeEach, afterAll, it, expect } from '@jest/globals';
 
-// Mock the ollamaEmbed utility
-jest.mock('../../lib/utils/ollamaEmbed.js', () => ({
-  getEmbedding: jest.fn().mockResolvedValue(`[${new Array(1024).fill(0.1).join(',')}]`),
-}));
+// Mock the Ollama API
+global.fetch = jest.fn();
 
 describe('buildPrompt utilities', () => {
   beforeEach(async () => {
     await setup();
+
+    // Mock fetch for Ollama embedding API
+    fetch.mockClear();
+    fetch.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          embeddings: [new Array(1024).fill(0.1)],
+        }),
+    });
   });
 
   afterAll(async () => {
