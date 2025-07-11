@@ -79,5 +79,11 @@ router.post('/', async (req, res) => {
   });
 });
 
+router.delete('/:userId', async (req, res) => {
+  const { userId } = req.body;
+  await ChatMemory.deleteUserMessages({ userId });
+  res.json({ message: 'All messages deleted successfully' });
+})
+
 export default router;
 
