@@ -40,6 +40,10 @@ router.post('/', async (req, res) => {
        ...memories,
        { role: 'user', content: msg }
      ];
+    // Create AbortController for timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes timeout
+    
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -47,15 +51,17 @@ router.post('/', async (req, res) => {
         model: process.env.OLLAMA_MODEL,
         messages,
         options: {
-
-        
-          temperature: 2,
+          temperature: 1.1,
           top_p: 0.9,
           repeat_penalty: 1.1,
         },
         stream: false
-      })
+      }),
+      signal: controller.signal
     });
+    
+    // Clear the timeout since we got a response
+    clearTimeout(timeoutId);
     const data = await response.json();
     const reply = (data.message && typeof data.message.content === 'string')
     ? data.message.content.trim()
@@ -81,7 +87,19 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in chat controller:', error);
-    res.status(500).json({ error: error.message });
+    
+    // Handle timeout errors specifically
+    if (error.name === 'AbortError') {
+      res.status(408).json({ 
+        error: 'Request timed out - LLM is taking too long to respond. Please try again.' 
+      });
+    } else if (error.cause && error.cause.code === 'UND_ERR_HEADERS_TIMEOUT') {
+      res.status(408).json({ 
+        error: 'Connection timeout - LLM server is not responding quickly enough. Please try again.' 
+      });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 
