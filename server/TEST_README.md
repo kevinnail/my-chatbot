@@ -1,6 +1,6 @@
 # Test Setup Guide
 
-This guide explains how to set up and run tests for the chatbot server.
+This guide explains how to set up and run tests for the chatbot server using our bootcamp-style testing approach.
 
 ## Prerequisites
 
@@ -10,43 +10,37 @@ This guide explains how to set up and run tests for the chatbot server.
 
 ## Database Setup
 
-### 1. Create Test Database
+### 1. Environment Variables
 
-First, create a test database in PostgreSQL:
-
-```sql
--- Connect to PostgreSQL as superuser
-CREATE DATABASE chatbot_test;
-```
-
-### 2. Set up Test Environment Variables
-
-Create a `.env.test` file in the server directory:
+Ensure your `.env` file in the server directory contains your PostgreSQL credentials:
 
 ```env
-# Test Environment Variables
-NODE_ENV=test
-PG_USER=postgres
+# PostgreSQL Configuration
+PG_USER=your_username
 PG_HOST=localhost
-PG_DATABASE=chatbot_test
 PG_PASSWORD=your_password
 PG_PORT=5432
 
-# Mock URLs for testing
+# These will be set automatically for tests
+NODE_ENV=test
+PG_DATABASE=chatbot_test
 OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=llama2
-API_URL=http://localhost
-PORT=7890
 ```
 
-### 3. Run Database Setup Script
+### 2. One-Time Test Database Setup
 
-Execute the test database setup script:
+Run this command once to create the test database and set up the schema:
 
 ```bash
 # From the server directory
-psql -U postgres -d chatbot_test -f scripts/test-db-setup.sql
+npm run setup-test-db
 ```
+
+This command will:
+- Create the `chatbot_test` database (separate from your main database)
+- Install the vector extension
+- Run the `sql/setup.sql` file to create tables and sample data
 
 ## Installation
 
@@ -58,36 +52,47 @@ npm install
 
 ## Running Tests
 
-### Run All Tests
+### First Time Setup
 
 ```bash
+# Create and set up the test database (run once)
+npm run setup-test-db
+```
+
+### Running Tests
+
+```bash
+# Run all tests
 npm test
-```
 
-### Run Tests in Watch Mode
-
-```bash
+# Run tests in watch mode (for development)
 npm run test:watch
-```
 
-### Run Specific Test File
-
-```bash
+# Run specific test file
 npx jest __tests__/controllers/chat.test.js
+
+# Run tests with coverage report
+npx jest --coverage
 ```
 
-### Run Tests with Coverage
+### Database Management
 
 ```bash
-npx jest --coverage
+# Set up main application database
+npm run setup-db
+
+# Recreate test database (if needed)
+npm run setup-test-db
 ```
 
 ## Test Structure
 
-The test suite follows this structure:
+The test suite follows this bootcamp-style structure:
 
 ```
 server/
+├── sql/
+│   └── setup.sql                 # Database schema and sample data
 ├── __tests__/
 │   ├── controllers/
 │   │   └── chat.test.js          # API endpoint tests
@@ -95,10 +100,9 @@ server/
 │   │   └── ChatMemory.test.js    # Database model tests
 │   └── utils/
 │       └── buildPrompt.test.js   # Utility function tests
-├── jest.config.js                # Jest configuration
-├── test-setup.js                 # Test setup and database initialization
-└── scripts/
-    └── test-db-setup.sql         # Database setup script
+├── setup-db.js                  # Main database setup script
+├── setup-test-db.js             # Test database creation script
+└── test-setup.js                # Runs before each test
 ```
 
 ## Test Features
@@ -122,20 +126,31 @@ server/
 - **Time formatting** for conversation history
 - **Message limits** and ordering
 
+## Key Benefits of This Approach
+
+This testing setup provides:
+
+1. **Complete Isolation**: Tests never interfere with your main application database
+2. **Consistent State**: Every test starts with identical, fresh data from `sql/setup.sql`
+3. **Fast & Reliable**: No need to clean up test data - just drop and recreate tables
+4. **Easy Debugging**: Test failures are reproducible since data state is always the same
+5. **Production-Like**: Tests run against a real PostgreSQL database, not mocks
+
 ## Test Data
 
-Tests use prefixed test data to avoid conflicts:
-- User IDs: `test_user_*`
-- Isolated test data per test case
-- Automatic cleanup between tests
+Tests use a completely separate database for full isolation:
+- **Separate Database**: `chatbot_test` (completely isolated from main app database)
+- **Fresh Data**: `sql/setup.sql` runs before each test, dropping and recreating all tables
+- **Sample Data**: Each test starts with the same clean sample data from `setup.sql`
+- **No Pollution**: Your main application database is never touched by tests
 
 ## Mocking Strategy
 
 ### External Dependencies
 
-- **Ollama API**: Mocked using Jest's `global.fetch`
-- **Vector embeddings**: Mocked `ollamaEmbed.js` utility
-- **Database**: Real PostgreSQL database with test data isolation
+- **Ollama API**: Mocked using Jest's `global.fetch` for consistent responses
+- **Embedding API**: Mocked to return consistent 1024-dimension vectors
+- **Database**: Real PostgreSQL test database with complete isolation
 
 ### Mock Examples
 
@@ -160,13 +175,15 @@ jest.mock('../../lib/utils/ollamaEmbed.js', () => ({
 ### Database Setup
 
 ```javascript
+import setup, { pool, cleanup } from '../../test-setup.js';
+
 beforeEach(async () => {
-  await setup(); // Clears test data
+  await setup(); // Runs sql/setup.sql - drops/creates fresh tables
 });
 
 afterAll(async () => {
   jest.clearAllMocks();
-  await pool.end();
+  await cleanup(); // Properly closes test database connection
 });
 ```
 
@@ -189,10 +206,10 @@ expect(response.body).toEqual({
 
 ### Common Issues
 
-1. **Database Connection**: Ensure PostgreSQL is running and test database exists
-2. **Vector Extension**: Make sure `vector` extension is installed in PostgreSQL
-3. **Environment Variables**: Verify `.env.test` file is configured correctly
-4. **Port Conflicts**: Ensure test ports don't conflict with running services
+1. **Test Database Not Created**: Run `npm run setup-test-db` to create the test database
+2. **Database Connection**: Ensure PostgreSQL is running and credentials in `.env` are correct
+3. **Vector Extension**: The setup script automatically installs the vector extension
+4. **Permission Issues**: Ensure your PostgreSQL user has CREATE DATABASE permissions
 
 ### Debug Tests
 
