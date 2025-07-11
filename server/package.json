@@ -4,6 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "start": "node -r dotenv/config server.js",
     "test": "set NODE_OPTIONS=--experimental-vm-modules && jest --verbose --runInBand --testLocationInResults --setupFiles dotenv/config --passWithNoTests",
     "test:watch": "npm run test -- --watch",
     "setup-db": "node -r dotenv/config setup-db.js",
@@ -36,6 +37,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.0.0",
     "express": "^5.1.0",
+    "googleapis": "^152.0.0",
     "node-fetch": "^3.3.2",
     "pg": "^8.16.3"
   },
