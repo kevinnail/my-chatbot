@@ -63,8 +63,8 @@ router.post('/', async (req, res) => {
       // Set headers timeout to match our AbortController timeout
       keepalive: false,
       // These are undici-specific options
-      headersTimeout: 300000, // 5 minutes - same as AbortController
-      bodyTimeout: 300000, // 5 minutes - same as AbortController
+      headersTimeout: 12000000, // 20 minutes - same as AbortController
+      bodyTimeout: 12000000, // 20 minutes - same as AbortController
     });
 
     // Clear the timeout since we got a response
