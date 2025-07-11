@@ -42,7 +42,7 @@ router.post('/', async (req, res) => {
      ];
     // Create AbortController for timeout handling
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes timeout
+    const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minutes timeout
     
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
