@@ -3,12 +3,12 @@ import cors from 'cors';
 import chatRouter from './controllers/chat.js';
 import notFound from './middleware/not-found.js';
 import errorHandler from './middleware/error.js';
-
 const app = express();
 app.use(
     cors({
       origin: [
         'http://localhost:3000',
+        'http://localhost:3001',
       ],
       credentials: true,
     })

@@ -26,13 +26,11 @@ body{
     color: white;
     cursor: not-allowed;
     font-size: 16px;
-    padding: 10px 20px;
+    padding: .5rem 0;
     text-align: center;
     transition: background 0.3s ease;
-    color:'white';
-   width:'100%';
-   padding:'.5rem 0';
-}`
+    width: 100%;
+}
 
 @keyframes gradientBG {
     0% {
