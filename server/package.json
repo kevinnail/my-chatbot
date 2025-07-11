@@ -6,6 +6,8 @@
   "scripts": {
     "test": "set NODE_OPTIONS=--experimental-vm-modules && jest --verbose --runInBand --testLocationInResults --setupFiles dotenv/config --passWithNoTests",
     "test:watch": "npm run test -- --watch",
+    "setup-db": "node -r dotenv/config setup-db.js",
+    "setup-test-db": "node -r dotenv/config setup-test-db.js",
     "dev": "concurrently \"npm --prefix server run start\" \"npm --prefix client start\""
   },
   "jest": {
