@@ -1,6 +1,7 @@
 const BASE_URL = process.env.REACT_APP_BASE_URL;
 
-export   async function sendPrompt(input, setLog, setInput, setLoading, setContextPercent) {
+export   async function sendPrompt(userId,input, setLog, setInput, setLoading, setContextPercent) {
+
     if (!input.trim()) return;
     const userMsg = input;
     setLog(l => [...l, { text: userMsg, role: 'user' }]);
@@ -10,7 +11,7 @@ export   async function sendPrompt(input, setLog, setInput, setLoading, setConte
       const res = await fetch(`${BASE_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ msg: userMsg, userId: '2' }) //the point of this local, no need for sign in/ user id, userId default to 2
+        body: JSON.stringify({ msg: userMsg, userId }) 
       });
       
       // Check if response is JSON before parsing
