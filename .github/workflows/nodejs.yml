@@ -32,3 +32,7 @@ jobs:
           CI: true
           NODE_OPTIONS: --experimental-vm-modules
           DATABASE_URL: postgres://knail:knail@postgres:5432/knail
+          PG_USER: knail
+          PG_HOST: postgres
+          PG_PASSWORD: knail
+          PG_PORT: 5432
