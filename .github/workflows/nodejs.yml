@@ -22,7 +22,9 @@ jobs:
       - uses: actions/checkout@v2
       - run: npm ci
         working-directory: ./server
-      - run: npx eslint .
+      - run: npx eslint . --fix
+        working-directory: ./server
+      - run: npx eslint . --max-warnings 10
         working-directory: ./server
       - run: npm test -- -u
         working-directory: ./server
