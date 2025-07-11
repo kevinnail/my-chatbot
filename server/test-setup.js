@@ -1,30 +1,40 @@
-import { pool } from './lib/utils/db.js';
+import fs from 'fs';
+import pg from 'pg';
+
+const { Pool } = pg;
 
 // Set up test environment variables
 process.env.NODE_ENV = 'test';
-process.env.PG_USER = 'postgres';
-process.env.PG_HOST = 'localhost';
-process.env.PG_DATABASE = 'chatbot_test';
-process.env.PG_PASSWORD = 'password';
-process.env.PG_PORT = '5432';
+process.env.PG_DATABASE = 'chatbot_test'; // Force test database
 process.env.OLLAMA_URL = 'http://localhost:11434';
 process.env.OLLAMA_MODEL = 'llama2';
 
-const setup = async () => {
-  // Create test database tables if they don't exist
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS chat_memory (
-      id SERIAL PRIMARY KEY,
-      user_id VARCHAR(255) NOT NULL,
-      role VARCHAR(50) NOT NULL,
-      content TEXT NOT NULL,
-      embedding VECTOR(1024),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+// Create test database pool
+const testPool = new Pool({
+  user: process.env.PG_USER,
+  host: process.env.PG_HOST,
+  database: 'chatbot_test', // Always use test database
+  password: process.env.PG_PASSWORD,
+  port: process.env.PG_PORT,
+  ssl: false
+});
 
-  // Clear test data
-  await pool.query('DELETE FROM chat_memory WHERE user_id LIKE $1', ['test_%']);
+const setup = async () => {
+  try {
+    // Read and execute the SQL setup file before each test
+    // This drops and recreates all tables with fresh data
+    const sql = fs.readFileSync('./sql/setup.sql', 'utf-8');
+    await testPool.query(sql);
+  } catch (error) {
+    console.error('Test setup failed:', error);
+    throw error;
+  }
 };
 
-export default setup; 
+// Cleanup function for tests
+export const cleanup = async () => {
+  await testPool.end();
+};
+
+export default setup;
+export { testPool as pool }; 
