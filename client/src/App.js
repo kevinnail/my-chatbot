@@ -76,7 +76,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [contextPercent, setContextPercent] = useState(0);
   const [tokenCount, setTokenCount] = useState(0);
-  const [userId, setUserId] = useState('2'); 
+  const [userId, setUserId] = useState('1');  //the point of this local, no need for sign in/ user id, userId default to 1
 
 
 
@@ -314,7 +314,7 @@ export default function App() {
             placeholder={`Let's code!  What can I help build for you?`}
             disabled={loading? true:false}
             onChange={handleInputChange}
-            onKeyDown={e=>e.key==='Enter'&&sendPrompt(input, setLog, setInput, setLoading, setContextPercent)}
+            onKeyDown={e=>e.key==='Enter'&&sendPrompt(userId,input, setLog, setInput, setLoading, setContextPercent)}
           />
           {!loading && (
             <div style={{
@@ -350,7 +350,7 @@ export default function App() {
                   gap: '0.7em',
                   disabled:loading? true:false,
                 }}
-                onClick={()=>sendPrompt(input, setLog, setInput, setLoading, setContextPercent) }
+                onClick={()=>sendPrompt(userId,input, setLog, setInput, setLoading, setContextPercent) }
               >
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
                   <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white"/>
