@@ -23,7 +23,6 @@ body{
     animation: gradientBG 15s ease infinite;
     border: none;
     border-radius: 15px;
-    /* color: #4f62cb; */
     color: white;
     cursor: not-allowed;
     font-size: 16px;

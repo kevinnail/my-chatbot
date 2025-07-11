@@ -46,28 +46,48 @@ function CopyButton({ onClick }) {
 function DeleteMessagesButton({ userId }) {
   const [hover, setHover] = useState(false);
   const [mouseDown, setMouseDown] = useState(false);
+
+  const handleDelete = async () => {
+    try {
+      await deleteMessages(userId);
+        // window.location.reload();
+      // setLog([]);
+      // setInput('');
+      // setContextPercent(0);
+      // setTokenCount(0);
+      // setLoading(false);
+    } catch (err) {
+      console.error('Error deleting messages:', err);
+    }
+  };
+
   return (
-    <button       style={{
-      position: 'absolute',
-      top: 8,
-      right: 8,
-      fontSize: '.7em',
-      padding: '0.14em 0.49em',
-      borderRadius: '6px',
-      background: mouseDown ? 'darkred' : hover ? 'red' : '#444',
-      fontWeight:  'bold' ,
-      color: '#fff',
-      border: '1px solid red',
-      cursor: 'pointer',
-      zIndex: 2,
-      transition: 'background 0.1s',
-    }}
-    onClick={()=>deleteMessages(userId)}
-    onMouseEnter={() => setHover(true)}
-    onMouseLeave={() => { setHover(false); setMouseDown(false); }}
-    onMouseDown={() => setMouseDown(true)}
-    onMouseUp={() => setMouseDown(false)}>Delete Messages</button>
-  )
+    <button
+      style={{
+        // position: 'absolute',
+        // top: 8,
+        // right: 8,
+        marginRight: '1.5rem',
+        fontSize: '.7em',
+        padding: '0.14em 0.49em',
+        borderRadius: '6px',
+        background: mouseDown ? 'darkred' : hover ? 'red' : '#444',
+        fontWeight: 'bold',
+        color: '#fff',
+        border: '1px solid red',
+        cursor: 'pointer',
+        zIndex: 2,
+        transition: 'background 0.1s',
+      }}
+      onClick={handleDelete}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => { setHover(false); setMouseDown(false); }}
+      onMouseDown={() => setMouseDown(true)}
+      onMouseUp={() => setMouseDown(false)}
+    >
+      Delete Messages
+    </button>
+  );
 }
 
 export default function App() {
@@ -106,20 +126,25 @@ export default function App() {
         width: '100%',
         background: '#181818',
         color: 'white',
-        padding: '.5rem 0 .5rem .5rem',
+        padding: '.5rem 1rem',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-start',
+        justifyContent: 'space-between',
         borderTopLeftRadius: '0',
         borderTopRightRadius: '0',
         boxShadow: '0 2px 8px #0008',
         fontSize: '1.4rem', 
         fontWeight: 'bold',
         letterSpacing: '.15rem',
-        gap: '1rem',
       }}>
-        <span style={{fontSize:'1.05rem',userSelect:'none'}}><img width="28px" style={{borderRadius:'25%',transform:'translateY(5px)'}} alt='logo' src="./logo.png"/></span>
-        <span style={{fontSize:'1.05rem',userSelect:'none'}} >My Coding Assistant</span>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+        }}>
+          <span style={{fontSize:'1.05rem',userSelect:'none'}}><img width="28px" style={{borderRadius:'25%'}} alt='logo' src="./logo.png"/></span>
+          <span style={{fontSize:'1.05rem',userSelect:'none'}} >My Coding Assistant</span>
+        </div>
         <DeleteMessagesButton userId={userId} />
       </header>
       {/* Main chat area */}
@@ -159,8 +184,8 @@ export default function App() {
                 <div
                   style={{
                     alignSelf: isUser ? 'flex-end' : 'flex-start',
-                    background: isUser ? '#4f62cb' : isError ? '#4a1a1a' : '#4e7891',
-                    color: 'white',
+                    background: isUser ? '#4f62cb' : isError ? '#4a1a1a' : '#1f33a7',
+                    color: '#ffffffe3',
                     borderRadius: '10px',
                     padding: '.75rem 1.25rem',
                     maxWidth: '70%',
