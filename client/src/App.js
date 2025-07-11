@@ -119,7 +119,6 @@ export default function App() {
         position:'sticky',
         top:0,
         zIndex:1000,
-        width: '100%',
         background: '#181818',
         color: 'white',
         padding: '.5rem 1rem',
