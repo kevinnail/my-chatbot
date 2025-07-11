@@ -13,10 +13,10 @@ function countTokens(messages) {
 router.post('/', async (req, res) => {
   try {
     const { msg, userId } = req.body;
-    
+
     // Store the user message first
     await storeMessage({ userId, role: 'user', content: msg });
-    
+
     const memories = await buildPromptWithMemory({ userId, userInput: msg });
     const systemPrompt = `You are a senior software engineer specializing in React, Express, and Node.js with 10+ years of 
         experience. You provide precise, production-ready code solutions and technical guidance.
@@ -38,12 +38,13 @@ router.post('/', async (req, res) => {
     const messages = [
       { role: 'system', content: systemPrompt },
       ...memories,
-      { role: 'user', content: msg }
+      { role: 'user', content: msg },
     ];
-    // Create AbortController for timeout handling
+
+    // Create AbortController for timeout handling - reduced to 5 minutes
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minutes timeout
-    
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
+
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,64 +56,92 @@ router.post('/', async (req, res) => {
           top_p: 0.9,
           repeat_penalty: 1.1,
         },
-        stream: false
+        stream: false,
       }),
-      signal: controller.signal
+      signal: controller.signal,
+      // Configure undici timeouts to prevent race condition
+      // Set headers timeout to match our AbortController timeout
+      keepalive: false,
+      // These are undici-specific options
+      headersTimeout: 300000, // 5 minutes - same as AbortController
+      bodyTimeout: 300000, // 5 minutes - same as AbortController
     });
-    
+
     // Clear the timeout since we got a response
     clearTimeout(timeoutId);
     const data = await response.json();
-    const reply = (data.message && typeof data.message.content === 'string')
-      ? data.message.content.trim()
-      : '';
-    
+    const reply =
+      data.message && typeof data.message.content === 'string' ? data.message.content.trim() : '';
+
     // Store the bot's response
     await storeMessage({ userId, role: 'bot', content: reply });
-    
+
     // Calculate context percentage based on ALL conversation history
     const allMessages = await getAllMessages({ userId });
-    const allMessagesWithSystem = [
-      { role: 'system', content: systemPrompt },
-      ...allMessages
-    ];
+    const allMessagesWithSystem = [{ role: 'system', content: systemPrompt }, ...allMessages];
     const totalTokens = countTokens(allMessagesWithSystem);
     const contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
 
-
-    res.json({ 
-      bot: (data.message && typeof data.message.content === 'string') ? data.message.content.trim() : '',
+    res.json({
+      bot:
+        data.message && typeof data.message.content === 'string' ? data.message.content.trim() : '',
       prompt_eval_count: data.prompt_eval_count || 0,
       context_percent: contextPercent,
     });
   } catch (error) {
     console.error('Error in chat controller:', error);
-    
-    // Handle timeout errors specifically
+
+    // More comprehensive timeout error handling
     if (error.name === 'AbortError') {
-      res.status(408).json({ 
-        error: 'Request timed out - LLM is taking too long to respond. Please try again.' 
+      return res.status(408).json({
+        error: 'Request timed out - LLM is taking too long to respond. Please try again.',
       });
-    } else if (error.cause && error.cause.code === 'UND_ERR_HEADERS_TIMEOUT') {
-      res.status(408).json({ 
-        error: 'Connection timeout - LLM server is not responding quickly enough. Please try again.' 
-      });
-    } else {
-      res.status(500).json({ error: error.message });
     }
+
+    // Handle various timeout-related errors
+    if (
+      error.cause &&
+      (error.cause.code === 'UND_ERR_HEADERS_TIMEOUT' ||
+        error.cause.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        error.cause.code === 'UND_ERR_RESPONSE_TIMEOUT')
+    ) {
+      return res.status(408).json({
+        error:
+          'Connection timeout - LLM server is not responding quickly enough. Please try again.',
+      });
+    }
+
+    // Handle general fetch failures that might be timeout-related
+    if (error.message === 'fetch failed' && error.cause) {
+      return res.status(408).json({
+        error: 'Connection failed - LLM server is not responding. Please try again.',
+      });
+    }
+
+    // Handle other timeout indicators
+    if (
+      error.message.toLowerCase().includes('timeout') ||
+      error.name.toLowerCase().includes('timeout')
+    ) {
+      return res.status(408).json({
+        error: 'Request timed out. Please try again.',
+      });
+    }
+
+    // Default error handling
+    return res.status(500).json({ error: error.message });
   }
 });
 
 router.delete('/:userId', async (req, res) => {
-  try{
+  try {
     const { userId } = req.params;
     await ChatMemory.deleteUserMessages({ userId });
     res.json({ message: 'All messages deleted successfully' });
-  }catch(error){
+  } catch (error) {
     console.error('Error in delete chat controller:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 export default router;
-
