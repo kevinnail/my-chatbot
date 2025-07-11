@@ -265,6 +265,90 @@ This will start:
 
 The app will automatically open in your browser at `http://localhost:3000`.
 
+## Testing
+
+The application includes a comprehensive test suite using Jest and Supertest for integration testing.
+
+### Test Setup
+
+1. **Create Test Database**:
+```bash
+# Create a separate database for testing
+sudo -u postgres createdb chatbot_test
+
+# Or if using Docker:
+docker exec -it postgres-pgvector createdb -U chatbot_user chatbot_test
+```
+
+2. **Set up Test Database Schema**:
+```bash
+# From the server directory
+cd server
+psql -U your_username -d chatbot_test -f scripts/test-db-setup.sql
+
+# Or if using Docker:
+docker exec -i postgres-pgvector psql -U chatbot_user -d chatbot_test < scripts/test-db-setup.sql
+```
+
+### Running Tests
+
+```bash
+# Navigate to server directory
+cd server
+
+# Run all tests
+npm test
+
+# Run tests in watch mode (for development)
+npm run test:watch
+
+# Run tests with coverage report
+npm test -- --coverage
+
+# Run specific test file
+npm test -- __tests__/controllers/chat.test.js
+
+# Run tests matching a pattern
+npm test -- --testNamePattern="should send a message"
+```
+
+### Test Structure
+
+The test suite covers:
+
+- **API Endpoints** (`__tests__/controllers/chat.test.js`)
+  - POST `/api/chat` - Message sending and bot responses
+  - DELETE `/api/chat/:userId` - Message deletion and user isolation
+  - Error handling and edge cases
+
+- **Database Models** (`__tests__/models/ChatMemory.test.js`)
+  - Message storage with vector embeddings
+  - Recent, relevant, and hybrid message retrieval
+  - User-specific operations and data isolation
+
+- **Utilities** (`__tests__/utils/buildPrompt.test.js`)
+  - Prompt building with conversation memory
+  - Time-based context formatting
+  - Message limits and chronological ordering
+
+### Test Features
+
+- **Integration Testing**: Real database operations with test data isolation
+- **API Mocking**: External Ollama API calls are mocked for consistent testing
+- **Vector Embeddings**: Proper PostgreSQL vector format testing
+- **Error Scenarios**: Comprehensive error handling and edge case coverage
+- **Clean Environment**: Automatic test data cleanup between tests
+
+### Test Configuration
+
+Tests use the following environment:
+- Test database: `chatbot_test`
+- Vector dimensions: 1024 (matching your production setup)
+- Mocked external APIs for consistent results
+- Isolated test data with `test_` prefixes
+
+For detailed test setup instructions, see `server/TEST_README.md`.
+
 ## Usage
 
 1. **Start Chatting**: Type your message in the input field and press Enter
