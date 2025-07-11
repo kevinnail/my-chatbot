@@ -14,7 +14,7 @@ jobs:
     container: node:latest
     services:
       postgres:
-        image: postgres
+        image: ankane/pgvector
         env:
           POSTGRES_USER: knail
           POSTGRES_PASSWORD: knail
