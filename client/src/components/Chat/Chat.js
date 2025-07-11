@@ -19,25 +19,27 @@ const Chat = ({ userId }) => {
   } = useChat();
 
   return (
-    <main style={{
-      margin:'1.4rem auto',
-      fontFamily:'sans-serif',
-      fontSize:'1.2rem', 
-      letterSpacing:'.07rem',
-      background:'black',
-      color:'white',
-      padding:'0.7rem',
-      borderRadius:'10.5px',
-      flex:'1 0 auto',
-      boxShadow:'0 2px 16px #000a',
-      minHeight:'60vh',
-      display:'flex',
-      flexDirection:'column',
-      width:'90%'
-    }}>
+    <main
+      style={{
+        margin: '1.4rem auto',
+        fontFamily: 'sans-serif',
+        fontSize: '1.2rem',
+        letterSpacing: '.07rem',
+        background: 'black',
+        color: 'white',
+        padding: '0.7rem',
+        borderRadius: '10.5px',
+        flex: '1 0 auto',
+        boxShadow: '0 2px 16px #000a',
+        minHeight: '60vh',
+        display: 'flex',
+        flexDirection: 'column',
+        width: '90%',
+      }}
+    >
       <ChatMessages log={log} loading={loading} />
-      
-      <MessageInput 
+
+      <MessageInput
         userId={userId}
         input={input}
         setInput={setInput}
@@ -54,4 +56,4 @@ const Chat = ({ userId }) => {
   );
 };
 
-export default Chat; 
+export default Chat;
