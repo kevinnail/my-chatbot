@@ -1,5 +1,4 @@
-import { pool } from '../../lib/utils/db.js';
-import setup from '../../test-setup.js';
+import setup, { pool, cleanup } from '../../test-setup.js';
 import request from 'supertest';
 import app from '../../lib/app.js';
 import { jest, describe, beforeEach, afterAll, it, expect } from '@jest/globals';
@@ -38,7 +37,7 @@ describe('chat routes', () => {
 
   afterAll(async () => {
     jest.clearAllMocks();
-    await pool.end();
+    await cleanup();
   });
 
   describe('POST /api/chat', () => {

@@ -1,5 +1,4 @@
-import { pool } from '../../lib/utils/db.js';
-import setup from '../../test-setup.js';
+import setup, { pool, cleanup } from '../../test-setup.js';
 import { buildPromptWithMemory, buildPromptWithMemoryAndTime } from '../../lib/utils/buildPrompt.js';
 import ChatMemory from '../../lib/models/ChatMemory.js';
 import { jest, describe, beforeEach, afterAll, it, expect } from '@jest/globals';
@@ -16,7 +15,7 @@ describe('buildPrompt utilities', () => {
 
   afterAll(async () => {
     jest.clearAllMocks();
-    await pool.end();
+    await cleanup();
   });
 
   describe('buildPromptWithMemory', () => {
