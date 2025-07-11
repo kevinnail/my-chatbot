@@ -80,7 +80,6 @@ export default function App() {
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:'black'}}>
       {/* Header */}
       <header style={{
-        width: '100%',
         background: '#181818',
         color: 'white',
         padding: '.5rem 0 .5rem .5rem',
@@ -131,7 +130,7 @@ export default function App() {
               <div
                 style={{
                   alignSelf: i % 2 === 0 ? 'flex-end' : 'flex-start',
-                  background: i % 2 === 0 ? '#222' : '#444',
+                  background: i % 2 === 0 ? 'rgba(70, 113, 255, 0.445)' : '#444',
                   color: 'white',
                   borderRadius: '10px',
                   padding: '.75rem 1.25rem',
@@ -267,7 +266,17 @@ export default function App() {
         ) : null}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.35rem',width:'100%'}}>
           <textarea
-            style={{width:'70%',fontSize:'1.05rem',height:'70px',display:loading?'none':'block'}}
+            style={{width:'70%',fontSize:'1.05rem',height:'70px',display:loading?'none':'block', 
+              borderRadius:'15px', padding:'8px', backgroundColor:'rgba(70, 113, 255, 0.445)',
+              border: '1px solid #444',
+              boxShadow: '0 1px 6px #0006',
+              transition: 'box-shadow 0.3s, border 0.3s',
+              color:'rgba(255, 255, 255, 0.75)',
+              '&:focus': {
+                borderColor: '#4af',
+                boxShadow: '0 1px 12px #0af4',
+              }
+            }}
             value={input}
             placeholder={`Let's code!  What can I help build for you? `}
             disabled={loading? true:false}
@@ -384,7 +393,7 @@ export default function App() {
         marginTop: '2rem',
       }}>
         <div>Powered by React/ Express/ Node/ WSL • <span style={{fontFamily:'monospace'}}>My Coding Assistant</span> &copy; {new Date().getFullYear()}</div>
-        <div style={{fontSize:'0.67rem',marginTop:'0.3em'}}> <a href="#https://www.github.com/kevinnail" style={{color:'#4af',textDecoration:'underline'}}>GitHub (coming soon)</a></div>
+        <div style={{fontSize:'0.67rem',marginTop:'0.3em'}}> <a href="https://github.com/kevinnail/my-chatbot" target='_blank' rel="noreferrer"style={{color:'#4af',textDecoration:'underline'}}>GitHub </a></div>
       </footer>
     </div>
   );
