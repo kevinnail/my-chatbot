@@ -30,4 +30,5 @@ jobs:
         working-directory: ./server
         env:
           CI: true
+          NODE_OPTIONS: --experimental-vm-modules
           DATABASE_URL: postgres://knail:knail@postgres:5432/knail
