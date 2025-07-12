@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import './GmailMCP.css';
 
 const GmailMCP = ({ userId }) => {
@@ -12,6 +13,81 @@ const GmailMCP = ({ userId }) => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [syncStartTime, setSyncStartTime] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [analysisProgress, setAnalysisProgress] = useState({ analyzed: 0, total: 0 });
+  const [analysisInProgress, setAnalysisInProgress] = useState(false);
+  const socketRef = useRef(null);
+
+  // Initialize Socket.IO connection
+  useEffect(() => {
+    const socket = io('http://localhost:4000');
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('📡 Connected to real-time updates');
+      socket.emit('join-sync-updates', userId);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('🔌 Socket.IO connection error:', error);
+    });
+
+    socket.on('email-analyzed', (data) => {
+      console.log('📧 Email analysis complete:', data);
+      console.log('📧 Looking for email ID:', data.emailId);
+
+      setAnalysisProgress({ analyzed: data.analyzedCount, total: data.totalToAnalyze });
+
+      // Update the specific email with analysis results
+      setEmails((prevEmails) => {
+        console.log(
+          '📧 Current emails:',
+          prevEmails.map((e) => ({ id: e.id, subject: e.subject.substring(0, 30) })),
+        );
+        const updated = prevEmails.map((email) =>
+          email.id === data.emailId
+            ? {
+                ...email,
+                analysis: data.analysis,
+                analyzed: true,
+                status: 'analyzed',
+                summary: data.analysis?.summary || email.summary,
+                category: data.analysis?.category,
+                priority: data.analysis?.priority,
+              }
+            : email,
+        );
+        console.log(
+          '📧 Updated emails:',
+          updated.map((e) => ({ id: e.id, status: e.status, subject: e.subject.substring(0, 30) })),
+        );
+        return updated;
+      });
+    });
+
+    socket.on('sync-complete', (data) => {
+      console.log('✅ Sync complete:', data);
+      setAnalysisInProgress(false);
+      setLoading(false);
+      setSyncStartTime(null);
+      setAnalysisProgress({ analyzed: data.analyzed, total: data.analyzed });
+    });
+
+    socket.on('sync-error', (data) => {
+      console.error('❌ Sync error:', data);
+      setError(data.error);
+      setAnalysisInProgress(false);
+      setLoading(false);
+      setSyncStartTime(null);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('📡 Disconnected from real-time updates');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [userId]);
 
   const calculateTimeSinceSync = () => {
     if (!syncStartTime) return null;
@@ -97,6 +173,9 @@ const GmailMCP = ({ userId }) => {
       setLoading(true);
       setError(null);
       setSyncStartTime(new Date());
+      setAnalysisInProgress(true);
+      setAnalysisProgress({ analyzed: 0, total: 0 });
+
       const response = await fetch('/api/mcp/gmail/sync', {
         method: 'POST',
         headers: {
@@ -107,17 +186,28 @@ const GmailMCP = ({ userId }) => {
 
       if (response.ok) {
         const data = await response.json();
+
+        // Set preliminary results immediately
         setEmails(data.emails);
         setLastSync(new Date());
-        setSyncStartTime(null); // Clear sync start time on completion
+        setLoading(false); // Stop loading since we have preliminary results
+
+        // Analysis continues in background via Socket.IO
+        if (data.analysisInProgress) {
+          console.log('📊 Preliminary results loaded, analysis continuing...');
+        } else {
+          // No analysis needed, sync complete
+          setAnalysisInProgress(false);
+          setSyncStartTime(null);
+        }
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to sync emails');
       }
     } catch (err) {
       setError(err.message);
-      setSyncStartTime(null); // Clear sync start time on error
-    } finally {
+      setSyncStartTime(null);
+      setAnalysisInProgress(false);
       setLoading(false);
     }
   };
@@ -137,6 +227,16 @@ const GmailMCP = ({ userId }) => {
         return '#888';
       default:
         return '#ccc';
+    }
+  };
+
+  const getStatusIndicator = (email) => {
+    if (email.status === 'analyzed' || email.analyzed) {
+      return '✅';
+    } else if (analysisInProgress) {
+      return '🔄';
+    } else {
+      return '⏳';
     }
   };
 
@@ -243,12 +343,25 @@ const GmailMCP = ({ userId }) => {
         <div className="email-section">
           <div className="sync-controls">
             <div className="sync-left">
-              <button onClick={syncEmails} disabled={loading} className="sync-button">
-                {loading ? 'Analyzing...' : 'Find Web Dev Emails'}
+              <button
+                onClick={syncEmails}
+                disabled={loading || analysisInProgress}
+                className="sync-button"
+              >
+                {loading
+                  ? 'Fetching...'
+                  : analysisInProgress
+                    ? 'Analyzing...'
+                    : 'Find Web Dev Emails'}
               </button>
               <div className="sync-info">
                 {calculateTimeSinceSync() && (
                   <span className="last-sync">Sync started {calculateTimeSinceSync()}</span>
+                )}
+                {analysisInProgress && analysisProgress.total > 0 && (
+                  <span className="analysis-progress">
+                    Analyzing: {analysisProgress.analyzed}/{analysisProgress.total} emails
+                  </span>
                 )}
                 <span className="last-sync">Last sync: {formatDate(lastSync)}</span>
                 {emails.length > 0 && (
@@ -296,7 +409,7 @@ const GmailMCP = ({ userId }) => {
           )}
 
           <div className="emails-container">
-            {filteredEmails.length === 0 && !loading ? (
+            {filteredEmails.length === 0 && !loading && !analysisInProgress ? (
               <div className="no-emails">
                 <p>No web development emails found.</p>
                 <p>
@@ -310,12 +423,16 @@ const GmailMCP = ({ userId }) => {
                 {filteredEmails.map((email, index) => (
                   <div
                     key={index}
-                    className={`email-card priority-${email.analysis?.priority || 'medium'}`}
+                    className={`email-card priority-${email.analysis?.priority || 'medium'} ${
+                      email.status === 'pending' ? 'pending-analysis' : ''
+                    }`}
                   >
                     <div className="email-header">
                       <div className="email-main-info">
                         <div className="email-title-section">
-                          <h4>{email.subject}</h4>
+                          <h4>
+                            {getStatusIndicator(email)} {email.subject}
+                          </h4>
                           <div className="email-badges">
                             {email.isNewSinceLastSync && <span className="new-badge">NEW</span>}
                             <span
@@ -328,6 +445,9 @@ const GmailMCP = ({ userId }) => {
                             </span>
                             <span className="category-badge">
                               {email.analysis?.category?.replace('_', ' ') || 'other'}
+                            </span>
+                            <span className="similarity-badge">
+                              Similarity: {email.vectorSimilarity}
                             </span>
                           </div>
                         </div>
