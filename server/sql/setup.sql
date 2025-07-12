@@ -28,12 +28,43 @@ CREATE TABLE gmail_sync_status (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create email_memory table for vector-powered email search
+CREATE TABLE email_memory (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    email_id VARCHAR(255) NOT NULL,
+    subject TEXT NOT NULL,
+    sender TEXT NOT NULL,
+    body TEXT NOT NULL,
+    email_date TIMESTAMP NOT NULL,
+    embedding VECTOR(1024),
+    similarity_score FLOAT DEFAULT 0,
+    is_web_dev_related BOOLEAN DEFAULT FALSE,
+    category VARCHAR(50),
+    priority VARCHAR(20),
+    sentiment VARCHAR(20),
+    action_items TEXT[],
+    llm_analysis JSONB,
+    llm_analyzed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, email_id)
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_chat_memory_user_id ON chat_memory(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_created_at ON chat_memory(created_at);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_embedding ON chat_memory USING ivfflat (embedding vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS idx_gmail_sync_status_user_id ON gmail_sync_status(user_id);
+
+-- Create indexes for email_memory table
+CREATE INDEX IF NOT EXISTS idx_email_memory_user_id ON email_memory(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_memory_email_date ON email_memory(email_date);
+CREATE INDEX IF NOT EXISTS idx_email_memory_embedding ON email_memory USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_email_memory_category ON email_memory(category);
+CREATE INDEX IF NOT EXISTS idx_email_memory_priority ON email_memory(priority);
+CREATE INDEX IF NOT EXISTS idx_email_memory_web_dev ON email_memory(is_web_dev_related);
 
 -- Insert sample test data (for development/testing)
 INSERT INTO chat_memory (user_id, role, content, embedding) VALUES
