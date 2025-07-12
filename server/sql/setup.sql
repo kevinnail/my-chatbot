@@ -19,18 +19,7 @@ CREATE TABLE chat_memory (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create gmail_tokens table
-CREATE TABLE gmail_tokens (
-    id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL UNIQUE,
-    access_token TEXT NOT NULL,
-    refresh_token TEXT,
-    expires_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create gmail_sync_status table
+-- Create gmail_sync_status table (OAuth tokens not needed for IMAP)
 CREATE TABLE gmail_sync_status (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL UNIQUE,
@@ -44,7 +33,6 @@ CREATE INDEX IF NOT EXISTS idx_chat_memory_user_id ON chat_memory(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_created_at ON chat_memory(created_at);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_embedding ON chat_memory USING ivfflat (embedding vector_cosine_ops);
 
-CREATE INDEX IF NOT EXISTS idx_gmail_tokens_user_id ON gmail_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_gmail_sync_status_user_id ON gmail_sync_status(user_id);
 
 -- Insert sample test data (for development/testing)
