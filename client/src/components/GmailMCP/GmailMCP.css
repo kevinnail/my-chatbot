@@ -212,14 +212,34 @@
 }
 
 .email-count {
-  color: #00ff88;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.9rem;
+  color: #888;
+  margin-top: 5px;
+}
+
+.analysis-progress {
+  font-size: 0.9rem;
+  color: #639cff;
+  margin-top: 5px;
+  font-weight: bold;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .filters {
   display: flex;
-  gap: 15px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -358,23 +378,29 @@
 }
 
 .category-badge {
-  background: #333;
-  color: #ccc;
-  font-size: 0.75rem;
-  padding: 2px 8px;
+  background: #0099cc;
+  color: white;
+  padding: 4px 8px;
   border-radius: 12px;
-  font-weight: 500;
+  font-size: 0.8rem;
+  font-weight: bold;
   text-transform: capitalize;
+}
+
+.similarity-badge {
+  background: #6a5acd;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
 }
 
 .email-meta-compact {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 0.85rem;
-  color: #999;
-  text-align: right;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 15px;
+  margin-top: 10px;
 }
 
 .email-from {
@@ -470,6 +496,30 @@
 
 .status-indicator.disconnected {
   color: #ff4444;
+}
+
+.email-card.pending-analysis {
+  border-left: 4px solid #ffa500;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a1a 100%);
+}
+
+.email-card.pending-analysis .email-header h4 {
+  color: #ffa500;
+}
+
+.email-card.pending-analysis:hover {
+  background: linear-gradient(135deg, #2a2a1a 0%, #3a3a2a 100%);
+}
+
+.email-card h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.email-card h4 .status-emoji {
+  font-size: 1.2rem;
+  margin-right: 8px;
 }
 
 /* Remove the old bulky styles */
