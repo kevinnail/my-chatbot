@@ -10,6 +10,38 @@ const GmailMCP = ({ userId }) => {
   const [lastSync, setLastSync] = useState(null);
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [syncStartTime, setSyncStartTime] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  const calculateTimeSinceSync = () => {
+    if (!syncStartTime) return null;
+    const now = currentTime;
+    const startTime = new Date(syncStartTime);
+    const diffTime = Math.abs(now - startTime);
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const diffSeconds = Math.floor((diffTime % (1000 * 60)) / 1000);
+
+    if (diffMinutes === 0) {
+      return `${diffSeconds}s ago`;
+    } else if (diffMinutes === 1) {
+      return '1 min ago';
+    } else {
+      return `${diffMinutes} mins ago`;
+    }
+  };
+
+  // Update current time every 30 seconds for sync time display (only when needed)
+  useEffect(() => {
+    // Only run interval if we're loading or have a sync start time to display
+    if (loading || syncStartTime) {
+      const interval = setInterval(() => {
+        console.log('Updating sync timer display');
+        setCurrentTime(new Date());
+      }, 30000); // Update every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [loading, syncStartTime]);
 
   useEffect(() => {
     // Check if Gmail is connected on component mount
@@ -64,6 +96,7 @@ const GmailMCP = ({ userId }) => {
     try {
       setLoading(true);
       setError(null);
+      setSyncStartTime(new Date());
       const response = await fetch('/api/mcp/gmail/sync', {
         method: 'POST',
         headers: {
@@ -76,12 +109,14 @@ const GmailMCP = ({ userId }) => {
         const data = await response.json();
         setEmails(data.emails);
         setLastSync(new Date());
+        setSyncStartTime(null); // Clear sync start time on completion
       } else {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to sync emails');
       }
     } catch (err) {
       setError(err.message);
+      setSyncStartTime(null); // Clear sync start time on error
     } finally {
       setLoading(false);
     }
@@ -105,37 +140,26 @@ const GmailMCP = ({ userId }) => {
     }
   };
 
-  const getCategoryIcon = (category) => {
-    switch (category) {
-      case 'job_rejection':
-        return '✗'; // Keep the X but cleaner
-      case 'job_offer':
-        return '★'; // Star for offers
-      case 'job_interview':
-        return '◆'; // Diamond for interviews
-      default:
-        return ''; // Remove other emojis
-    }
-  };
-
-  const getSentimentIcon = (sentiment) => {
-    // Remove all sentiment emojis - too "chatgpt like"
-    return '';
-  };
-
   const filteredEmails = emails.filter((email) => {
     const priorityMatch = filterPriority === 'all' || email.analysis?.priority === filterPriority;
     const categoryMatch = filterCategory === 'all' || email.analysis?.category === filterCategory;
     return priorityMatch && categoryMatch;
   });
 
-  const jobCategories = [
+  const webDevCategories = [
     'all',
     'job_application',
     'job_rejection',
     'job_acceptance',
     'job_interview',
     'job_offer',
+    'event',
+    'learning',
+    'tools',
+    'networking',
+    'newsletter',
+    'community',
+    'freelance',
     'other',
   ];
   const priorities = ['all', 'high', 'medium', 'low'];
@@ -143,7 +167,7 @@ const GmailMCP = ({ userId }) => {
   return (
     <div className="gmail-mcp">
       <div className="gmail-mcp-header">
-        <h2>Gmail Assistant (IMAP)</h2>
+        <h2>Gmail Assistant (Web Dev)</h2>
         <div className="connection-status">
           <span className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`}>
             {isConnected ? '●' : '●'}
@@ -195,12 +219,17 @@ const GmailMCP = ({ userId }) => {
 
           <div className="features-list">
             <p>
-              <strong>Agentic Features:</strong>
+              <strong>Smart Web Dev Email Features:</strong>
             </p>
             <ul>
-              <li>Smart job-related email detection</li>
+              <li>Smart web development email detection</li>
+              <li>Job opportunities and career tracking</li>
+              <li>Tech events and conference notifications</li>
+              <li>Learning resources and course updates</li>
+              <li>Tool updates and platform changes</li>
+              <li>Developer community and networking</li>
+              <li>Newsletter and digest management</li>
               <li>Priority scoring and categorization</li>
-              <li>Actionable insights and suggestions</li>
               <li>Local LLM analysis (no external APIs)</li>
               <li>Complete privacy - all processing local</li>
             </ul>
@@ -215,9 +244,20 @@ const GmailMCP = ({ userId }) => {
           <div className="sync-controls">
             <div className="sync-left">
               <button onClick={syncEmails} disabled={loading} className="sync-button">
-                {loading ? 'Analyzing...' : 'Find Relevant Emails'}
+                {loading ? 'Analyzing...' : 'Find Web Dev Emails'}
               </button>
-              <span className="last-sync">Last sync: {formatDate(lastSync)}</span>
+              <div className="sync-info">
+                {calculateTimeSinceSync() && (
+                  <span className="last-sync">Sync started {calculateTimeSinceSync()}</span>
+                )}
+                <span className="last-sync">Last sync: {formatDate(lastSync)}</span>
+                {emails.length > 0 && (
+                  <span className="email-count">
+                    {emails.filter((email) => email.isNewSinceLastSync).length} new, {emails.length}{' '}
+                    total
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="filters">
@@ -240,9 +280,8 @@ const GmailMCP = ({ userId }) => {
                 className="filter-select"
               >
                 <option value="all">All Categories</option>
-                {jobCategories.slice(1).map((category) => (
+                {webDevCategories.slice(1).map((category) => (
                   <option key={category} value={category}>
-                    {getCategoryIcon(category)}{' '}
                     {category.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                   </option>
                 ))}
@@ -257,11 +296,14 @@ const GmailMCP = ({ userId }) => {
           )}
 
           <div className="emails-container">
-            {filteredEmails.length === 0 ? (
+            {filteredEmails.length === 0 && !loading ? (
               <div className="no-emails">
-                <p>No job-related emails found.</p>
-                <p>The agent looks for relevant job search emails in your unread messages.</p>
-                <p>Click "Find Relevant Emails" to analyze your inbox.</p>
+                <p>No web development emails found.</p>
+                <p>
+                  The agent looks for relevant professional emails including jobs, events, learning
+                  resources, and tools.
+                </p>
+                <p>Click "Find Web Dev Emails" to analyze your inbox.</p>
               </div>
             ) : (
               <div className="emails-list">
@@ -275,6 +317,7 @@ const GmailMCP = ({ userId }) => {
                         <div className="email-title-section">
                           <h4>{email.subject}</h4>
                           <div className="email-badges">
+                            {email.isNewSinceLastSync && <span className="new-badge">NEW</span>}
                             <span
                               className="priority-badge"
                               style={{
@@ -284,7 +327,6 @@ const GmailMCP = ({ userId }) => {
                               {email.analysis?.priority || 'unknown'}
                             </span>
                             <span className="category-badge">
-                              {getCategoryIcon(email.analysis?.category)}
                               {email.analysis?.category?.replace('_', ' ') || 'other'}
                             </span>
                           </div>
