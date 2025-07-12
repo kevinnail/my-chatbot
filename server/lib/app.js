@@ -6,6 +6,7 @@ import {
   connectGmail,
   handleGmailCallback,
   syncEmails,
+  getStoredEmails,
 } from './controllers/gmailMcp.js';
 import notFound from './middleware/not-found.js';
 import errorHandler from './middleware/error.js';
@@ -27,6 +28,7 @@ app.get('/api/mcp/gmail/status/:userId', getGmailStatus);
 app.post('/api/mcp/gmail/connect', connectGmail);
 app.get('/api/mcp/gmail/callback', handleGmailCallback);
 app.post('/api/mcp/gmail/sync', syncEmails);
+app.get('/api/mcp/gmail/emails/:userId', getStoredEmails);
 
 app.use(notFound);
 app.use(errorHandler);
