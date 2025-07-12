@@ -48,14 +48,14 @@ const Header = ({ userId }) => {
         <Link
           to="/"
           style={{
-            color: location.pathname === '/' ? '#00d4ff' : 'white',
+            color: location.pathname === '/' ? '#639cff' : 'white',
             textDecoration: 'none',
             fontSize: '1rem',
             fontWeight: 'normal',
             padding: '0.5rem 1rem',
             borderRadius: '20px',
             transition: 'all 0.3s ease',
-            border: location.pathname === '/' ? '2px solid #00d4ff' : '2px solid transparent',
+            border: location.pathname === '/' ? '2px solid #639cff' : '2px solid transparent',
           }}
         >
           Chat
@@ -63,7 +63,7 @@ const Header = ({ userId }) => {
         <Link
           to="/gmail-mcp"
           style={{
-            color: location.pathname === '/gmail-mcp' ? '#00d4ff' : 'white',
+            color: location.pathname === '/gmail-mcp' ? '#639cff' : 'white',
             textDecoration: 'none',
             fontSize: '1rem',
             fontWeight: 'normal',
@@ -71,7 +71,7 @@ const Header = ({ userId }) => {
             borderRadius: '20px',
             transition: 'all 0.3s ease',
             border:
-              location.pathname === '/gmail-mcp' ? '2px solid #00d4ff' : '2px solid transparent',
+              location.pathname === '/gmail-mcp' ? '2px solid #639cff' : '2px solid transparent',
           }}
         >
           Gmail MCP
