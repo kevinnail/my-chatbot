@@ -1,6 +1,8 @@
 import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import { pool } from '../utils/db.js';
+import { getEmbedding } from '../utils/ollamaEmbed.js';
+import EmailMemory from '../models/EmailMemory.js';
 
 // IMAP connection configuration
 const getImapConfig = () => ({
@@ -515,71 +517,386 @@ function getEmailsViaImap(searchCriteria) {
   });
 }
 
-// Agentic email sync with intelligent filtering
+// Vector pre-filtering for web development emails
+async function preFilterWebDevEmails(emails) {
+  try {
+    console.log('🔍 Pre-filtering emails using vector similarity...');
+
+    // Create a reference embedding for "web development job emails"
+    const webDevReference = `
+      web development job application interview position software engineer
+      react javascript node.js frontend backend fullstack developer
+      coding programming technical interview job offer recruitment
+      startup tech company software development career opportunity
+    `;
+
+    const referenceEmbedding = await getEmbedding(webDevReference);
+
+    // Calculate similarity for each email
+    const emailsWithSimilarity = await Promise.all(
+      emails.map(async (email) => {
+        const emailContent = `${email.subject} ${email.body} ${email.from}`;
+        const emailEmbedding = await getEmbedding(emailContent);
+
+        // Calculate cosine similarity
+        const similarity = calculateCosineSimilarity(referenceEmbedding, emailEmbedding);
+
+        console.log(
+          `📧 Email: "${email.subject.substring(0, 50)}..." - Similarity: ${similarity.toFixed(3)}`,
+        );
+
+        return {
+          ...email,
+          similarity,
+          likelyWebDev: similarity > 0.6, // Higher threshold for better precision
+        };
+      }),
+    );
+
+    // Sort by similarity and return top candidates
+    const sortedEmails = emailsWithSimilarity.sort((a, b) => b.similarity - a.similarity);
+
+    // Always include at least the top 3 most similar emails (or fewer if less than 3 total)
+    const minEmailsToAnalyze = Math.min(3, emails.length);
+    const likelyWebDevEmails = sortedEmails.slice(
+      0,
+      Math.max(minEmailsToAnalyze, sortedEmails.filter((email) => email.likelyWebDev).length),
+    );
+    const unlikelyEmails = sortedEmails.slice(likelyWebDevEmails.length);
+
+    console.log(`📊 Vector pre-filtering results:
+      - Total emails: ${emails.length}
+      - Likely web-dev: ${likelyWebDevEmails.length}
+      - Unlikely: ${unlikelyEmails.length}
+      - LLM calls reduced by: ${Math.round((unlikelyEmails.length / emails.length) * 100)}%`);
+
+    return {
+      likelyWebDevEmails,
+      unlikelyEmails,
+      totalEmails: emails.length,
+      reductionPercentage: Math.round((unlikelyEmails.length / emails.length) * 100),
+    };
+  } catch (error) {
+    console.error('Error in vector pre-filtering:', error);
+    // Fallback to keyword filtering if vector fails
+    return {
+      likelyWebDevEmails: emails.filter((email) =>
+        checkWebDevKeywords(email.subject, email.body, email.from),
+      ),
+      unlikelyEmails: [],
+      totalEmails: emails.length,
+      reductionPercentage: 0,
+    };
+  }
+}
+
+// Simple cosine similarity calculation
+function calculateCosineSimilarity(embedding1, embedding2) {
+  // Parse embeddings - they come as strings like "[0.1,0.2,0.3]"
+  const vec1 = typeof embedding1 === 'string' ? JSON.parse(embedding1) : embedding1;
+  const vec2 = typeof embedding2 === 'string' ? JSON.parse(embedding2) : embedding2;
+
+  // Calculate dot product and norms
+  let dotProduct = 0;
+  let norm1 = 0;
+  let norm2 = 0;
+
+  for (let i = 0; i < vec1.length; i++) {
+    dotProduct += vec1[i] * vec2[i];
+    norm1 += vec1[i] * vec1[i];
+    norm2 += vec2[i] * vec2[i];
+  }
+
+  // Return cosine similarity
+  return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
+}
+
+// Persistent vector-powered email sync - now with real-time updates
 export const syncEmails = async (req, res) => {
   try {
     const { userId } = req.body;
 
+    console.log('🚀 Starting persistent vector-powered email sync...');
+
     // Get last sync time for tracking purposes
     const lastSync = await getLastSyncTime(userId);
 
-    // Build search criteria - analyze ALL unread emails every time
+    // Build search criteria - get recent emails
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Always look at ALL unread emails from last 30 days, not just since last sync
+    // Search for emails from last 30 days
     const searchCriteria = [
       'UNSEEN', // All unread emails
-      ['SINCE', thirtyDaysAgo], // From last 30 days (ignore last sync time)
-      // Let the LLM analyze all of them fresh each time
+      ['SINCE', thirtyDaysAgo], // From last 30 days
     ];
 
-    console.log(
-      'IMAP search criteria (analyzing ALL unread emails for web dev content):',
-      searchCriteria,
-    );
+    console.log('📧 Fetching emails via IMAP...');
 
     // Get emails via IMAP
     const rawEmails = await getEmailsViaImap(searchCriteria);
-    const emails = [];
+    console.log(`📬 Found ${rawEmails.length} raw emails`);
 
-    // Process each email with agentic analysis
+    // Step 1: Filter out emails already in database and calculate similarity for new ones
+    const newEmails = [];
     for (const email of rawEmails) {
-      try {
-        // Perform agentic analysis
-        const analysis = await analyzeEmailWithLLM(email.subject, email.body, email.from);
-
-        // Only include web development related emails
-        if (analysis.isWebDevRelated) {
-          // Check if email is new since last sync
-          const isNewSinceLastSync = lastSync ? new Date(email.date) > new Date(lastSync) : true;
-
-          // Create Gmail web link (best effort)
-          const webLink = `https://mail.google.com/mail/u/0/#inbox`;
-
-          emails.push({
-            id: email.id,
-            subject: email.subject,
-            from: email.from,
-            date: email.date,
-            analysis,
-            webLink,
-            isNewSinceLastSync,
-            // Keep original fields for backward compatibility
-            summary: analysis.summary,
-          });
-        }
-      } catch (error) {
-        console.error('Error processing email:', error);
+      const exists = await EmailMemory.emailExists(userId, email.id);
+      if (!exists) {
+        newEmails.push(email);
       }
     }
 
-    // Update last sync time
-    await updateLastSyncTime(userId);
+    console.log(
+      `✨ Found ${newEmails.length} new emails (${rawEmails.length - newEmails.length} already stored)`,
+    );
 
-    res.json({ emails });
+    let newEmailsStored = 0;
+    if (newEmails.length > 0) {
+      console.log('🔍 Calculating vector similarity for new emails...');
+
+      // Create reference embedding for web development - enhanced with AI focus
+      const webDevReference = `
+        web development job application interview position software engineer
+        react javascript node.js frontend backend fullstack developer
+        coding programming technical interview job offer recruitment
+        startup tech company software development career opportunity
+        artificial intelligence AI machine learning deep learning neural networks
+        AI community AI masters AI newsletter AI bootcamp AI training AI certification
+        AI tools AI development AI engineering AI research AI jobs AI career
+        ChatGPT OpenAI Claude Anthropic AI models AI agents AI automation
+        developer relations DevRel coding bootcamp programming education
+        hackathon conference meetup webinar workshop training certification
+      `;
+      const referenceEmbedding = await getEmbedding(webDevReference);
+
+      // Store all new emails with similarity scores
+      for (const email of newEmails) {
+        try {
+          // Enhanced email content for better similarity matching
+          // Give more weight to sender information by including it multiple times
+          const senderContext = `From: ${email.from} Sender: ${email.from}`;
+          const emailContent = `${senderContext} Subject: ${email.subject} ${email.body}`;
+
+          const emailEmbedding = await getEmbedding(emailContent);
+          const similarity = calculateCosineSimilarity(referenceEmbedding, emailEmbedding);
+
+          console.log(
+            `📧 From: "${email.from}" - "${email.subject.substring(0, 50)}..." - Similarity: ${similarity.toFixed(3)}`,
+          );
+
+          // Store email with similarity score (no LLM analysis yet)
+          await EmailMemory.storeEmail({
+            userId,
+            emailId: email.id,
+            subject: email.subject,
+            sender: email.from,
+            body: email.body,
+            emailDate: email.date,
+            similarityScore: similarity,
+            llmAnalysis: null,
+          });
+
+          newEmailsStored++;
+        } catch (error) {
+          console.error('Error storing email:', error);
+        }
+      }
+    }
+
+    // Step 2: Get preliminary results - include emails that will be analyzed
+    const allStoredEmails = await EmailMemory.getWebDevEmails({
+      userId,
+      limit: 50,
+      since: null,
+    });
+
+    // Also get emails that meet similarity threshold but haven't been analyzed yet
+    const pendingAnalysisEmails = await EmailMemory.getEmailsNeedingAnalysis({
+      userId,
+      minSimilarity: 0.5,
+      limit: 10,
+    });
+
+    // Create preliminary results that include both analyzed and pending emails
+    const preliminaryEmailsMap = new Map();
+
+    // Add all stored emails
+    allStoredEmails.forEach((email) => {
+      preliminaryEmailsMap.set(email.email_id, {
+        id: email.email_id,
+        subject: email.subject,
+        from: email.sender,
+        date: email.email_date,
+        analysis: email.llm_analysis,
+        webLink: `https://mail.google.com/mail/u/0/#inbox`,
+        isNewSinceLastSync: lastSync ? new Date(email.email_date) > new Date(lastSync) : true,
+        summary: email.llm_analysis?.summary || 'Analysis pending...',
+        vectorSimilarity: email.similarity_score?.toFixed(3) || '0.000',
+        analyzed: email.llm_analyzed,
+        category: email.llm_analysis?.category,
+        priority: email.llm_analysis?.priority,
+        status: email.llm_analyzed ? 'analyzed' : 'pending',
+      });
+    });
+
+    // Add pending analysis emails (they might not be in webDevEmails yet)
+    pendingAnalysisEmails.forEach((email) => {
+      if (!preliminaryEmailsMap.has(email.email_id)) {
+        preliminaryEmailsMap.set(email.email_id, {
+          id: email.email_id,
+          subject: email.subject,
+          from: email.sender,
+          date: email.email_date,
+          analysis: null,
+          webLink: `https://mail.google.com/mail/u/0/#inbox`,
+          isNewSinceLastSync: lastSync ? new Date(email.email_date) > new Date(lastSync) : true,
+          summary: 'Analysis pending...',
+          vectorSimilarity: email.similarity_score?.toFixed(3) || '0.000',
+          analyzed: false,
+          category: null,
+          priority: null,
+          status: 'pending',
+        });
+      }
+    });
+
+    const preliminaryEmails = Array.from(preliminaryEmailsMap.values());
+
+    console.log(`📦 Returning ${preliminaryEmails.length} preliminary emails`);
+
+    // Step 3: Return preliminary results immediately
+    res.json({
+      emails: preliminaryEmails,
+      performance: {
+        totalFetched: rawEmails.length,
+        newStored: newEmailsStored,
+        analyzed: 0, // Analysis happening in background
+        llmCallsReduced: 0,
+        totalWebDevEmails: preliminaryEmails.length,
+        estimatedTimeSaved: '0 minutes',
+        method: 'Preliminary Results - Analysis in Progress 🔄',
+      },
+      status: 'preliminary',
+      analysisInProgress: true,
+    });
+
+    // Step 4: Start background analysis (don't wait for it)
+    setImmediate(async () => {
+      try {
+        const emailsNeedingAnalysis = await EmailMemory.getEmailsNeedingAnalysis({
+          userId,
+          minSimilarity: 0.5,
+          limit: 10,
+        });
+
+        console.log(
+          `🤖 Background analysis starting for ${emailsNeedingAnalysis.length} emails (similarity >= 0.5)`,
+        );
+
+        // Run LLM analysis on high-similarity emails
+        let analyzedCount = 0;
+        for (const email of emailsNeedingAnalysis) {
+          try {
+            console.log(
+              `🧠 Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.similarity_score.toFixed(3)})`,
+            );
+
+            const analysis = await analyzeEmailWithLLM(email.subject, email.body, email.sender);
+            await EmailMemory.updateEmailAnalysis(userId, email.email_id, analysis);
+
+            analyzedCount++;
+
+            // Emit real-time update for this email
+            req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzed', {
+              emailId: email.email_id,
+              analysis: analysis,
+              analyzedCount: analyzedCount,
+              totalToAnalyze: emailsNeedingAnalysis.length,
+            });
+
+            console.log(
+              `✅ Analysis complete for email ${analyzedCount}/${emailsNeedingAnalysis.length}`,
+            );
+          } catch (error) {
+            console.error('Error analyzing email:', error);
+          }
+        }
+
+        // Update last sync time
+        await updateLastSyncTime(userId);
+
+        const totalSaved = rawEmails.length - emailsNeedingAnalysis.length;
+        const reductionPercentage =
+          rawEmails.length > 0 ? Math.round((totalSaved / rawEmails.length) * 100) : 0;
+
+        console.log(`📈 Background analysis complete!
+          - Total emails fetched: ${rawEmails.length}
+          - New emails stored: ${newEmailsStored}  
+          - Emails analyzed: ${analyzedCount}
+          - LLM calls reduced by: ${reductionPercentage}%
+          - Time saved: ~${Math.round((totalSaved * 30) / 60)} minutes`);
+
+        // Emit final completion event
+        req.app
+          .get('io')
+          ?.to(`sync-updates-${userId}`)
+          .emit('sync-complete', {
+            totalFetched: rawEmails.length,
+            newStored: newEmailsStored,
+            analyzed: analyzedCount,
+            reductionPercentage: reductionPercentage,
+            timeSaved: `${Math.round((totalSaved * 30) / 60)} minutes`,
+          });
+      } catch (error) {
+        console.error('Error in background analysis:', error);
+        req.app.get('io')?.to(`sync-updates-${userId}`).emit('sync-error', {
+          error: 'Background analysis failed',
+        });
+      }
+    });
   } catch (error) {
     console.error('Error syncing emails:', error);
     res.status(500).json({ error: 'Failed to sync emails via IMAP' });
+  }
+};
+
+// Get stored web-dev emails from database
+export const getStoredEmails = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 50 } = req.query;
+
+    console.log(`📚 Getting stored web-dev emails for user ${userId}`);
+
+    const webDevEmails = await EmailMemory.getWebDevEmails({
+      userId,
+      limit: parseInt(limit),
+      since: null,
+    });
+
+    const formattedEmails = webDevEmails.map((email) => ({
+      id: email.email_id,
+      subject: email.subject,
+      from: email.sender,
+      date: email.email_date,
+      analysis: email.llm_analysis,
+      webLink: `https://mail.google.com/mail/u/0/#inbox`,
+      summary: email.llm_analysis?.summary || 'Analysis pending...',
+      vectorSimilarity: email.similarity_score?.toFixed(3) || '0.000',
+      analyzed: email.llm_analyzed,
+      category: email.llm_analysis?.category,
+      priority: email.llm_analysis?.priority,
+    }));
+
+    console.log(`📊 Found ${formattedEmails.length} stored web-dev emails`);
+
+    res.json({
+      emails: formattedEmails,
+      total: formattedEmails.length,
+      source: 'database',
+    });
+  } catch (error) {
+    console.error('Error getting stored emails:', error);
+    res.status(500).json({ error: 'Failed to get stored emails' });
   }
 };
