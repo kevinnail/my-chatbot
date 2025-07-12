@@ -95,11 +95,11 @@ export const handleGmailCallback = async (req, res) => {
 // Agentic email analysis using local Ollama
 async function analyzeEmailWithLLM(subject, body, from) {
   try {
-    const systemPrompt = `You are an intelligent email agent that helps with job search activities. 
+    const systemPrompt = `You are an intelligent email agent that helps web developers manage their professional emails. 
     You analyze emails and provide actionable insights. Your responses should be structured JSON with this format:
     {
-      "isJobRelated": true/false,
-      "category": "job_application|job_rejection|job_acceptance|job_interview|job_offer|other",
+      "isWebDevRelated": true/false,
+      "category": "job_application|job_rejection|job_acceptance|job_interview|job_offer|event|learning|tools|networking|newsletter|community|freelance|other",
       "priority": "high|medium|low",
       "summary": "Brief summary of the email content",
       "actionItems": ["action1", "action2"],
@@ -107,22 +107,62 @@ async function analyzeEmailWithLLM(subject, body, from) {
       "draftResponse": "Suggested response if appropriate, or null"
     }
 
-    Focus on detecting:
+    Focus on detecting web development related emails including:
+    
+    JOB RELATED:
     - Job applications confirmations
-    - Interview invitations
+    - Interview invitations and scheduling
     - Rejection letters
-    - Job offers
-    - Follow-up opportunities
-    - Networking opportunities
+    - Job offers and negotiations
     - Application status updates
+    - Recruiter outreach
+    - Job board notifications (Built In, LinkedIn, Indeed, Stack Overflow Jobs, etc.)
+    - Contract/freelance opportunities
+    
+    EVENT RELATED:
+    - Tech conferences and meetups
+    - Webinars and workshops
+    - Hackathons and coding challenges
+    - Industry events and networking
+    - Training sessions and boot camps
+    - Company tech talks
+    
+    LEARNING RELATED:
+    - Course platforms (Udemy, Coursera, Pluralsight, etc.)
+    - Tutorial sites and coding platforms
+    - Certification programs
+    - Technical book releases
+    - Educational content updates
+    
+    TOOLS & TECHNOLOGY:
+    - Platform updates (AWS, Google Cloud, Azure, etc.)
+    - Framework releases (React, Angular, Vue, etc.)
+    - Development tool updates
+    - API documentation and changes
+    - Software licenses and subscriptions
+    - IDE and editor updates
+    
+    COMMUNITY & NETWORKING:
+    - Developer community updates
+    - Open source project notifications
+    - GitHub activity and contributions
+    - Technical forum discussions
+    - Developer newsletter subscriptions
+    - Coding community events
+    
+    OTHER PROFESSIONAL:
+    - Client communications
+    - Project updates and deadlines
+    - Team collaboration emails
+    - Code review notifications
+    - Professional development opportunities
 
-    Be concise but actionable.`;
+    Be comprehensive but accurate in your categorization.`;
 
     const userPrompt = `Analyze this email:
-
-Subject: ${subject}
-From: ${from}
-Content: ${body}
+    Subject: ${subject}
+    Body: ${body}
+    From: ${from}
 
 Provide your analysis in the JSON format specified.`;
 
@@ -158,7 +198,7 @@ Provide your analysis in the JSON format specified.`;
 
     // Fallback analysis if JSON parsing fails
     const fallbackAnalysis = {
-      isJobRelated: checkJobKeywords(subject, body, from),
+      isWebDevRelated: checkWebDevKeywords(subject, body, from),
       category: 'other',
       priority: 'medium',
       summary: rawResponse.slice(0, 150) + '...',
@@ -171,7 +211,7 @@ Provide your analysis in the JSON format specified.`;
   } catch (error) {
     console.error('Error analyzing email with LLM:', error);
     return {
-      isJobRelated: checkJobKeywords(subject, body, from),
+      isWebDevRelated: checkWebDevKeywords(subject, body, from),
       category: 'other',
       priority: 'low',
       summary: 'Analysis failed - please review manually',
@@ -182,15 +222,14 @@ Provide your analysis in the JSON format specified.`;
   }
 }
 
-// Fallback job keyword detection
-function checkJobKeywords(subject, body, from) {
-  const jobKeywords = [
+// Fallback web development keyword detection
+function checkWebDevKeywords(subject, body, from) {
+  const webDevKeywords = [
+    // Job related terms
+    'job',
     'interview',
     'application',
     'position',
-    'job',
-    'job match',
-    'job matches',
     'career',
     'hiring',
     'recruiter',
@@ -198,48 +237,156 @@ function checkJobKeywords(subject, body, from) {
     'candidate',
     'resume',
     'cv',
-    'thank you for applying',
-    'unfortunately',
-    'we have decided',
-    'next steps',
-    'congratulations',
     'offer',
-    'onboarding',
-    'start date',
     'salary',
     'benefits',
     'rejection',
     'not selected',
     'moved forward',
-    'different direction',
-    'keep your resume',
-    'hr',
-    'human resources',
-    'talent acquisition',
-    'screening',
-    'phone screen',
+
+    // Developer roles
     'developer',
     'engineer',
     'software engineer',
-    'full stack web developer',
-    'full stack mobile developer',
+    'web developer',
+    'frontend developer',
+    'backend developer',
     'full stack developer',
     'full stack engineer',
-    'full stack web engineer',
-    'full stack mobile engineer',
-    'full stack engineer',
-    'front end engineer',
-    'back end engineer',
-    'mobile engineer',
-    'web developer',
+    'fullstack',
     'mobile developer',
-    'developer',
-    'engineer',
-    'software engineer',
+    'react developer',
+    'javascript developer',
+    'node.js developer',
+    'python developer',
+    'java developer',
+    'php developer',
+    'devops engineer',
+    'ui developer',
+    'ux developer',
+    'front end',
+    'back end',
+    'frontend',
+    'backend',
+
+    // Technologies and frameworks
+    'react',
+    'angular',
+    'vue',
+    'javascript',
+    'typescript',
+    'node.js',
+    'python',
+    'java',
+    'php',
+    'ruby',
+    'html',
+    'css',
+    'sass',
+    'scss',
+    'bootstrap',
+    'tailwind',
+    'mongodb',
+    'mysql',
+    'postgresql',
+    'redis',
+    'aws',
+    'azure',
+    'google cloud',
+    'docker',
+    'kubernetes',
+    'git',
+    'github',
+    'gitlab',
+    'bitbucket',
+
+    // Company types and job boards
+    'built in',
+    'linkedin',
+    'indeed',
+    'stack overflow',
+    'github jobs',
+    'angel list',
+    'glassdoor',
+    'dice',
+    'monster',
+    'ziprecruiter',
+    'flexa',
+    'startup',
+    'tech company',
+
+    // Event related
+    'conference',
+    'meetup',
+    'webinar',
+    'workshop',
+    'hackathon',
+    'coding challenge',
+    'tech talk',
+    'training',
+    'bootcamp',
+    'event',
+    'networking',
+
+    // Learning platforms
+    'udemy',
+    'coursera',
+    'pluralsight',
+    'codecademy',
+    'freecodecamp',
+    'lynda',
+    'edx',
+    'khan academy',
+    'treehouse',
+    'skillshare',
+    'tutorial',
+    'course',
+
+    // Tools and platforms
+    'visual studio code',
+    'vscode',
+    'sublime text',
+    'atom',
+    'intellij',
+    'webstorm',
+    'figma',
+    'sketch',
+    'adobe xd',
+    'postman',
+    'insomnia',
+    'slack',
+    'discord',
+    'jira',
+    'trello',
+    'asana',
+    'notion',
+    'confluence',
+
+    // Community and newsletters
+    'hacker news',
+    'dev.to',
+    'medium',
+    'newsletter',
+    'weekly',
+    'digest',
+    'open source',
+    'github',
+    'contribution',
+    'pull request',
+    'code review',
+
+    // Professional development
+    'certification',
+    'learning path',
+    'skill development',
+    'career growth',
+    'professional development',
+    'tech trends',
+    'industry update',
   ];
 
   const text = `${subject} ${body} ${from}`.toLowerCase();
-  return jobKeywords.some((keyword) => text.includes(keyword));
+  return webDevKeywords.some((keyword) => text.includes(keyword));
 }
 
 // Get last sync time
@@ -373,23 +520,24 @@ export const syncEmails = async (req, res) => {
   try {
     const { userId } = req.body;
 
-    // Get last sync time
+    // Get last sync time for tracking purposes
     const lastSync = await getLastSyncTime(userId);
 
-    // Build search criteria - let LLM do the intelligent filtering
+    // Build search criteria - analyze ALL unread emails every time
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const searchDate = lastSync ? new Date(lastSync) : thirtyDaysAgo;
-
-    // Simplified IMAP search criteria - let LLM analyze all unread emails
+    // Always look at ALL unread emails from last 30 days, not just since last sync
     const searchCriteria = [
-      'UNSEEN', // Unread emails
-      ['SINCE', searchDate], // Since last sync or 30 days ago
-      // That's it! Let the LLM do all the intelligent filtering
+      'UNSEEN', // All unread emails
+      ['SINCE', thirtyDaysAgo], // From last 30 days (ignore last sync time)
+      // Let the LLM analyze all of them fresh each time
     ];
 
-    console.log('IMAP search criteria (simplified for better LLM analysis):', searchCriteria);
+    console.log(
+      'IMAP search criteria (analyzing ALL unread emails for web dev content):',
+      searchCriteria,
+    );
 
     // Get emails via IMAP
     const rawEmails = await getEmailsViaImap(searchCriteria);
@@ -401,8 +549,11 @@ export const syncEmails = async (req, res) => {
         // Perform agentic analysis
         const analysis = await analyzeEmailWithLLM(email.subject, email.body, email.from);
 
-        // Only include job-related emails or high-priority emails
-        if (analysis.isJobRelated || analysis.priority === 'high') {
+        // Only include web development related emails
+        if (analysis.isWebDevRelated) {
+          // Check if email is new since last sync
+          const isNewSinceLastSync = lastSync ? new Date(email.date) > new Date(lastSync) : true;
+
           // Create Gmail web link (best effort)
           const webLink = `https://mail.google.com/mail/u/0/#inbox`;
 
@@ -413,6 +564,7 @@ export const syncEmails = async (req, res) => {
             date: email.date,
             analysis,
             webLink,
+            isNewSinceLastSync,
             // Keep original fields for backward compatibility
             summary: analysis.summary,
           });
