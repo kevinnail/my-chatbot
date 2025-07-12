@@ -376,60 +376,20 @@ export const syncEmails = async (req, res) => {
     // Get last sync time
     const lastSync = await getLastSyncTime(userId);
 
-    // Build search criteria for job-related emails
+    // Build search criteria - let LLM do the intelligent filtering
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const searchDate = lastSync ? new Date(lastSync) : thirtyDaysAgo;
 
-    // IMAP search criteria
+    // Simplified IMAP search criteria - let LLM analyze all unread emails
     const searchCriteria = [
       'UNSEEN', // Unread emails
       ['SINCE', searchDate], // Since last sync or 30 days ago
-      [
-        'OR',
-        ['SUBJECT', 'interview'],
-        [
-          'OR',
-          ['SUBJECT', 'application'],
-          [
-            'OR',
-            ['SUBJECT', 'job'],
-            [
-              'OR',
-              ['SUBJECT', 'position'],
-              [
-                'OR',
-                ['SUBJECT', 'career'],
-                [
-                  'OR',
-                  ['SUBJECT', 'hiring'],
-                  [
-                    'OR',
-                    ['SUBJECT', 'recruiter'],
-                    [
-                      'OR',
-                      ['SUBJECT', 'opportunity'],
-                      [
-                        'OR',
-                        ['BODY', 'interview'],
-                        [
-                          'OR',
-                          ['BODY', 'application'],
-                          ['OR', ['BODY', 'position'], ['BODY', 'job']],
-                        ],
-                      ],
-                    ],
-                  ],
-                ],
-              ],
-            ],
-          ],
-        ],
-      ],
+      // That's it! Let the LLM do all the intelligent filtering
     ];
 
-    console.log('IMAP search criteria:', searchCriteria);
+    console.log('IMAP search criteria (simplified for better LLM analysis):', searchCriteria);
 
     // Get emails via IMAP
     const rawEmails = await getEmailsViaImap(searchCriteria);
