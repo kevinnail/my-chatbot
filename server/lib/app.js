@@ -1,13 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import chatRouter from './controllers/chat.js';
-import {
-  getGmailStatus,
-  connectGmail,
-  handleGmailCallback,
-  syncEmails,
-  getStoredEmails,
-} from './controllers/gmailMcp.js';
+import gmailMcpRouter from './controllers/gmailMcp.js';
 import notFound from './middleware/not-found.js';
 import errorHandler from './middleware/error.js';
 
@@ -20,15 +14,9 @@ app.use(
 );
 app.use(express.json());
 
-// Use the imported router
+// Use the imported routers
 app.use('/api/chat', chatRouter);
-
-// Gmail MCP routes
-app.get('/api/mcp/gmail/status/:userId', getGmailStatus);
-app.post('/api/mcp/gmail/connect', connectGmail);
-app.get('/api/mcp/gmail/callback', handleGmailCallback);
-app.post('/api/mcp/gmail/sync', syncEmails);
-app.get('/api/mcp/gmail/emails/:userId', getStoredEmails);
+app.use('/api/mcp/gmail', gmailMcpRouter);
 
 app.use(notFound);
 app.use(errorHandler);
