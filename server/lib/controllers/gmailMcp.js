@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { pool } from '../utils/db.js';
 import EmailMemory from '../models/EmailMemory.js';
+import GmailSync from '../models/GmailSync.js';
 import { testImapConnection, getEmailsViaImap } from '../utils/gmailImap.js';
 import { analyzeEmailWithLLM } from '../utils/emailAnalysis.js';
 import { preFilterWebDevEmails } from '../utils/vectorSimilarity.js';
-import { getLastSyncTime, updateLastSyncTime } from '../utils/gmailSync.js';
 
 const router = Router();
 
@@ -26,12 +25,7 @@ router.get('/status/:userId', async (req, res) => {
     }
 
     // Get last sync time
-    let lastSync = null;
-    const syncResult = await pool.query(
-      'SELECT last_sync FROM gmail_sync_status WHERE user_id = $1',
-      [userId],
-    );
-    lastSync = syncResult.rows[0]?.last_sync;
+    const lastSync = await GmailSync.getLastSyncTime(userId);
 
     res.json({ connected: true, lastSync });
   } catch (error) {
@@ -49,12 +43,7 @@ router.post('/connect', async (req, res) => {
     await testImapConnection();
 
     // Initialize sync status
-    await pool.query(
-      `INSERT INTO gmail_sync_status (user_id, last_sync) 
-       VALUES ($1, NOW()) 
-       ON CONFLICT (user_id) DO UPDATE SET last_sync = NOW()`,
-      [userId],
-    );
+    await GmailSync.initializeSyncStatus(userId);
 
     res.json({ success: true, message: 'Gmail IMAP connection successful' });
   } catch (error) {
@@ -76,7 +65,7 @@ router.post('/sync', async (req, res) => {
     console.log('🚀 Starting persistent vector-powered email sync...');
 
     // Get last sync time for tracking purposes
-    const lastSync = await getLastSyncTime(userId);
+    const lastSync = await GmailSync.getLastSyncTime(userId);
 
     // Build search criteria - get recent emails
     const thirtyDaysAgo = new Date();
@@ -281,7 +270,7 @@ router.post('/sync', async (req, res) => {
         }
 
         // Update last sync time
-        await updateLastSyncTime(userId);
+        await GmailSync.updateLastSyncTime(userId);
 
         const totalSaved = rawEmails.length - emailsNeedingAnalysis.length;
         const reductionPercentage =
