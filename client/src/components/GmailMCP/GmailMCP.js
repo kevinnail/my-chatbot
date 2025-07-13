@@ -119,8 +119,8 @@ const GmailMCP = ({ userId }) => {
     }
   }, [loading, syncStartTime]);
 
+  // Check if Gmail is connected on component mount
   useEffect(() => {
-    // Check if Gmail is connected on component mount
     checkGmailConnection();
   }, []);
 
@@ -360,7 +360,7 @@ const GmailMCP = ({ userId }) => {
                 )}
                 {analysisInProgress && analysisProgress.total > 0 && (
                   <span className="analysis-progress">
-                    Analyzing: {analysisProgress.analyzed}/{analysisProgress.total} emails
+                    Completed analyzing: {analysisProgress.analyzed}/{analysisProgress.total} emails
                   </span>
                 )}
                 <span className="last-sync">Last sync: {formatDate(lastSync)}</span>
@@ -479,7 +479,10 @@ const GmailMCP = ({ userId }) => {
                       )}
                     </div>
 
-                    <div className="email-actions-compact">
+                    <div
+                      className="email-actions-compact"
+                      style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}
+                    >
                       <button
                         onClick={() => window.open(email.webLink, '_blank')}
                         className="view-email-button"
