@@ -1,8 +1,11 @@
+import { Router } from 'express';
 import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import { pool } from '../utils/db.js';
 import { getEmbedding } from '../utils/ollamaEmbed.js';
 import EmailMemory from '../models/EmailMemory.js';
+
+const router = Router();
 
 // IMAP connection configuration
 const getImapConfig = () => ({
@@ -20,7 +23,6 @@ const getImapConfig = () => ({
 const testImapConnection = () => {
   return new Promise((resolve, reject) => {
     const imap = new Imap(getImapConfig());
-
     imap.once('ready', () => {
       imap.end();
       resolve(true);
@@ -35,7 +37,7 @@ const testImapConnection = () => {
 };
 
 // Get Gmail connection status
-export const getGmailStatus = async (req, res) => {
+router.get('/status/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -64,10 +66,10 @@ export const getGmailStatus = async (req, res) => {
     console.error('Error checking Gmail status:', error);
     res.status(500).json({ error: 'Failed to check Gmail status' });
   }
-};
+});
 
 // Connect to Gmail (now just tests connection)
-export const connectGmail = async (req, res) => {
+router.post('/connect', async (req, res) => {
   try {
     const { userId } = req.body;
 
@@ -87,12 +89,12 @@ export const connectGmail = async (req, res) => {
     console.error('Error connecting to Gmail:', error);
     res.status(500).json({ error: 'Failed to connect to Gmail via IMAP' });
   }
-};
+});
 
 // IMAP connection is direct - no callback needed
-export const handleGmailCallback = async (req, res) => {
+router.get('/callback', async (req, res) => {
   res.redirect(`${process.env.CLIENT_URL}/gmail-mcp?connected=true`);
-};
+});
 
 // Agentic email analysis using local Ollama
 async function analyzeEmailWithLLM(subject, body, from) {
@@ -612,7 +614,7 @@ function calculateCosineSimilarity(embedding1, embedding2) {
 }
 
 // Persistent vector-powered email sync - now with real-time updates
-export const syncEmails = async (req, res) => {
+router.post('/sync', async (req, res) => {
   try {
     const { userId } = req.body;
 
@@ -652,39 +654,18 @@ export const syncEmails = async (req, res) => {
 
     let newEmailsStored = 0;
     if (newEmails.length > 0) {
-      console.log('🔍 Calculating vector similarity for new emails...');
+      console.log('🔍 Pre-filtering emails using vector similarity...');
 
-      // Create reference embedding for web development - enhanced with AI focus
-      const webDevReference = `
-        web development job application interview position software engineer
-        react javascript node.js frontend backend fullstack developer
-        coding programming technical interview job offer recruitment
-        startup tech company software development career opportunity
-        artificial intelligence AI machine learning deep learning neural networks
-        AI community AI masters AI newsletter AI bootcamp AI training AI certification
-        AI tools AI development AI engineering AI research AI jobs AI career
-        ChatGPT OpenAI Claude Anthropic AI models AI agents AI automation
-        developer relations DevRel coding bootcamp programming education
-        hackathon conference meetup webinar workshop training certification
-      `;
-      const referenceEmbedding = await getEmbedding(webDevReference);
+      // Use the preFilterWebDevEmails function to efficiently filter emails
+      const filterResults = await preFilterWebDevEmails(newEmails);
 
-      // Store all new emails with similarity scores
-      for (const email of newEmails) {
+      console.log(
+        `📊 Pre-filter results: ${filterResults.likelyWebDevEmails.length} likely web-dev emails, ${filterResults.reductionPercentage}% reduction`,
+      );
+
+      // Store likely web-dev emails with their similarity scores
+      for (const email of filterResults.likelyWebDevEmails) {
         try {
-          // Enhanced email content for better similarity matching
-          // Give more weight to sender information by including it multiple times
-          const senderContext = `From: ${email.from} Sender: ${email.from}`;
-          const emailContent = `${senderContext} Subject: ${email.subject} ${email.body}`;
-
-          const emailEmbedding = await getEmbedding(emailContent);
-          const similarity = calculateCosineSimilarity(referenceEmbedding, emailEmbedding);
-
-          console.log(
-            `📧 From: "${email.from}" - "${email.subject.substring(0, 50)}..." - Similarity: ${similarity.toFixed(3)}`,
-          );
-
-          // Store email with similarity score (no LLM analysis yet)
           await EmailMemory.storeEmail({
             userId,
             emailId: email.id,
@@ -692,7 +673,27 @@ export const syncEmails = async (req, res) => {
             sender: email.from,
             body: email.body,
             emailDate: email.date,
-            similarityScore: similarity,
+            similarityScore: email.similarity,
+            llmAnalysis: null,
+          });
+
+          newEmailsStored++;
+        } catch (error) {
+          console.error('Error storing email:', error);
+        }
+      }
+
+      // Optionally store unlikely emails with low similarity (for completeness)
+      for (const email of filterResults.unlikelyEmails) {
+        try {
+          await EmailMemory.storeEmail({
+            userId,
+            emailId: email.id,
+            subject: email.subject,
+            sender: email.from,
+            body: email.body,
+            emailDate: email.date,
+            similarityScore: email.similarity,
             llmAnalysis: null,
           });
 
@@ -706,14 +707,14 @@ export const syncEmails = async (req, res) => {
     // Step 2: Get preliminary results - include emails that will be analyzed
     const allStoredEmails = await EmailMemory.getWebDevEmails({
       userId,
-      limit: 50,
+      limit: 51,
       since: null,
     });
 
     // Also get emails that meet similarity threshold but haven't been analyzed yet
     const pendingAnalysisEmails = await EmailMemory.getEmailsNeedingAnalysis({
       userId,
-      minSimilarity: 0.5,
+      minSimilarity: 0.52,
       limit: 10,
     });
 
@@ -858,10 +859,10 @@ export const syncEmails = async (req, res) => {
     console.error('Error syncing emails:', error);
     res.status(500).json({ error: 'Failed to sync emails via IMAP' });
   }
-};
+});
 
 // Get stored web-dev emails from database
-export const getStoredEmails = async (req, res) => {
+router.get('/emails/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const { limit = 50 } = req.query;
@@ -899,4 +900,6 @@ export const getStoredEmails = async (req, res) => {
     console.error('Error getting stored emails:', error);
     res.status(500).json({ error: 'Failed to get stored emails' });
   }
-};
+});
+
+export default router;
