@@ -274,6 +274,15 @@ class EmailMemory {
 
     return rows[0];
   }
+
+  // Get email by ID
+  static async getEmailById(userId, emailId) {
+    const { rows } = await pool.query(
+      'SELECT email_id, subject, sender, body, email_date, similarity_score, llm_analysis, llm_analyzed FROM email_memory WHERE user_id = $1 AND email_id = $2',
+      [userId, emailId],
+    );
+    return rows[0];
+  }
 }
 
 export default EmailMemory;
