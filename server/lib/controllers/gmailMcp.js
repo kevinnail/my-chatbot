@@ -493,7 +493,7 @@ function getEmailsViaImap(searchCriteria) {
                   from: parsed.from?.text || 'Unknown Sender',
                   date: parsed.date || new Date(),
                   body: parseEmailBody(parsed.text || parsed.html || ''),
-                  attributes: attributes,
+                  attributes,
                 });
               });
             });
@@ -524,12 +524,28 @@ async function preFilterWebDevEmails(emails) {
   try {
     console.log('🔍 Pre-filtering emails using vector similarity...');
 
-    // Create a reference embedding for "web development job emails"
+    // Create a reference embedding for "web development emails"
     const webDevReference = `
-      web development job application interview position software engineer
-      react javascript node.js frontend backend fullstack developer
-      coding programming technical interview job offer recruitment
-      startup tech company software development career opportunity
+      web development job application matches interview position software engineer developer     
+       rejection not selected moved forward resume react javascript node.js express typescript      
+       frontend backend full stack developer career coding programming technical interview
+      job offer recruitment startup tech company software development career opportunity
+      AI community meetup zoom machine learning AI agent AI assistant AI chatbot AI chat HTML5 CSS3       
+      SCSS Sass LESS responsive design flexbox grid layout Webpack Babel ESLint Prettier
+      Bootstrap Tailwind CSS Material UI Ant Design Chakra UI Figma Sketch Adobe XD UX/UI
+      accessibility SEO performance optimization REST API GraphQL microservices serverless
+      Docker Kubernetes AWS Azure Google Cloud Platform GCP CI/CD Git GitHub GitLab
+      version control unit testing integration testing end-to-end testing Jest Mocha
+      Cypress Selenium project manager hiring manager recruiter HR salary compensation
+      benefits equity relocation visa sponsorship remote on-site hybrid
+      internship contract freelance full-time part-time coding test take-home assignment
+      whiteboard interview pair programming technical screening code challenge algorithm
+      design data structures system design code review pull request merge request backlog
+      grooming sprint planning agile scrum kanban stand-up retrospective team collaboration
+      soft skills communication skills problem solving career growth leadership mentorship
+      deep learning neural network data science ML engineer data engineer AI engineer NLP
+      natural language processing computer vision transformer GPT BERT LLM embeddings
+      RAG vector database
     `;
 
     const referenceEmbedding = await getEmbedding(webDevReference);
@@ -550,7 +566,7 @@ async function preFilterWebDevEmails(emails) {
         return {
           ...email,
           similarity,
-          likelyWebDev: similarity > 0.6, // Higher threshold for better precision
+          likelyWebDev: similarity > 0.52, // Match the analysis threshold
         };
       }),
     );
@@ -654,8 +670,6 @@ router.post('/sync', async (req, res) => {
 
     let newEmailsStored = 0;
     if (newEmails.length > 0) {
-      console.log('🔍 Pre-filtering emails using vector similarity...');
-
       // Use the preFilterWebDevEmails function to efficiently filter emails
       const filterResults = await preFilterWebDevEmails(newEmails);
 
@@ -729,7 +743,7 @@ router.post('/sync', async (req, res) => {
         from: email.sender,
         date: email.email_date,
         analysis: email.llm_analysis,
-        webLink: `https://mail.google.com/mail/u/0/#inbox`,
+        webLink: 'https://mail.google.com/mail/u/0/#inbox',
         isNewSinceLastSync: lastSync ? new Date(email.email_date) > new Date(lastSync) : true,
         summary: email.llm_analysis?.summary || 'Analysis pending...',
         vectorSimilarity: email.similarity_score?.toFixed(3) || '0.000',
@@ -749,7 +763,7 @@ router.post('/sync', async (req, res) => {
           from: email.sender,
           date: email.email_date,
           analysis: null,
-          webLink: `https://mail.google.com/mail/u/0/#inbox`,
+          webLink: 'https://mail.google.com/mail/u/0/#inbox',
           isNewSinceLastSync: lastSync ? new Date(email.email_date) > new Date(lastSync) : true,
           summary: 'Analysis pending...',
           vectorSimilarity: email.similarity_score?.toFixed(3) || '0.000',
@@ -784,34 +798,38 @@ router.post('/sync', async (req, res) => {
     // Step 4: Start background analysis (don't wait for it)
     setImmediate(async () => {
       try {
-        const emailsNeedingAnalysis = await EmailMemory.getEmailsNeedingAnalysis({
-          userId,
-          minSimilarity: 0.5,
-          limit: 10,
-        });
+        // Analyze all emails shown to user that need analysis
+        const emailsNeedingAnalysis = preliminaryEmails.filter((email) => !email.analyzed);
 
         console.log(
-          `🤖 Background analysis starting for ${emailsNeedingAnalysis.length} emails (similarity >= 0.5)`,
+          `🤖 Background analysis starting for ${emailsNeedingAnalysis.length} emails from preliminary results`,
         );
 
-        // Run LLM analysis on high-similarity emails
+        // Run LLM analysis on emails shown to user that need analysis
         let analyzedCount = 0;
         for (const email of emailsNeedingAnalysis) {
           try {
             console.log(
-              `🧠 Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.similarity_score.toFixed(3)})`,
+              `🧠 Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.vectorSimilarity})`,
             );
 
-            const analysis = await analyzeEmailWithLLM(email.subject, email.body, email.sender);
-            await EmailMemory.updateEmailAnalysis(userId, email.email_id, analysis);
+            // Get full email body from database for analysis
+            const fullEmail = await EmailMemory.getEmailById(userId, email.id);
+            if (!fullEmail) {
+              console.warn(`Email ${email.id} not found in database`);
+              continue;
+            }
+
+            const analysis = await analyzeEmailWithLLM(email.subject, fullEmail.body, email.from);
+            await EmailMemory.updateEmailAnalysis(userId, email.id, analysis);
 
             analyzedCount++;
 
             // Emit real-time update for this email
             req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzed', {
-              emailId: email.email_id,
-              analysis: analysis,
-              analyzedCount: analyzedCount,
+              emailId: email.id,
+              analysis,
+              analyzedCount,
               totalToAnalyze: emailsNeedingAnalysis.length,
             });
 
@@ -845,7 +863,7 @@ router.post('/sync', async (req, res) => {
             totalFetched: rawEmails.length,
             newStored: newEmailsStored,
             analyzed: analyzedCount,
-            reductionPercentage: reductionPercentage,
+            reductionPercentage,
             timeSaved: `${Math.round((totalSaved * 30) / 60)} minutes`,
           });
       } catch (error) {
@@ -881,7 +899,7 @@ router.get('/emails/:userId', async (req, res) => {
       from: email.sender,
       date: email.email_date,
       analysis: email.llm_analysis,
-      webLink: `https://mail.google.com/mail/u/0/#inbox`,
+      webLink: 'https://mail.google.com/mail/u/0/#inbox',
       summary: email.llm_analysis?.summary || 'Analysis pending...',
       vectorSimilarity: email.similarity_score?.toFixed(3) || '0.000',
       analyzed: email.llm_analyzed,
