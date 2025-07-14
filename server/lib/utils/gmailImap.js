@@ -76,6 +76,10 @@ export function getEmailsViaImap(searchCriteria) {
           // Limit results to prevent overwhelming
           const limitedResults = results.slice(0, 50);
 
+          // Track parsing completion
+          let parsedCount = 0;
+          const totalEmails = limitedResults.length;
+
           const fetch = imap.fetch(limitedResults, { bodies: '', markSeen: false });
 
           fetch.on('message', (msg, seqno) => {
@@ -102,6 +106,13 @@ export function getEmailsViaImap(searchCriteria) {
               simpleParser(body, (err, parsed) => {
                 if (err) {
                   console.error('Error parsing email:', err);
+                  parsedCount++;
+
+                  // Check if all emails are processed
+                  if (parsedCount === totalEmails) {
+                    imap.end();
+                    resolve(emails);
+                  }
                   return;
                 }
 
@@ -113,17 +124,20 @@ export function getEmailsViaImap(searchCriteria) {
                   body: parseEmailBody(parsed.text || parsed.html || ''),
                   attributes,
                 });
+
+                parsedCount++;
+
+                // Check if all emails are processed
+                if (parsedCount === totalEmails) {
+                  imap.end();
+                  resolve(emails);
+                }
               });
             });
           });
 
           fetch.once('error', (err) => {
             reject(err);
-          });
-
-          fetch.once('end', () => {
-            imap.end();
-            resolve(emails);
           });
         });
       });
