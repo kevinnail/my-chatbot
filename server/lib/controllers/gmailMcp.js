@@ -91,7 +91,6 @@ router.post('/sync', async (req, res) => {
         newEmails.push(email);
       }
     }
-
     console.log(
       `✨ Found ${newEmails.length} new emails (${rawEmails.length - newEmails.length} already stored)`,
     );
@@ -281,7 +280,7 @@ router.post('/sync', async (req, res) => {
           - New emails stored: ${newEmailsStored}  
           - Emails analyzed: ${analyzedCount}
           - LLM calls reduced by: ${reductionPercentage}%
-          - Time saved: ~${Math.round((totalSaved * 30) / 60)} minutes`);
+          - Time saved: ~${Math.round((totalSaved * 200) / 60)} minutes`);
 
         // Emit final completion event
         req.app
