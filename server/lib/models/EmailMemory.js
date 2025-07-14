@@ -94,85 +94,6 @@ class EmailMemory {
     return rows;
   }
 
-  // Find similar emails using vector search
-  static async findSimilarEmails({ userId, queryText, limit = 5 }) {
-    const queryEmbedding = await getEmbedding(queryText);
-
-    const { rows } = await pool.query(
-      `
-      SELECT 
-        email_id, subject, sender, body, email_date, category, priority,
-        sentiment, action_items, llm_analysis, created_at,
-        embedding <-> $2 as distance
-      FROM email_memory
-      WHERE user_id = $1 AND is_web_dev_related = true
-      ORDER BY embedding <-> $2
-      LIMIT $3
-    `,
-      [userId, queryEmbedding, limit],
-    );
-
-    return rows;
-  }
-
-  // Get emails by category
-  static async getEmailsByCategory({ userId, category, limit = 10 }) {
-    const { rows } = await pool.query(
-      `
-      SELECT 
-        email_id, subject, sender, body, email_date, category, priority,
-        sentiment, action_items, llm_analysis, created_at
-      FROM email_memory
-      WHERE user_id = $1 AND category = $2 AND is_web_dev_related = true
-      ORDER BY email_date DESC
-      LIMIT $3
-    `,
-      [userId, category, limit],
-    );
-
-    return rows;
-  }
-
-  // Get emails by priority
-  static async getEmailsByPriority({ userId, priority, limit = 10 }) {
-    const { rows } = await pool.query(
-      `
-      SELECT 
-        email_id, subject, sender, body, email_date, category, priority,
-        sentiment, action_items, llm_analysis, created_at
-      FROM email_memory
-      WHERE user_id = $1 AND priority = $2 AND is_web_dev_related = true
-      ORDER BY email_date DESC
-      LIMIT $3
-    `,
-      [userId, priority, limit],
-    );
-
-    return rows;
-  }
-
-  // Get recent emails that might be relevant to a query
-  static async getRelevantEmails({ userId, queryText, limit = 10 }) {
-    const queryEmbedding = await getEmbedding(queryText);
-
-    const { rows } = await pool.query(
-      `
-      SELECT 
-        email_id, subject, sender, body, email_date, category, priority,
-        sentiment, action_items, llm_analysis, created_at,
-        embedding <-> $2 as distance
-      FROM email_memory
-      WHERE user_id = $1 AND is_web_dev_related = true
-      AND email_date > NOW() - INTERVAL '30 days'
-      ORDER BY embedding <-> $2
-      LIMIT $3
-    `,
-      [userId, queryEmbedding, limit],
-    );
-
-    return rows;
-  }
-
   // Get emails that need LLM analysis (high similarity but not yet analyzed)
   static async getEmailsNeedingAnalysis({ userId, minSimilarity = 0.55, limit = 10 }) {
     const { rows } = await pool.query(
@@ -185,23 +106,6 @@ class EmailMemory {
       LIMIT $3
     `,
       [userId, minSimilarity, limit],
-    );
-
-    return rows;
-  }
-
-  // Get unanalyzed emails (for batch processing)
-  static async getUnanalyzedEmails({ userId, limit = 50 }) {
-    const { rows } = await pool.query(
-      `
-      SELECT 
-        email_id, subject, sender, body, email_date, created_at
-      FROM email_memory
-      WHERE user_id = $1 AND (llm_analysis IS NULL OR llm_analysis = '{}')
-      ORDER BY email_date DESC
-      LIMIT $2
-    `,
-      [userId, limit],
     );
 
     return rows;
@@ -236,43 +140,6 @@ class EmailMemory {
 
     const result = await pool.query(query, values);
     return result.rows[0];
-  }
-
-  // Delete old emails to keep storage manageable
-  static async cleanupOldEmails({ userId, daysToKeep = 90 }) {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-
-    const { rowCount } = await pool.query(
-      `
-      DELETE FROM email_memory
-      WHERE user_id = $1 AND email_date < $2
-    `,
-      [userId, cutoffDate],
-    );
-
-    return rowCount;
-  }
-
-  // Get email statistics
-  static async getEmailStats(userId) {
-    const { rows } = await pool.query(
-      `
-      SELECT 
-        COUNT(*) as total_emails,
-        COUNT(CASE WHEN is_web_dev_related = true THEN 1 END) as web_dev_emails,
-        COUNT(CASE WHEN category = 'job_interview' THEN 1 END) as interviews,
-        COUNT(CASE WHEN category = 'job_offer' THEN 1 END) as offers,
-        COUNT(CASE WHEN priority = 'high' THEN 1 END) as high_priority,
-        MIN(email_date) as oldest_email,
-        MAX(email_date) as newest_email
-      FROM email_memory
-      WHERE user_id = $1
-    `,
-      [userId],
-    );
-
-    return rows[0];
   }
 
   // Get email by ID
