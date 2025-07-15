@@ -23,7 +23,7 @@ const GmailMCP = ({ userId }) => {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('📡 Connected to real-time updates');
+      console.log('Connected to real-time updates');
       socket.emit('join-sync-updates', userId);
     });
 
@@ -32,8 +32,8 @@ const GmailMCP = ({ userId }) => {
     });
 
     socket.on('email-analyzed', (data) => {
-      console.log('📧 Email analysis complete:', data);
-      console.log('📧 Looking for email ID:', data.emailId);
+      console.log('Email analysis complete:', data);
+      console.log('Looking for email ID:', data.emailId);
 
       setAnalysisProgress({ analyzed: data.analyzedCount, total: data.totalToAnalyze });
 
@@ -81,7 +81,7 @@ const GmailMCP = ({ userId }) => {
     });
 
     socket.on('disconnect', () => {
-      console.log('📡 Disconnected from real-time updates');
+      console.log('Disconnected from real-time updates');
     });
 
     return () => {
@@ -194,7 +194,7 @@ const GmailMCP = ({ userId }) => {
 
         // Analysis continues in background via Socket.IO
         if (data.analysisInProgress) {
-          console.log('📊 Preliminary results loaded, analysis continuing...');
+          console.log('Preliminary results loaded, analysis continuing...');
         } else {
           // No analysis needed, sync complete
           setAnalysisInProgress(false);

@@ -22,15 +22,15 @@ app.set('io', io);
 
 // Socket.IO connection handler
 io.on('connection', (socket) => {
-  console.log('🔌 Client connected for real-time updates');
+  console.log('Client connected for real-time updates');
 
   socket.on('join-sync-updates', (userId) => {
     socket.join(`sync-updates-${userId}`);
-    console.log(`📡 Client joined sync updates for user ${userId}`);
+    console.log(` Client joined sync updates for user ${userId}`);
   });
 
   socket.on('disconnect', () => {
-    console.log('🔌 Client disconnected');
+    console.log('Client disconnected');
   });
 });
 

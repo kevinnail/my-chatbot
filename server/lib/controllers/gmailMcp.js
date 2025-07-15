@@ -62,7 +62,7 @@ router.post('/sync', async (req, res) => {
   try {
     const { userId } = req.body;
 
-    console.log('🚀 Starting persistent vector-powered email sync...');
+    console.log('Starting persistent vector-powered email sync...');
 
     // Get last sync time for tracking purposes
     const lastSync = await GmailSync.getLastSyncTime(userId);
@@ -77,11 +77,11 @@ router.post('/sync', async (req, res) => {
       ['SINCE', thirtyDaysAgo], // From last 30 days
     ];
 
-    console.log('📧 Fetching emails via IMAP...');
+    console.log('Fetching emails via IMAP...');
 
     // Get emails via IMAP
     const rawEmails = await getEmailsViaImap(searchCriteria);
-    console.log(`📬 Found ${rawEmails.length} raw emails`);
+    console.log(`Found ${rawEmails.length} raw emails`);
 
     // Step 1: Filter out emails already in database and calculate similarity for new ones
     const newEmails = [];
@@ -101,7 +101,7 @@ router.post('/sync', async (req, res) => {
       const filterResults = await preFilterWebDevEmails(newEmails);
 
       console.log(
-        `📊 Pre-filter results: ${filterResults.likelyWebDevEmails.length} likely web-dev emails, ${filterResults.reductionPercentage}% reduction`,
+        ` Pre-filter results: ${filterResults.likelyWebDevEmails.length} likely web-dev emails, ${filterResults.reductionPercentage}% reduction`,
       );
 
       // Store likely web-dev emails with their similarity scores
@@ -204,7 +204,7 @@ router.post('/sync', async (req, res) => {
 
     const preliminaryEmails = Array.from(preliminaryEmailsMap.values());
 
-    console.log(`📦 Returning ${preliminaryEmails.length} preliminary emails`);
+    console.log(`Returning ${preliminaryEmails.length} preliminary emails`);
 
     // Step 3: Return preliminary results immediately
     res.json({
@@ -280,7 +280,7 @@ router.post('/sync', async (req, res) => {
         const reductionPercentage =
           rawEmails.length > 0 ? Math.round((totalSaved / rawEmails.length) * 100) : 0;
 
-        console.log(`📈 Background analysis complete!
+        console.log(`Background analysis complete!
           - Total emails fetched: ${rawEmails.length}
           - New emails stored: ${newEmailsStored}  
           - Emails analyzed: ${analyzedCount}
@@ -317,7 +317,7 @@ router.get('/emails/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit = 50 } = req.query;
 
-    console.log(`📚 Getting stored web-dev emails for user ${userId}`);
+    console.log(`Getting stored web-dev emails for user ${userId}`);
 
     const webDevEmails = await EmailMemory.getWebDevEmails({
       userId,
@@ -339,7 +339,7 @@ router.get('/emails/:userId', async (req, res) => {
       priority: email.llm_analysis?.priority,
     }));
 
-    console.log(`📊 Found ${formattedEmails.length} stored web-dev emails`);
+    console.log(`Found ${formattedEmails.length} stored web-dev emails`);
 
     res.json({
       emails: formattedEmails,
