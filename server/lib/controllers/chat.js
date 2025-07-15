@@ -51,10 +51,21 @@ router.post('/', async (req, res) => {
       body: JSON.stringify({
         model: process.env.OLLAMA_MODEL,
         messages,
+        // tools: availableTools,  //^ maybe add a helper for questions on coding?
         options: {
-          temperature: 1.1,
+          min_p: 0.05,
+          temperature: 0.2,
           top_p: 0.9,
-          repeat_penalty: 1.1,
+          mirostat: 0,
+          repeat_penalty: 1.05,
+          top_k: 40,
+          // optional settings for coding
+          // min_p: 0.9,
+          // temperature: 0.2,
+          // top_p: 1,
+          // mirostat: 0,
+          // repeat_penalty: 1.05,
+          // top_k: 40,
         },
         stream: false,
       }),
