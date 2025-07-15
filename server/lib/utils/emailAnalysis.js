@@ -24,6 +24,35 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailBody, e
     // Create calendar API client
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
+    // Check for existing events at the same time (conflict detection)
+    const startTime = new Date(eventArgs.startDateTime);
+    const endTime = new Date(eventArgs.endDateTime);
+
+    try {
+      const existingEvents = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: startTime.toISOString(),
+        timeMax: endTime.toISOString(),
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+
+      if (existingEvents.data.items && existingEvents.data.items.length > 0) {
+        console.log('CONFLICT DETECTED: There are existing events at this time:');
+        existingEvents.data.items.forEach((event, index) => {
+          console.log(
+            `   ${index + 1}. "${event.summary}" from ${event.start.dateTime || event.start.date} to ${event.end.dateTime || event.end.date}`,
+          );
+        });
+
+        // Still create the event but with a note about the conflict
+        const conflictNote = `\n\nCONFLICT WARNING: There ${existingEvents.data.items.length === 1 ? 'is' : 'are'} ${existingEvents.data.items.length} existing event${existingEvents.data.items.length === 1 ? '' : 's'} at this time:\n${existingEvents.data.items.map((e) => `• ${e.summary}`).join('\n')}`;
+        eventArgs.description = (eventArgs.description || '') + conflictNote;
+      }
+    } catch (conflictError) {
+      console.error('Error checking for conflicts:', conflictError);
+    }
+
     // Format the event for Google Calendar
     const event = {
       summary: eventArgs.title,
@@ -33,11 +62,11 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailBody, e
       location: eventArgs.location,
       start: {
         dateTime: eventArgs.startDateTime,
-        timeZone: 'America/New_York', // Default timezone
+        timeZone: 'America/Los_Angeles',
       },
       end: {
         dateTime: eventArgs.endDateTime,
-        timeZone: 'America/New_York', // Default timezone
+        timeZone: 'America/Los_Angeles',
       },
       attendees: eventArgs.attendees ? eventArgs.attendees.map((email) => ({ email })) : [],
     };
@@ -48,17 +77,67 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailBody, e
       resource: event,
     });
 
-    console.log(`Calendar event created: ${response.data.htmlLink}`);
+    console.log(`✅ Calendar event created successfully: ${response.data.htmlLink}`);
+    if (response.data.status === 'confirmed') {
+      console.log(`Event "${event.summary}" confirmed for ${eventArgs.startDateTime}`);
+    }
+
+    return response.data;
   } catch (error) {
     console.error('Error creating calendar event:', error);
+    if (error.response) {
+      console.error('API Error Details:', error.response.data);
+    }
+    throw error;
   }
 }
 
 // Agentic email analysis using local Ollama
 export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   try {
-    const systemPrompt = `You are an intelligent email agent that helps web developers manage their professional emails. 
-    You analyze emails and provide actionable insights. Your responses should be structured JSON with this format:
+    const currentYear = new Date().getFullYear();
+    const systemPrompt = `You are an intelligent email agent that helps users manage their emails both professional and personal. 
+
+    CRITICAL PRIORITY: APPOINTMENT DETECTION
+    You have access to a create_calendar_event tool. You MUST use this tool when you detect ANY appointment-related emails, including:
+    - Meeting invitations or confirmations
+    - Interview scheduling or reminders
+    - Event confirmations or reminders
+    - Appointment reminders (including "appt" abbreviation)
+    - Calendar invitations
+    - Doctor, dentist, medical appointments
+    - Service appointments (car, home, etc.)
+    - Personal meetings and calls
+    - Business meetings
+    - Consultation appointments
+    - Follow-up meetings
+    - One-on-one meetings
+    - Coffee meetings, lunch meetings
+    - Any scheduled activity with a specific date and time
+
+    Look for these keywords (case-insensitive): "appointment", "appt", "meeting", "call", "schedule", "scheduled", "reschedule", "confirm", "confirmation", "reminder", "calendar", "invite", "invitation", "doctor", "dentist", "medical", "clinic", "hospital", "consultation", "follow-up", "follow up", "catch up", "phone call", "video call", "zoom", "teams", "meet", "coffee", "lunch", "dinner", "one-on-one", "standup", "sync", "check-in", "service", "maintenance"
+
+    When parsing dates, be flexible with formats like:
+    - "weds july 16th at 2pm" -> If year not specified, assume current year ${currentYear} (e.g., ${currentYear}-07-16T14:00:00)
+    - "tomorrow at 3pm" -> calculate the actual date based on today's date
+    - "next friday 10am" -> calculate the actual date based on today's date
+    - Always convert to ISO format (YYYY-MM-DDTHH:mm:ss)
+    - For duration, assume 1 hour if not specified (e.g., end time = start time + 1 hour)
+    - If a date seems to be in the past and no year is specified, assume it's for the following year (${currentYear + 1})
+    
+    IMPORTANT DATE LOGIC:
+    - Current year is ${currentYear}
+    - If no year is specified and the date seems recent or upcoming, use ${currentYear}
+    - If no year is specified and the date appears to be in the past, use ${currentYear + 1}
+    - Always double-check that your parsed dates make logical sense
+    
+    EXAMPLE: If you see "Just wanted to confirm your appt on weds july 16th at 2pm", you should:
+    1. Recognize "appt" as appointment
+    2. Parse "weds july 16th at 2pm" as ${currentYear}-07-16T14:00:00 (assuming current year)
+    3. Set end time as ${currentYear}-07-16T15:00:00 (1 hour duration)
+    4. Use the create_calendar_event tool with these parameters
+
+    Your responses should be structured JSON with this format:
     {
       "isWebDevRelated": true/false,
       "category": "job_application|job_rejection|job_acceptance|job_interview|job_offer|event|learning|tools|networking|newsletter|community|freelance|other",
@@ -69,15 +148,7 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
       "draftResponse": "Suggested response if appropriate, or null"
     }
 
-    You also have access to a create_calendar_event tool. Use this tool ONLY when you detect appointment-related emails such as:
-    - Meeting invitations
-    - Interview scheduling
-    - Event confirmations
-    - Appointment reminders
-    - Calendar invitations
-    - One on one calls
-    
-    When you detect such emails, extract the relevant information and create a calendar event.
+    If you detect appointment-related content, you MUST also use the create_calendar_event tool.
 
     Focus on detecting web development related emails including:
     
@@ -221,14 +292,19 @@ Provide your analysis in the JSON format specified.`;
       for (const toolCall of toolCalls) {
         if (toolCall.function.name === 'create_calendar_event') {
           try {
-            const args = JSON.parse(toolCall.function.arguments);
+            // Ollama returns arguments as objects, not strings
+            const args = toolCall.function.arguments;
+
             await createCalendarEvent(userId, args, subject, body, from);
-            console.log('📅 Calendar event created from email analysis');
           } catch (error) {
             console.error('Error creating calendar event:', error);
           }
         }
       }
+    } else {
+      console.log('❌ No tool calls detected or no userId provided');
+      console.log('Tool calls length:', toolCalls.length);
+      console.log('User ID:', userId);
     }
 
     try {
@@ -375,6 +451,7 @@ export function checkWebDevKeywords(subject, body, from) {
 
     // Appointments and meetings
     'appointment',
+    'appt',
     'meeting',
     'call',
     'schedule',
