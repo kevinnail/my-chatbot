@@ -8,6 +8,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 DROP TABLE IF EXISTS chat_memory CASCADE;
 DROP TABLE IF EXISTS gmail_tokens CASCADE;
 DROP TABLE IF EXISTS gmail_sync_status CASCADE;
+DROP TABLE IF EXISTS google_calendar_tokens CASCADE;
 
 -- Create chat_memory table
 CREATE TABLE chat_memory (
@@ -65,6 +66,24 @@ CREATE INDEX IF NOT EXISTS idx_email_memory_embedding ON email_memory USING ivff
 CREATE INDEX IF NOT EXISTS idx_email_memory_category ON email_memory(category);
 CREATE INDEX IF NOT EXISTS idx_email_memory_priority ON email_memory(priority);
 CREATE INDEX IF NOT EXISTS idx_email_memory_web_dev ON email_memory(is_web_dev_related);
+
+-- Create google_calendar_tokens table
+CREATE TABLE google_calendar_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL UNIQUE,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT,
+    token_type VARCHAR(50) DEFAULT 'Bearer',
+    expires_at TIMESTAMP,
+    scope TEXT DEFAULT 'https://www.googleapis.com/auth/calendar',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+-- Create indexes for Google Calendar tables
+CREATE INDEX IF NOT EXISTS idx_google_calendar_tokens_user_id ON google_calendar_tokens(user_id);
 
 -- Insert sample test data (for development/testing)
 INSERT INTO chat_memory (user_id, role, content, embedding) VALUES
