@@ -247,7 +247,12 @@ router.post('/sync', async (req, res) => {
               continue;
             }
 
-            const analysis = await analyzeEmailWithLLM(email.subject, fullEmail.body, email.from);
+            const analysis = await analyzeEmailWithLLM(
+              email.subject,
+              fullEmail.body,
+              email.from,
+              userId,
+            );
             await EmailMemory.updateEmailAnalysis(userId, email.id, analysis);
 
             analyzedCount++;
