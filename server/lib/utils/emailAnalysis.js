@@ -1,5 +1,61 @@
+import { google } from 'googleapis';
+import GoogleCalendar from '../models/GoogleCalendar.js';
+
+// Helper function to create calendar event
+async function createCalendarEvent(userId, eventArgs, emailSubject, emailBody, emailFrom) {
+  try {
+    // Check if user has valid Google Calendar tokens
+    const hasValidTokens = await GoogleCalendar.hasValidTokens(userId);
+    if (!hasValidTokens) {
+      console.log('User does not have valid Google Calendar tokens, skipping event creation');
+      return;
+    }
+
+    // Set up OAuth2 client
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI,
+    );
+
+    const tokens = await GoogleCalendar.getTokens(userId);
+    oauth2Client.setCredentials(tokens);
+
+    // Create calendar API client
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    // Format the event for Google Calendar
+    const event = {
+      summary: eventArgs.title,
+      description:
+        eventArgs.description ||
+        `Created from email: ${emailSubject}\n\nOriginal email from: ${emailFrom}`,
+      location: eventArgs.location,
+      start: {
+        dateTime: eventArgs.startDateTime,
+        timeZone: 'America/New_York', // Default timezone
+      },
+      end: {
+        dateTime: eventArgs.endDateTime,
+        timeZone: 'America/New_York', // Default timezone
+      },
+      attendees: eventArgs.attendees ? eventArgs.attendees.map((email) => ({ email })) : [],
+    };
+
+    // Create the event
+    const response = await calendar.events.insert({
+      calendarId: 'primary',
+      resource: event,
+    });
+
+    console.log(`Calendar event created: ${response.data.htmlLink}`);
+  } catch (error) {
+    console.error('Error creating calendar event:', error);
+  }
+}
+
 // Agentic email analysis using local Ollama
-export async function analyzeEmailWithLLM(subject, body, from) {
+export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   try {
     const systemPrompt = `You are an intelligent email agent that helps web developers manage their professional emails. 
     You analyze emails and provide actionable insights. Your responses should be structured JSON with this format:
@@ -12,6 +68,16 @@ export async function analyzeEmailWithLLM(subject, body, from) {
       "sentiment": "positive|negative|neutral",
       "draftResponse": "Suggested response if appropriate, or null"
     }
+
+    You also have access to a create_calendar_event tool. Use this tool ONLY when you detect appointment-related emails such as:
+    - Meeting invitations
+    - Interview scheduling
+    - Event confirmations
+    - Appointment reminders
+    - Calendar invitations
+    - One on one calls
+    
+    When you detect such emails, extract the relevant information and create a calendar event.
 
     Focus on detecting web development related emails including:
     
@@ -32,6 +98,19 @@ export async function analyzeEmailWithLLM(subject, body, from) {
     - Industry events and networking
     - Training sessions and boot camps
     - Company tech talks
+    
+    APPOINTMENTS & MEETINGS:
+    - Doctor appointments and medical visits
+    - Dentist appointments
+    - Phone calls and video calls
+    - Business meetings and client calls
+    - Personal meetings and catch-ups
+    - Service appointments (car, home, etc.)
+    - Consultation appointments
+    - Follow-up meetings
+    - One-on-one meetings
+    - Team meetings and standups
+    - Coffee meetings and informal chats
     
     LEARNING RELATED:
     - Course platforms (Udemy, Coursera, Pluralsight, etc.)
@@ -72,6 +151,49 @@ export async function analyzeEmailWithLLM(subject, body, from) {
 
 Provide your analysis in the JSON format specified.`;
 
+    // Define the calendar event creation tool
+    const tools = [
+      {
+        type: 'function',
+        function: {
+          name: 'create_calendar_event',
+          description:
+            'Create a calendar event for appointments, meetings, interviews, or other scheduled events',
+          parameters: {
+            type: 'object',
+            properties: {
+              title: {
+                type: 'string',
+                description: 'The title/summary of the event',
+              },
+              description: {
+                type: 'string',
+                description: 'Detailed description of the event',
+              },
+              startDateTime: {
+                type: 'string',
+                description: 'Start date and time in ISO format (e.g., 2024-01-15T10:00:00)',
+              },
+              endDateTime: {
+                type: 'string',
+                description: 'End date and time in ISO format (e.g., 2024-01-15T11:00:00)',
+              },
+              location: {
+                type: 'string',
+                description: 'Location of the event (optional)',
+              },
+              attendees: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'List of attendee email addresses',
+              },
+            },
+            required: ['title', 'startDateTime', 'endDateTime'],
+          },
+        },
+      },
+    ];
+
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -81,6 +203,7 @@ Provide your analysis in the JSON format specified.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
+        tools: tools,
         options: {
           temperature: 0.3, // Lower temperature for more consistent JSON output
           top_p: 0.9,
@@ -91,6 +214,22 @@ Provide your analysis in the JSON format specified.`;
 
     const data = await response.json();
     const rawResponse = data.message?.content || '';
+    const toolCalls = data.message?.tool_calls || [];
+
+    // Handle tool calls if present
+    if (toolCalls.length > 0 && userId) {
+      for (const toolCall of toolCalls) {
+        if (toolCall.function.name === 'create_calendar_event') {
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            await createCalendarEvent(userId, args, subject, body, from);
+            console.log('📅 Calendar event created from email analysis');
+          } catch (error) {
+            console.error('Error creating calendar event:', error);
+          }
+        }
+      }
+    }
 
     try {
       // Try to parse JSON response
@@ -233,6 +372,43 @@ export function checkWebDevKeywords(subject, body, from) {
     'bootcamp',
     'event',
     'networking',
+
+    // Appointments and meetings
+    'appointment',
+    'meeting',
+    'call',
+    'schedule',
+    'scheduled',
+    'reschedule',
+    'confirm',
+    'confirmation',
+    'reminder',
+    'calendar',
+    'invite',
+    'invitation',
+    'doctor',
+    'dentist',
+    'medical',
+    'clinic',
+    'hospital',
+    'consultation',
+    'follow-up',
+    'follow up',
+    'catch up',
+    'phone call',
+    'video call',
+    'zoom',
+    'teams',
+    'meet',
+    'coffee',
+    'lunch',
+    'dinner',
+    'one-on-one',
+    'standup',
+    'sync',
+    'check-in',
+    'service',
+    'maintenance',
 
     // Learning platforms
     'udemy',
