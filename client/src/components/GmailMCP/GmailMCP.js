@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import './GmailMCP.css';
+import GoogleCalendar from '../GoogleCalendar/GoogleCalendar.js';
 
 const GmailMCP = ({ userId }) => {
   const [emails, setEmails] = useState([]);
@@ -16,7 +17,6 @@ const GmailMCP = ({ userId }) => {
   const [analysisProgress, setAnalysisProgress] = useState({ analyzed: 0, total: 0 });
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
   const socketRef = useRef(null);
-
   // Initialize Socket.IO connection
   useEffect(() => {
     const socket = io('http://localhost:4000');
@@ -508,6 +508,7 @@ const GmailMCP = ({ userId }) => {
           </div>
         </div>
       )}
+      <GoogleCalendar userId={userId} />
     </div>
   );
 };
