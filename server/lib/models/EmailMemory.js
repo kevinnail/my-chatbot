@@ -13,7 +13,19 @@ class EmailMemory {
     similarityScore = 0,
     llmAnalysis = null,
   }) {
+    // Check if this might be an appointment email
     const emailContent = `${subject} ${body} ${sender}`;
+    const isAppointmentRelated =
+      /\b(appointment|appt|meeting|call|schedule|scheduled|reschedule|confirm|confirmation|reminder|calendar|invite|invitation|doctor|dentist|medical|clinic|hospital|consultation|follow-up|follow up|catch up|phone call|video call|zoom|teams|meet|coffee|lunch|dinner|one-on-one|standup|sync|check-in|service|maintenance)\b/i.test(
+        emailContent,
+      );
+
+    if (isAppointmentRelated) {
+      console.log(
+        ` Storing appointment-related email: "${subject}" (similarity: ${similarityScore?.toFixed(3)})`,
+      );
+    }
+
     const embedding = await getEmbedding(emailContent);
 
     const query = `
@@ -94,19 +106,47 @@ class EmailMemory {
     return rows;
   }
 
-  // Get emails that need LLM analysis (high similarity but not yet analyzed)
-  static async getEmailsNeedingAnalysis({ userId, minSimilarity = 0.55, limit = 10 }) {
+  // Get emails that need LLM analysis (high similarity OR appointment-related but not yet analyzed)
+  static async getEmailsNeedingAnalysis({ userId, minSimilarity, limit = 10 }) {
+    console.log(
+      ` Getting emails needing analysis for user ${userId} with minSimilarity ${minSimilarity}`,
+    );
+
     const { rows } = await pool.query(
       `
       SELECT 
-        email_id, subject, sender, body, email_date, similarity_score, created_at
+        email_id, subject, sender, body, email_date, similarity_score, created_at,
+        CASE WHEN similarity_score >= $2 THEN 'web_dev' ELSE 'appointment' END as selection_reason
       FROM email_memory
-      WHERE user_id = $1 AND similarity_score >= $2 AND llm_analyzed = false
-      ORDER BY similarity_score DESC, email_date DESC
+      WHERE user_id = $1 AND llm_analyzed = false
+      AND (
+        similarity_score >= $2
+        OR subject ILIKE '%appt%'
+        OR subject ILIKE '%appointment%'
+        OR subject ILIKE '%meeting%'
+        OR subject ILIKE '%call%'
+        OR subject ILIKE '%schedule%'
+        OR subject ILIKE '%scheduled%'
+        OR subject ILIKE '%reschedule%'
+        OR subject ILIKE '%confirm%'
+        OR subject ILIKE '%confirmation%'
+        OR subject ILIKE '%reminder%'
+      )
+      ORDER BY 
+        CASE WHEN similarity_score >= $2 THEN 0 ELSE 1 END, -- Web dev emails first
+        similarity_score DESC, 
+        email_date DESC
       LIMIT $3
     `,
       [userId, minSimilarity, limit],
     );
+
+    console.log(` Found ${rows.length} emails needing analysis:`);
+    rows.forEach((row) => {
+      console.log(
+        `  - "${row.subject}" (${row.selection_reason}, similarity: ${row.similarity_score?.toFixed(3)})`,
+      );
+    });
 
     return rows;
   }
