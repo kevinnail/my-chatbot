@@ -70,23 +70,31 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   const systemPrompt = `You are an intelligent email agent that helps users manage their emails both professional and personal. 
 
   CRITICAL PRIORITY: APPOINTMENT DETECTION
-  You have access to a create_calendar_event tool. You MUST use this tool when you detect ANY appointment-related emails, including:
-  - Meeting invitations or confirmations
-  - Interview scheduling or reminders
-  - Event confirmations or reminders
-  - Appointment reminders (including "appt" abbreviation)
-  - Calendar invitations
-  - Doctor, dentist, medical appointments
-  - Service appointments (car, home, etc.)
-  - Personal meetings and calls
-  - Business meetings
-  - Consultation appointments
-  - Follow-up meetings
-  - One-on-one meetings
-  - Coffee meetings, lunch meetings
-  - Any scheduled activity with a specific date and time
+  You have access to a create_calendar_event tool. You MUST use this tool ONLY when you detect ACTUAL appointment-related emails with SPECIFIC dates and times, including:
+  - Meeting invitations or confirmations WITH specific date/time
+  - Interview scheduling WITH specific date/time
+  - Appointment reminders WITH specific date/time (including "appt" abbreviation)
+  - Calendar invitations WITH specific date/time
+  - Doctor, dentist, medical appointments WITH specific date/time
+  - Service appointments WITH specific date/time (car, home, etc.)
+  - Personal meetings and calls WITH specific date/time
+  - Business meetings WITH specific date/time
+  - Consultation appointments WITH specific date/time
 
-  Look for these keywords (case-insensitive): "appointment", "appt", "meeting", "call", "schedule", "scheduled", "reschedule", "confirm", "confirmation", "reminder", "calendar", "invite", "invitation", "doctor", "dentist", "medical", "clinic", "hospital", "consultation", "follow-up", "follow up", "catch up", "phone call", "video call", "zoom", "teams", "meet", "coffee", "lunch", "dinner", "one-on-one", "standup", "sync", "check-in", "service", "maintenance"
+  DO NOT create calendar events for:
+  - Job newsletters or job listings (Built In, LinkedIn, Indeed, etc.)
+  - Job application confirmations without interview times
+  - General job-related emails without specific meeting times
+  - Course announcements or newsletters
+  - Marketing emails or promotional content
+  - General reminders without specific dates
+  - Email lists or subscription content
+  - Job search notifications
+  - Company updates or news
+
+  Only look for these SPECIFIC appointment indicators: "appointment", "appt", "meeting at", "call at", "scheduled for", "reschedule", "confirm", "confirmation", "reminder", "calendar", "invite", "invitation", "doctor", "dentist", "medical", "clinic", "hospital", "consultation", "follow-up", "follow up", "catch up", "phone call", "video call", "zoom meeting", "teams meeting", "meet at", "coffee at", "lunch at", "dinner at", "one-on-one", "standup", "sync", "check-in", "service", "maintenance"
+
+  IMPORTANT: The email must contain BOTH appointment keywords AND specific date/time information to warrant a calendar event.
 
   When parsing dates, be flexible with formats like:
   - "weds july 16th at 2pm" -> If year not specified, assume current year ${currentYear} (e.g., ${currentYear}-07-16T14:00:00)
@@ -279,15 +287,38 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
     console.log('🔍 Tool calls found:', toolsCalled);
     console.log('userId', userId);
 
-    // If we have tool calls but empty content, generate a basic analysis
+    // If we have tool calls but empty content, generate a contextual analysis
     if (toolsCalled.length > 0 && (!raw || raw === '')) {
-      console.log('🔧 Empty content with tool calls detected, generating basic analysis');
+      console.log('🔧 Empty content with tool calls detected, generating contextual analysis');
+
+      // Determine category based on email content
+      const emailContent = `${subject} ${body} ${from}`.toLowerCase();
+      let category = 'event';
+      let priority = 'high';
+      let summary = `Calendar event created for: ${subject}`;
+      let actionItems = ['Calendar event has been created', 'Check your calendar for details'];
+
+      // Check if it's a job newsletter (shouldn't have gotten a calendar event)
+      if (
+        emailContent.includes('job matches') ||
+        emailContent.includes('builtin') ||
+        emailContent.includes('linkedin') ||
+        emailContent.includes('indeed') ||
+        emailContent.includes('newsletter') ||
+        emailContent.includes('unsubscribe')
+      ) {
+        category = 'newsletter';
+        priority = 'low';
+        summary = `Job newsletter from ${from}`;
+        actionItems = ['Review job opportunities', 'Apply to relevant positions'];
+      }
+
       raw = JSON.stringify({
         isWebDevRelated: true,
-        category: 'event',
-        priority: 'high',
-        summary: `Calendar event created for: ${subject}`,
-        actionItems: ['Calendar event has been created', 'Check your calendar for details'],
+        category,
+        priority,
+        summary,
+        actionItems,
         sentiment: 'neutral',
         draftResponse: null,
       });
