@@ -6,6 +6,7 @@ export async function getEmbedding(input) {
       body: JSON.stringify({
         model: 'mxbai-embed-large',
         input,
+        keep_alive: '60m',
       }),
     });
 

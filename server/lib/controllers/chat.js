@@ -51,7 +51,7 @@ router.post('/', async (req, res) => {
       body: JSON.stringify({
         model: process.env.OLLAMA_MODEL,
         messages,
-        keep_alive: '20m',
+        keep_alive: '60m',
         // tools: availableTools,  //^ maybe add a helper for questions on coding?
         options: {
           min_p: 0.05,
