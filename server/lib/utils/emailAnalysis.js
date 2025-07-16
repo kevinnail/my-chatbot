@@ -108,7 +108,8 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   3. Set end time as ${currentYear}-07-16T15:00:00 (1 hour duration)
   4. Use the create_calendar_event tool with these parameters
 
-  Your responses should be structured JSON with this format:
+  You MUST always return both:
+  1. A structured JSON response with this format:
   {
     "isWebDevRelated": true/false,
     "category": "job_application|job_rejection|job_acceptance|job_interview|job_offer|event|learning|tools|networking|newsletter|community|freelance|other",
@@ -119,7 +120,9 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
     "draftResponse": "Suggested response if appropriate, or null"
   }
 
-  If you detect appointment-related content, you MUST also use the create_calendar_event tool.
+  2. If you detect appointment-related content, you MUST also use the create_calendar_event tool.
+
+  IMPORTANT: You must return the JSON analysis in your response content even when making tool calls. Do not return empty content.
 
   Focus on detecting web development related emails including:
   
@@ -266,7 +269,7 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
     const data = await response.json();
     console.log('🔍 Raw Ollama response:', JSON.stringify(data, null, 2));
 
-    const raw =
+    let raw =
       data.message && typeof data.message.content === 'string'
         ? data.message.content.trim()
         : JSON.stringify(data);
@@ -275,6 +278,20 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
     console.log('🔍 Extracted content:', raw);
     console.log('🔍 Tool calls found:', toolsCalled);
     console.log('userId', userId);
+
+    // If we have tool calls but empty content, generate a basic analysis
+    if (toolsCalled.length > 0 && (!raw || raw === '')) {
+      console.log('🔧 Empty content with tool calls detected, generating basic analysis');
+      raw = JSON.stringify({
+        isWebDevRelated: true,
+        category: 'event',
+        priority: 'high',
+        summary: `Calendar event created for: ${subject}`,
+        actionItems: ['Calendar event has been created', 'Check your calendar for details'],
+        sentiment: 'neutral',
+        draftResponse: null,
+      });
+    }
     // Invoke calendar tool
     if (userId && toolsCalled.length) {
       for (const call of toolsCalled) {
