@@ -116,8 +116,11 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   3. Set end time as ${currentYear}-07-16T15:00:00 (1 hour duration)
   4. Use the create_calendar_event tool with these parameters
 
-  You MUST always return both:
-  1. A structured JSON response with this format:
+  CRITICAL RESPONSE FORMAT REQUIREMENTS:
+  
+  You MUST ALWAYS return a complete JSON analysis in your content, even when making tool calls. Never return empty content.
+
+  1. REQUIRED JSON response format (must be valid JSON in your content):
   {
     "isWebDevRelated": true/false,
     "category": "job_application|job_rejection|job_acceptance|job_interview|job_offer|event|learning|tools|networking|newsletter|community|freelance|other",
@@ -130,7 +133,11 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
 
   2. If you detect appointment-related content, you MUST also use the create_calendar_event tool.
 
-  IMPORTANT: You must return the JSON analysis in your response content even when making tool calls. Do not return empty content.
+  IMPORTANT EXAMPLES:
+  - For job newsletters (Built In, LinkedIn, Indeed): Return JSON analysis with category "newsletter", do NOT create calendar events
+  - For actual appointments with specific times: Return JSON analysis AND use calendar tool
+  - NEVER put tool call parameters in your content response
+  - ALWAYS return complete, valid JSON in your content field
 
   Focus on detecting web development related emails including:
   
@@ -260,6 +267,8 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
       stream: false,
     };
 
+    const LLMStartTime = performance.now();
+
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -276,6 +285,10 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
 
     const data = await response.json();
     console.log('🔍 Raw Ollama response:', JSON.stringify(data, null, 2));
+    const LLMEndTime = performance.now();
+    console.log(
+      `FINISH LLM CALL total time spent: ${(LLMEndTime - LLMStartTime).toFixed(20) / 1000 / 60} minutes`,
+    );
 
     let raw =
       data.message && typeof data.message.content === 'string'
@@ -347,7 +360,7 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
     } catch {
       try {
         // If that fails, try to extract JSON from the response
-        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        const jsonMatch = raw.match(/\{[\s\S]*?\}/);
         if (jsonMatch) {
           return JSON.parse(jsonMatch[0]);
         }
