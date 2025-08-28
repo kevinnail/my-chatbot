@@ -25,9 +25,10 @@
     "source.fixAll.eslint": "explicit"
   },
   "prettier.requireConfig": true,
-  "eslint.workingDirectories": [
-    "server",
-    "client"
-  ],
-  "peacock.color": "#411add"
+  // "eslint.workingDirectories": ["server", "client"],
+  "peacock.color": "#411add",
+  "eslint.experimental.useFlatConfig": true,
+  "eslint.workingDirectories": ["./"],
+  "eslint.nodePath": "./node_modules",
+  "eslint.codeActionsOnSave.mode": "all"
 }
