@@ -1,5 +1,4 @@
 import { getEmbedding } from './ollamaEmbed.js';
-import { checkWebDevKeywords } from './emailAnalysis.js';
 
 // Email category definitions - easily extensible for new types
 const EMAIL_CATEGORIES = {
@@ -142,11 +141,10 @@ export async function preFilterWebDevEmails(emails) {
     };
   } catch (error) {
     console.error('Error in vector pre-filtering:', error);
-    // Fallback to keyword filtering if vector fails
+    // Fallback to processing all emails if vector similarity fails
+    console.log('Falling back to processing all emails due to vector similarity error');
     return {
-      likelyWebDevEmails: emails.filter((email) =>
-        checkWebDevKeywords(email.subject, email.body, email.from),
-      ),
+      likelyWebDevEmails: emails,
       unlikelyEmails: [],
       totalEmails: emails.length,
       reductionPercentage: 0,

@@ -2,7 +2,105 @@ import { google } from 'googleapis';
 import GoogleCalendar from '../models/GoogleCalendar.js';
 
 // Helper function to create calendar event
-async function createCalendarEvent(userId, eventArgs, emailSubject, emailBody, emailFrom) {
+async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
+  console.log('🗓️ Raw event args received:', eventArgs);
+
+  // Clean and validate event arguments
+  try {
+    // Parse eventArgs if it's a string
+    let cleanArgs = eventArgs;
+    if (typeof eventArgs === 'string') {
+      try {
+        cleanArgs = JSON.parse(eventArgs);
+      } catch {
+        console.error('❌ Failed to parse eventArgs string:', eventArgs);
+        return;
+      }
+    }
+
+    // Validate and fix attendees
+    let attendees = [];
+    if (cleanArgs.attendees) {
+      console.log(
+        '🔧 Processing attendees:',
+        cleanArgs.attendees,
+        'Type:',
+        typeof cleanArgs.attendees,
+      );
+
+      if (typeof cleanArgs.attendees === 'string') {
+        // Try to parse string as JSON array first
+        try {
+          const parsed = JSON.parse(cleanArgs.attendees);
+          console.log('🔧 Parsed attendees JSON:', parsed, 'Is array:', Array.isArray(parsed));
+          if (Array.isArray(parsed)) {
+            attendees = parsed;
+          } else {
+            attendees = [parsed]; // Single item
+          }
+        } catch (parseError) {
+          console.log('🔧 Failed to parse attendees as JSON:', parseError.message);
+          // If not JSON, split by comma or treat as single email
+          attendees = cleanArgs.attendees.includes(',')
+            ? cleanArgs.attendees.split(',').map((email) => email.trim())
+            : [cleanArgs.attendees.trim()];
+        }
+      } else if (Array.isArray(cleanArgs.attendees)) {
+        attendees = cleanArgs.attendees;
+      }
+
+      // Ensure all attendees are valid email strings
+      attendees = attendees
+        .filter((email) => email && typeof email === 'string' && email.trim().length > 0)
+        .map((email) => email.trim());
+
+      console.log('🔧 Final attendees array:', attendees);
+    }
+
+    // Validate and fix dates
+    const currentYear = new Date().getFullYear();
+    const currentDate = new Date();
+
+    let startDateTime = cleanArgs.startDateTime;
+    let endDateTime = cleanArgs.endDateTime;
+
+    // Fix year if it's in the past (assume next year)
+    if (startDateTime) {
+      const startDate = new Date(startDateTime);
+      if (startDate < currentDate && startDate.getFullYear() === currentYear) {
+        startDate.setFullYear(currentYear + 1);
+        startDateTime = startDate.toISOString();
+        console.log('🔧 Fixed start date to next year:', startDateTime);
+      }
+    }
+
+    // Fix empty or invalid end date
+    if (!endDateTime || endDateTime === '' || endDateTime === 'null') {
+      if (startDateTime) {
+        const start = new Date(startDateTime);
+        const end = new Date(start.getTime() + 60 * 60 * 1000); // Add 1 hour
+        endDateTime = end.toISOString();
+        console.log('🔧 Generated end date (1 hour after start):', endDateTime);
+      } else {
+        console.error('❌ Cannot create event without valid start/end times');
+        return;
+      }
+    }
+
+    // Update the cleaned args
+    eventArgs = {
+      ...cleanArgs,
+      attendees,
+      startDateTime,
+      endDateTime,
+    };
+
+    console.log('🗓️ Cleaned event args:', eventArgs);
+  } catch (cleanupError) {
+    console.error('❌ Error cleaning event args:', cleanupError);
+    return;
+  }
+
   try {
     const hasValidTokens = await GoogleCalendar.hasValidTokens(userId);
     if (!hasValidTokens) {
@@ -67,142 +165,28 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailBody, e
 // Email analysis with Ollama
 export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   const currentYear = new Date().getFullYear();
-  const systemPrompt = `You are an intelligent email agent that helps users manage their emails both professional and personal. 
+  const systemPrompt = `You are an email analysis agent. You must ALWAYS return valid JSON in this exact format:
 
-  CRITICAL PRIORITY: STRICT APPOINTMENT DETECTION
-  You have access to a create_calendar_event tool. You MUST use this tool ONLY when ALL THREE conditions are met:
-  
-  1. APPOINTMENT KEYWORDS: The email contains explicit appointment/meeting keywords
-  2. SPECIFIC DATE/TIME: The email contains specific date and time information (not just years in signatures/copyrights)
-  3. SCHEDULING CONTEXT: The email is clearly about scheduling, confirming, or reminding about an actual appointment
-  
-  REQUIRED APPOINTMENT KEYWORDS (must contain at least one):
-  - "appointment", "appt"
-  - "meeting at [time]", "call at [time]", "scheduled for [time]"
-  - "reschedule", "confirm your appointment", "confirmation"
-  - "interview scheduled", "interview at", "interview on"
-  - "doctor", "dentist", "medical appointment"
-  - "consultation", "follow-up appointment"
-  - "phone call scheduled", "video call at", "zoom meeting at"
-  - "meet at [location/time]", "coffee at [time]", "lunch at [time]"
+{
+  "isWebDevRelated": true/false,
+  "category": "job_application|job_rejection|job_acceptance|job_interview|job_offer|event|learning|tools|networking|newsletter|community|freelance|other",
+  "priority": "high|medium|low", 
+  "summary": "Brief summary of the email content",
+  "actionItems": ["action1", "action2"],
+  "sentiment": "positive|negative|neutral",
+  "draftResponse": "Suggested response if appropriate, or null"
+}
 
-  STRICT EXCLUSIONS - NEVER create calendar events for:
-  - Job newsletters, job listings, job matches (Built In, LinkedIn, Indeed, etc.)
-  - Job application confirmations without specific interview scheduling
-  - Marketing emails, promotional content, newsletters
-  - Email lists, subscription content, unsubscribe emails
-  - Company updates, announcements, or general communications
-  - Emails that only contain copyright years or signature dates
-  - Course announcements without specific class times
-  - General reminders without specific appointment details
+CALENDAR EVENTS: Only create calendar events for emails with:
+1. Clear appointment keywords (appointment, meeting, interview, doctor, dentist, call scheduled)
+2. Specific date AND time mentioned (not copyright dates)
+3. Actual scheduling context (not newsletters/job listings)
 
-  CRITICAL DATE PARSING RULES:
-  - IGNORE copyright years, signature years, or footer dates (like "© Built In, 2025")
-  - ONLY parse dates that are clearly related to scheduling context
-  - Dates must be accompanied by appointment keywords to be valid
-  - If you find a year in a copyright/signature, DO NOT use it for calendar events
-  - Only extract dates that are explicitly mentioned as appointment times
+NEVER create events for: job newsletters, marketing emails, general announcements.
 
-  EXAMPLE OF WHAT NOT TO DO:
-  Email: "New Software Engineer Job Matches... © Built In, 2025"
-  - DO NOT extract "2025" as an appointment date
-  - DO NOT create calendar events for job newsletters
-  - This lacks appointment keywords and scheduling context
+When creating calendar events, use current year ${currentYear}. If a date appears to be in the past, assume next year.
 
-  EXAMPLE OF CORRECT USAGE:
-  Email: "Confirming your doctor appointment on July 16th at 2pm"
-  - Contains "appointment" keyword ✓
-  - Contains specific date/time ✓  
-  - Has scheduling context ✓
-  - Extract: 2024-07-16T14:00:00 (using current year if not specified)
-
-  CRITICAL RESPONSE FORMAT REQUIREMENTS:
-  
-  You MUST ALWAYS return a complete JSON analysis in your content, even when making tool calls. Never return empty content.
-
-  1. REQUIRED JSON response format (must be valid JSON in your content):
-  {
-    "isWebDevRelated": true/false,
-    "category": "job_application|job_rejection|job_acceptance|job_interview|job_offer|event|learning|tools|networking|newsletter|community|freelance|other",
-    "priority": "high|medium|low",
-    "summary": "Brief summary of the email content",
-    "actionItems": ["action1", "action2"],
-    "sentiment": "positive|negative|neutral",
-    "draftResponse": "Suggested response if appropriate, or null"
-  }
-
-  2. If you detect appointment-related content, you MUST also use the create_calendar_event tool.
-
-  IMPORTANT EXAMPLES:
-  - For job newsletters (Built In, LinkedIn, Indeed): Return JSON analysis with category "newsletter", do NOT create calendar events
-  - For actual appointments with specific times: Return JSON analysis AND use calendar tool
-  - NEVER put tool call parameters in your content response
-  - ALWAYS return complete, valid JSON in your content field
-
-  Focus on detecting web development related emails including:
-  
-  JOB RELATED:
-  - Job applications confirmations
-  - Interview invitations and scheduling
-  - Rejection letters
-  - Job offers and negotiations
-  - Application status updates
-  - Recruiter outreach
-  - Job board notifications (Built In, LinkedIn, Indeed, Stack Overflow Jobs, etc.)
-  - Contract/freelance opportunities
-  
-  EVENT RELATED:
-  - Tech conferences and meetups
-  - Webinars and workshops
-  - Hackathons and coding challenges
-  - Industry events and networking
-  - Training sessions and boot camps
-  - Company tech talks
-  
-  APPOINTMENTS & MEETINGS:
-  - Doctor appointments and medical visits
-  - Dentist appointments
-  - Phone calls and video calls
-  - Business meetings and client calls
-  - Personal meetings and catch-ups
-  - Service appointments (car, home, etc.)
-  - Consultation appointments
-  - Follow-up meetings
-  - One-on-one meetings
-  - Team meetings and standups
-  - Coffee meetings and informal chats
-  
-  LEARNING RELATED:
-  - Course platforms (Udemy, Coursera, Pluralsight, etc.)
-  - Tutorial sites and coding platforms
-  - Certification programs
-  - Technical book releases
-  - Educational content updates
-  
-  TOOLS & TECHNOLOGY:
-  - Platform updates (AWS, Google Cloud, Azure, etc.)
-  - Framework releases (React, Angular, Vue, etc.)
-  - Development tool updates
-  - API documentation and changes
-  - Software licenses and subscriptions
-  - IDE and editor updates
-  
-  COMMUNITY & NETWORKING:
-  - Developer community updates
-  - Open source project notifications
-  - GitHub activity and contributions
-  - Technical forum discussions
-  - Developer newsletter subscriptions
-  - Coding community events
-  
-  OTHER PROFESSIONAL:
-  - Client communications
-  - Project updates and deadlines
-  - Team collaboration emails
-  - Code review notifications
-  - Professional development opportunities
-
-  Be comprehensive but accurate in your categorization.`;
+Focus on web development emails: jobs, interviews, tech events, learning platforms, tools, developer community content.`;
 
   // Define the calendar event creation tool
 
@@ -295,10 +279,12 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
         ? data.message.content.trim()
         : JSON.stringify(data);
     const toolsCalled = data.message?.tool_calls || [];
-
-    console.log('🔍 Extracted content:', raw);
+    // console.log('🔍 Extracted content:', raw);
     console.log('🔍 Tool calls found:', toolsCalled);
     console.log('userId', userId);
+
+    // Track calendar events created
+    let calendarEvents = [];
 
     // If we have tool calls but empty content, generate a contextual analysis
     if (toolsCalled.length > 0 && (!raw || raw === '')) {
@@ -346,6 +332,7 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
         actionItems,
         sentiment: 'neutral',
         draftResponse: null,
+        calendarEvents: [], // Add calendar events to contextual analysis
       });
     }
     // Invoke calendar tool with safety checks
@@ -377,8 +364,32 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
           console.log('🔍 Individual tool call:', JSON.stringify(call, null, 2));
           try {
             if (call.function && call.function.name === 'create_calendar_event') {
-              console.log('🗓️ Creating calendar event with args:', call.function.arguments);
-              await createCalendarEvent(userId, call.function.arguments, subject, body, from);
+              let args = call.function.arguments;
+
+              // Parse arguments if they're a string
+              if (typeof args === 'string') {
+                try {
+                  args = JSON.parse(args);
+                } catch (parseError) {
+                  console.error('❌ Failed to parse tool call arguments:', parseError);
+                  continue;
+                }
+              }
+
+              console.log('🗓️ Creating calendar event with args:', args);
+              const eventResult = await createCalendarEvent(userId, args, subject, from);
+
+              // Capture calendar event data if creation was successful
+              if (eventResult && eventResult.htmlLink) {
+                calendarEvents.push({
+                  title: eventResult.summary || args.title,
+                  link: eventResult.htmlLink,
+                  startTime: eventResult.start?.dateTime || args.startDateTime,
+                  endTime: eventResult.end?.dateTime || args.endDateTime,
+                  location: eventResult.location || args.location,
+                });
+                console.log('✅ Calendar event captured:', eventResult.htmlLink);
+              }
             } else {
               console.log('⚠️ Unknown tool call structure or function name');
             }
@@ -392,6 +403,12 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
     try {
       // Try to parse the raw response as JSON directly first
       const parsed = JSON.parse(raw);
+
+      // Add calendar events to the parsed analysis
+      if (calendarEvents.length > 0) {
+        parsed.calendarEvents = calendarEvents;
+      }
+
       return parsed;
     } catch {
       try {
@@ -419,7 +436,7 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
 
       // If all JSON parsing fails, return fallback
       console.warn('🔧 Falling back to default analysis structure');
-      return {
+      const fallback = {
         summary: raw.slice(0, 150),
         actionItems: [],
         sentiment: 'neutral',
@@ -428,17 +445,16 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
         priority: 'low',
         draftResponse: null,
       };
+
+      // Add calendar events to fallback if any were created
+      if (calendarEvents.length > 0) {
+        fallback.calendarEvents = calendarEvents;
+      }
+
+      return fallback;
     }
   } catch (err) {
     console.error('LLM analysis error:', err);
     return { summary: 'Analysis failed', actionItems: [], sentiment: 'neutral' };
   }
-}
-
-export function checkWebDevKeywords(subject, body, from) {
-  const keywords = [
-    /* list trimmed */
-  ];
-  const text = `${subject} ${body} ${from}`.toLowerCase();
-  return keywords.some((k) => text.includes(k));
 }
