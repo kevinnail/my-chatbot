@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './GoogleCalendar.css';
 
-const GoogleCalendar = ({ userId }) => {
+const GoogleCalendar = ({ userId, onConnectionChange }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -18,9 +18,17 @@ const GoogleCalendar = ({ userId }) => {
       const data = await response.json();
       setIsConnected(data.connected);
       setConnectionError(data.error || null);
+
+      // Notify parent component about connection status change
+      if (onConnectionChange) {
+        onConnectionChange(data.connected);
+      }
     } catch (err) {
       console.error('Error checking Calendar connection:', err);
       setConnectionError('Failed to check connection status');
+      if (onConnectionChange) {
+        onConnectionChange(false);
+      }
     }
   };
 
