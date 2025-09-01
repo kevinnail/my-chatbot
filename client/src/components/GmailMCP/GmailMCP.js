@@ -492,6 +492,32 @@ const GmailMCP = ({ userId }) => {
                         </div>
                       )}
 
+                      {email.analysis?.calendarEvents &&
+                        email.analysis.calendarEvents.length > 0 && (
+                          <div className="calendar-events-compact">
+                            <strong>Calendar Events:</strong>
+                            <div className="calendar-events-list">
+                              {email.analysis.calendarEvents.map((event, index) => (
+                                <div key={index} className="calendar-event-item">
+                                  <a
+                                    href={event.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="calendar-event-link"
+                                  >
+                                    📅 {event.title}
+                                  </a>
+                                  {event.startTime && (
+                                    <span className="calendar-event-time">
+                                      {new Date(event.startTime).toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                       {email.analysis?.draftResponse && (
                         <div className="draft-response-compact">
                           <strong>Draft:</strong> {email.analysis.draftResponse}
