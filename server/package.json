@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "node -r dotenv/config server.js",
+    "start:watch": "nodemon -r dotenv/config server.js",
     "test": "set NODE_OPTIONS=--experimental-vm-modules && jest --verbose --runInBand --testLocationInResults --setupFiles dotenv/config --passWithNoTests",
     "test:watch": "npm run test -- --watch",
     "setup-db": "node -r dotenv/config setup-db.js",
-    "setup-test-db": "node -r dotenv/config setup-test-db.js",
-    "dev": "concurrently \"npm --prefix server run start\" \"npm --prefix client start\""
+    "setup-test-db": "node -r dotenv/config setup-test-db.js"
   },
   "jest": {
     "testEnvironment": "node",
@@ -52,6 +52,7 @@
     "eslint-plugin-react": "^7.37.5",
     "globals": "^16.3.0",
     "jest": "^29.7.0",
+    "nodemon": "^3.1.10",
     "prettier": "^3.6.2",
     "supertest": "^6.3.3"
   }
