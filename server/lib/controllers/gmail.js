@@ -258,12 +258,21 @@ router.post('/sync', async (req, res) => {
             analyzedCount++;
 
             // Emit real-time update for this email
-            req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzed', {
+            const socketData = {
               emailId: email.id,
               analysis,
               analyzedCount,
               totalToAnalyze: emailsNeedingAnalysis.length,
+            };
+
+            console.log('🔍 Emitting email-analyzed event:', {
+              emailId: email.id,
+              analysisExists: !!analysis,
+              analysisSummary: analysis?.summary?.substring(0, 50),
+              room: `sync-updates-${userId}`,
             });
+
+            req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzed', socketData);
 
             console.log(
               `✅ Analysis complete for email ${analyzedCount}/${emailsNeedingAnalysis.length}`,
