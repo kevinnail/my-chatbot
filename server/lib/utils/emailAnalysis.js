@@ -69,52 +69,52 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   const currentYear = new Date().getFullYear();
   const systemPrompt = `You are an intelligent email agent that helps users manage their emails both professional and personal. 
 
-  CRITICAL PRIORITY: APPOINTMENT DETECTION
-  You have access to a create_calendar_event tool. You MUST use this tool ONLY when you detect ACTUAL appointment-related emails with SPECIFIC dates and times, including:
-  - Meeting invitations or confirmations WITH specific date/time
-  - Interview scheduling WITH specific date/time
-  - Appointment reminders WITH specific date/time (including "appt" abbreviation)
-  - Calendar invitations WITH specific date/time
-  - Doctor, dentist, medical appointments WITH specific date/time
-  - Service appointments WITH specific date/time (car, home, etc.)
-  - Personal meetings and calls WITH specific date/time
-  - Business meetings WITH specific date/time
-  - Consultation appointments WITH specific date/time
-
-  DO NOT create calendar events for:
-  - Job newsletters or job listings (Built In, LinkedIn, Indeed, etc.)
-  - Job application confirmations without interview times
-  - General job-related emails without specific meeting times
-  - Course announcements or newsletters
-  - Marketing emails or promotional content
-  - General reminders without specific dates
-  - Email lists or subscription content
-  - Job search notifications
-  - Company updates or news
-
-  Only look for these SPECIFIC appointment indicators: "appointment", "appt", "meeting at", "call at", "scheduled for", "reschedule", "confirm", "confirmation", "reminder", "calendar", "invite", "invitation", "doctor", "dentist", "medical", "clinic", "hospital", "consultation", "follow-up", "follow up", "catch up", "phone call", "video call", "zoom meeting", "teams meeting", "meet at", "coffee at", "lunch at", "dinner at", "one-on-one", "standup", "sync", "check-in", "service", "maintenance"
-
-  IMPORTANT: The email must contain BOTH appointment keywords AND specific date/time information to warrant a calendar event.
-
-  When parsing dates, be flexible with formats like:
-  - "weds july 16th at 2pm" -> If year not specified, assume current year ${currentYear} (e.g., ${currentYear}-07-16T14:00:00)
-  - "tomorrow at 3pm" -> calculate the actual date based on today's date
-  - "next friday 10am" -> calculate the actual date based on today's date
-  - Always convert to ISO format (YYYY-MM-DDTHH:mm:ss)
-  - For duration, assume 1 hour if not specified (e.g., end time = start time + 1 hour)
-  - If a date seems to be in the past and no year is specified, assume it's for the following year (${currentYear + 1})
+  CRITICAL PRIORITY: STRICT APPOINTMENT DETECTION
+  You have access to a create_calendar_event tool. You MUST use this tool ONLY when ALL THREE conditions are met:
   
-  IMPORTANT DATE LOGIC:
-  - Current year is ${currentYear}
-  - If no year is specified and the date seems recent or upcoming, use ${currentYear}
-  - If no year is specified and the date appears to be in the past, use ${currentYear + 1}
-  - Always double-check that your parsed dates make logical sense
+  1. APPOINTMENT KEYWORDS: The email contains explicit appointment/meeting keywords
+  2. SPECIFIC DATE/TIME: The email contains specific date and time information (not just years in signatures/copyrights)
+  3. SCHEDULING CONTEXT: The email is clearly about scheduling, confirming, or reminding about an actual appointment
   
-  EXAMPLE: If you see "Just wanted to confirm your appt on weds july 16th at 2pm", you should:
-  1. Recognize "appt" as appointment
-  2. Parse "weds july 16th at 2pm" as ${currentYear}-07-16T14:00:00 (assuming current year)
-  3. Set end time as ${currentYear}-07-16T15:00:00 (1 hour duration)
-  4. Use the create_calendar_event tool with these parameters
+  REQUIRED APPOINTMENT KEYWORDS (must contain at least one):
+  - "appointment", "appt"
+  - "meeting at [time]", "call at [time]", "scheduled for [time]"
+  - "reschedule", "confirm your appointment", "confirmation"
+  - "interview scheduled", "interview at", "interview on"
+  - "doctor", "dentist", "medical appointment"
+  - "consultation", "follow-up appointment"
+  - "phone call scheduled", "video call at", "zoom meeting at"
+  - "meet at [location/time]", "coffee at [time]", "lunch at [time]"
+
+  STRICT EXCLUSIONS - NEVER create calendar events for:
+  - Job newsletters, job listings, job matches (Built In, LinkedIn, Indeed, etc.)
+  - Job application confirmations without specific interview scheduling
+  - Marketing emails, promotional content, newsletters
+  - Email lists, subscription content, unsubscribe emails
+  - Company updates, announcements, or general communications
+  - Emails that only contain copyright years or signature dates
+  - Course announcements without specific class times
+  - General reminders without specific appointment details
+
+  CRITICAL DATE PARSING RULES:
+  - IGNORE copyright years, signature years, or footer dates (like "© Built In, 2025")
+  - ONLY parse dates that are clearly related to scheduling context
+  - Dates must be accompanied by appointment keywords to be valid
+  - If you find a year in a copyright/signature, DO NOT use it for calendar events
+  - Only extract dates that are explicitly mentioned as appointment times
+
+  EXAMPLE OF WHAT NOT TO DO:
+  Email: "New Software Engineer Job Matches... © Built In, 2025"
+  - DO NOT extract "2025" as an appointment date
+  - DO NOT create calendar events for job newsletters
+  - This lacks appointment keywords and scheduling context
+
+  EXAMPLE OF CORRECT USAGE:
+  Email: "Confirming your doctor appointment on July 16th at 2pm"
+  - Contains "appointment" keyword ✓
+  - Contains specific date/time ✓  
+  - Has scheduling context ✓
+  - Extract: 2024-07-16T14:00:00 (using current year if not specified)
 
   CRITICAL RESPONSE FORMAT REQUIREMENTS:
   
@@ -287,7 +287,7 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
     console.log('🔍 Raw Ollama response:', JSON.stringify(data, null, 2));
     const LLMEndTime = performance.now();
     console.log(
-      `FINISH LLM CALL total time spent: ${(LLMEndTime - LLMStartTime).toFixed(20) / 1000 / 60} minutes`,
+      `FINISH LLM CALL total time spent: ${(LLMEndTime - LLMStartTime).toFixed(1) / 1000 / 60} minutes`,
     );
 
     let raw =
@@ -311,19 +311,31 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
       let summary = `Calendar event created for: ${subject}`;
       let actionItems = ['Calendar event has been created', 'Check your calendar for details'];
 
-      // Check if it's a job newsletter (shouldn't have gotten a calendar event)
-      if (
+      // Check if it's a job newsletter or similar (shouldn't have gotten a calendar event)
+      const isJobNewsletter =
         emailContent.includes('job matches') ||
+        emailContent.includes('job recommendations') ||
         emailContent.includes('builtin') ||
+        emailContent.includes('built in') ||
         emailContent.includes('linkedin') ||
         emailContent.includes('indeed') ||
         emailContent.includes('newsletter') ||
-        emailContent.includes('unsubscribe')
-      ) {
+        emailContent.includes('unsubscribe') ||
+        emailContent.includes('update email frequency') ||
+        emailContent.includes('job preferences') ||
+        emailContent.includes('salary') ||
+        emailContent.includes('remote') ||
+        emailContent.includes('hybrid') ||
+        (emailContent.includes('job') && emailContent.includes('board'));
+
+      if (isJobNewsletter) {
         category = 'newsletter';
         priority = 'low';
         summary = `Job newsletter from ${from}`;
         actionItems = ['Review job opportunities', 'Apply to relevant positions'];
+        console.log(
+          '⚠️ WARNING: Calendar event was created for a job newsletter - this should not happen!',
+        );
       }
 
       raw = JSON.stringify({
@@ -336,19 +348,43 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
         draftResponse: null,
       });
     }
-    // Invoke calendar tool
+    // Invoke calendar tool with safety checks
     if (userId && toolsCalled.length) {
-      for (const call of toolsCalled) {
-        console.log('🔍 Individual tool call:', JSON.stringify(call, null, 2));
-        try {
-          if (call.function && call.function.name === 'create_calendar_event') {
-            console.log('🗓️ Creating calendar event with args:', call.function.arguments);
-            await createCalendarEvent(userId, call.function.arguments, subject, body, from);
-          } else {
-            console.log('⚠️ Unknown tool call structure or function name');
+      // Safety check: Don't create calendar events for job newsletters
+      const emailContent = `${subject} ${body} ${from}`.toLowerCase();
+      const isJobNewsletter =
+        emailContent.includes('job matches') ||
+        emailContent.includes('job recommendations') ||
+        emailContent.includes('builtin') ||
+        emailContent.includes('built in') ||
+        emailContent.includes('linkedin') ||
+        emailContent.includes('indeed') ||
+        emailContent.includes('newsletter') ||
+        emailContent.includes('unsubscribe') ||
+        emailContent.includes('update email frequency') ||
+        emailContent.includes('job preferences') ||
+        emailContent.includes('salary') ||
+        emailContent.includes('remote') ||
+        emailContent.includes('hybrid') ||
+        (emailContent.includes('job') && emailContent.includes('board'));
+
+      if (isJobNewsletter) {
+        console.log('🚫 BLOCKED: Preventing calendar event creation for job newsletter');
+        console.log('📧 Email subject:', subject);
+        console.log('📧 Email from:', from);
+      } else {
+        for (const call of toolsCalled) {
+          console.log('🔍 Individual tool call:', JSON.stringify(call, null, 2));
+          try {
+            if (call.function && call.function.name === 'create_calendar_event') {
+              console.log('🗓️ Creating calendar event with args:', call.function.arguments);
+              await createCalendarEvent(userId, call.function.arguments, subject, body, from);
+            } else {
+              console.log('⚠️ Unknown tool call structure or function name');
+            }
+          } catch (error) {
+            console.error('❌ Error invoking tool call:', error);
           }
-        } catch (error) {
-          console.error('❌ Error invoking tool call:', error);
         }
       }
     }
