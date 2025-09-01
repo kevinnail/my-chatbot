@@ -403,7 +403,22 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
       } catch {
         // Ignore nested catch
       }
+
+      try {
+        // Handle the case where LLM returns function call format with embedded JSON
+        const functionCallMatch = raw.match(/"required_json":\s*"([^"]+)"/);
+        if (functionCallMatch) {
+          const escapedJson = functionCallMatch[1];
+          const unescapedJson = escapedJson.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+          console.log('🔧 Extracted JSON from function call:', unescapedJson);
+          return JSON.parse(unescapedJson);
+        }
+      } catch (parseError) {
+        console.error('🔧 Failed to parse embedded JSON:', parseError);
+      }
+
       // If all JSON parsing fails, return fallback
+      console.warn('🔧 Falling back to default analysis structure');
       return {
         summary: raw.slice(0, 150),
         actionItems: [],
