@@ -4,7 +4,7 @@ import './App.css';
 import Header from './components/Header/Header';
 import Chat from './components/Chat/Chat';
 import Footer from './components/Footer/Footer';
-import GmailMCP from './components/GmailMCP/GmailMCP';
+import GmailMCP from './components/GmailMCP/GmailMCP.js';
 
 export default function App() {
   const googleId = process.env.REACT_APP_GOOGLE_USER_ID;
