@@ -32,17 +32,31 @@ const GmailMCP = ({ userId }) => {
     });
 
     socket.on('email-analyzed', (data) => {
-      console.log('Email analysis complete:', data);
-      console.log('Looking for email ID:', data.emailId);
+      console.log('🔍 Email analysis complete:', data);
+      console.log('🔍 Looking for email ID:', data.emailId);
+      console.log('🔍 Analysis data received:', data.analysis);
 
       setAnalysisProgress({ analyzed: data.analyzedCount, total: data.totalToAnalyze });
 
       // Update the specific email with analysis results
       setEmails((prevEmails) => {
-        console.log(
-          '📧 Current emails:',
-          prevEmails.map((e) => ({ id: e.id, subject: e.subject.substring(0, 30) })),
-        );
+        console.log('📧 Current emails before update:');
+        prevEmails.forEach((e, i) => {
+          console.log(
+            `  ${i}: ID=${e.id}, Status=${e.status}, Summary="${e.summary?.substring(0, 50)}..."`,
+          );
+        });
+
+        const emailFound = prevEmails.find((email) => email.id === data.emailId);
+        console.log('📧 Email found in state:', emailFound ? 'YES' : 'NO');
+        if (emailFound) {
+          console.log('📧 Found email details:', {
+            id: emailFound.id,
+            currentStatus: emailFound.status,
+            currentSummary: emailFound.summary?.substring(0, 50),
+          });
+        }
+
         const updated = prevEmails.map((email) =>
           email.id === data.emailId
             ? {
@@ -56,10 +70,16 @@ const GmailMCP = ({ userId }) => {
               }
             : email,
         );
-        console.log(
-          '📧 Updated emails:',
-          updated.map((e) => ({ id: e.id, status: e.status, subject: e.subject.substring(0, 30) })),
-        );
+
+        console.log('📧 Updated emails after mapping:');
+        updated.forEach((e, i) => {
+          if (e.id === data.emailId) {
+            console.log(
+              `  ✅ ${i}: ID=${e.id}, Status=${e.status}, Summary="${e.summary?.substring(0, 50)}..."`,
+            );
+          }
+        });
+
         return updated;
       });
     });
