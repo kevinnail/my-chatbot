@@ -109,7 +109,7 @@ const Header = ({ userId, setLog }) => {
         </Link>
       </nav>
       <div style={{ visibility: isChat ? 'visible' : 'hidden', marginLeft: 'auto' }}>
-        <DeleteMessagesButton userId={userId} setLog={setLog} />
+        <DeleteMessagesButton userId={userId} setLog={setLog} loading={isAnyLoading} />
       </div>
     </header>
   );

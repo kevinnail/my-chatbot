@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { deleteMessages } from '../../services/fetch-chat.js';
 
-export default function DeleteMessagesButton({ userId, setLog }) {
+export default function DeleteMessagesButton({ userId, setLog, loading }) {
   const [hover, setHover] = useState(false);
   const [mouseDown, setMouseDown] = useState(false);
 
@@ -16,6 +16,7 @@ export default function DeleteMessagesButton({ userId, setLog }) {
 
   return (
     <button
+      disabled={loading}
       style={{
         marginRight: '1.5rem',
         fontSize: '.7em',
