@@ -9,7 +9,7 @@ import CopyButton from '../CopyButton/CopyButton.js';
 // Register the language for syntax highlighting
 SyntaxHighlighter.registerLanguage('javascript', js);
 
-const ChatMessages = ({ log, loading }) => {
+const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart }) => {
   const formatResponseTime = (responseTime) => {
     if (!responseTime) return '';
     if (responseTime < 1000) {
@@ -230,6 +230,22 @@ const ChatMessages = ({ log, loading }) => {
           </div>
         );
       })}
+      {callLLMStartTime && (
+        <div
+          // className="time-info"
+          style={{
+            color: '#00ff00',
+            textAlign: 'center',
+            borderRadius: '5px',
+          }}
+        >
+          <span style={{ fontSize: '.8rem' }}>
+            {calculateTimeSinceStart()
+              ? `Running for: ${calculateTimeSinceStart()}`
+              : 'Starting...'}
+          </span>
+        </div>
+      )}
       {loading && (
         <p className="loading-button" style={{ fontSize: '1rem' }}>
           Loading your response...

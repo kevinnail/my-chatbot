@@ -65,26 +65,14 @@ const Chat = ({ userId }) => {
         width: '90%',
       }}
     >
-      <ChatMessages log={log} loading={loading} setcallLLMStartTime={setcallLLMStartTime} />
-      {callLLMStartTime && (
-        <div
-          className="time-info"
-          style={{
-            padding: '10px',
-            backgroundColor: '#333',
-            color: '#00ff00',
-            textAlign: 'center',
-            borderRadius: '5px',
-            margin: '10px 0',
-          }}
-        >
-          <small>
-            {calculateTimeSinceStart()
-              ? `Running for: ${calculateTimeSinceStart()}`
-              : 'Starting...'}
-          </small>
-        </div>
-      )}
+      <ChatMessages
+        log={log}
+        loading={loading}
+        callLLMStartTime={callLLMStartTime}
+        setcallLLMStartTime={setcallLLMStartTime}
+        calculateTimeSinceStart={calculateTimeSinceStart}
+      />
+
       <MessageInput
         userId={userId}
         input={input}
