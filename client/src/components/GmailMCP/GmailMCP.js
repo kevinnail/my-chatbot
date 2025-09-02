@@ -489,7 +489,9 @@ const GmailMCP = ({ userId }) => {
                     >
                       <div style={{ flex: 1 }}>
                         <div className="email-header-compact">
-                          <h4 style={{ margin: '0 0 5px 0', color: '#639cff' }}>{email.subject}</h4>
+                          <h4 style={{ margin: '0 0 5px 0', color: '#639cff' }}>
+                            subject: "{email.subject}"
+                          </h4>
                           <div
                             className="email-meta-compact"
                             style={{ fontSize: '0.9rem', color: '#ccc' }}
