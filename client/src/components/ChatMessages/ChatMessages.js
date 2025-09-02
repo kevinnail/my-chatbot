@@ -9,7 +9,23 @@ import CopyButton from '../CopyButton/CopyButton.js';
 // Register the language for syntax highlighting
 SyntaxHighlighter.registerLanguage('javascript', js);
 
-const ChatMessages = ({ log, loading, setcallLLMStartTime }) => {
+const ChatMessages = ({ log, loading }) => {
+  const formatResponseTime = (responseTime) => {
+    if (!responseTime) return '';
+    if (responseTime < 1000) {
+      return `${responseTime}ms`;
+    } else {
+      const totalSeconds = Math.floor(responseTime / 1000);
+      if (totalSeconds < 60) {
+        return `${totalSeconds}s`;
+      } else {
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}m ${seconds}s`;
+      }
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
       {log.map((m, i) => {
@@ -25,6 +41,7 @@ const ChatMessages = ({ log, loading, setcallLLMStartTime }) => {
               flexDirection: isUser ? 'row-reverse' : 'row',
               alignItems: 'flex-start',
               gap: '1rem',
+              position: 'relative',
             }}
           >
             <div
@@ -190,6 +207,25 @@ const ChatMessages = ({ log, loading, setcallLLMStartTime }) => {
                 m.text
               )}
             </div>
+            {(isBot || isError) && m.responseTime && (
+              <div
+                style={{
+                  top: '-8px',
+                  right: isUser ? 'auto' : '10px',
+                  left: isUser ? '10px' : 'auto',
+                  fontSize: '0.8rem',
+                  color: '#888',
+                  fontFamily: 'monospace',
+                  padding: '2px 6px',
+                  background: 'rgba(0, 0, 0, 0.8)',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  zIndex: 1,
+                }}
+              >
+                {formatResponseTime(m.responseTime)}
+              </div>
+            )}
           </div>
         );
       })}
