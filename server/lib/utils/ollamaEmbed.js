@@ -9,7 +9,6 @@ export async function getEmbedding(input) {
         keep_alive: '60m',
       }),
     });
-
     if (!res.ok) {
       throw new Error(`Ollama embedding API error: ${res.status} ${res.statusText}`);
     }

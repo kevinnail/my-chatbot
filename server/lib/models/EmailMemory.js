@@ -25,7 +25,6 @@ class EmailMemory {
         ` Storing appointment-related email: "${subject}" (similarity: ${similarityScore?.toFixed(3)})`,
       );
     }
-
     const embedding = await getEmbedding(emailContent);
 
     const query = `

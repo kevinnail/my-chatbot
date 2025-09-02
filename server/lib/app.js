@@ -17,7 +17,7 @@ app.use(express.json());
 
 // Use the imported routers
 app.use('/api/chatbot', chatRouter);
-app.use('/api/mcp/gmail', gmailMcpRouter);
+app.use('/api/gmail', gmailMcpRouter);
 app.use('/api/calendar', googleCalendarRouter);
 
 app.use(notFound);

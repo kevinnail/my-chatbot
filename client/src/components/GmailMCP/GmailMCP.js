@@ -160,7 +160,7 @@ const GmailMCP = ({ userId }) => {
   const checkConnection = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/mcp/gmail/status/${userId}`);
+      const response = await fetch(`/api/gmail/status/${userId}`);
       const data = await response.json();
 
       setIsConnected(data.connected);
@@ -211,7 +211,7 @@ const GmailMCP = ({ userId }) => {
       setAnalysisInProgress(true);
       setAnalysisProgress({ analyzed: 0, total: 0 });
 
-      const response = await fetch('/api/mcp/gmail/sync', {
+      const response = await fetch('/api/gmail/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
