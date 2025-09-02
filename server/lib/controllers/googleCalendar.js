@@ -66,11 +66,11 @@ router.get('/callback', async (req, res) => {
     const { code, state: userId } = req.query;
 
     if (!code) {
-      return res.redirect(`${process.env.CLIENT_URL}?error=no_code`);
+      return res.redirect(`${process.env.CLIENT_URL}/oauth-success.html?error=no_code`);
     }
 
     if (!userId) {
-      return res.redirect(`${process.env.CLIENT_URL}?error=no_user_id`);
+      return res.redirect(`${process.env.CLIENT_URL}/oauth-success.html?error=no_user_id`);
     }
 
     // Exchange code for tokens
@@ -81,11 +81,11 @@ router.get('/callback', async (req, res) => {
 
     console.log(`✅ Google Calendar connected for user: ${userId}`);
 
-    // Redirect back to client
-    res.redirect(`${process.env.CLIENT_URL}?calendar_connected=true`);
+    // Redirect to OAuth success page
+    res.redirect(`${process.env.CLIENT_URL}/oauth-success.html?calendar_connected=true`);
   } catch (error) {
     console.error('Error in OAuth callback:', error);
-    res.redirect(`${process.env.CLIENT_URL}?error=oauth_failed`);
+    res.redirect(`${process.env.CLIENT_URL}/oauth-success.html?error=oauth_failed`);
   }
 });
 
