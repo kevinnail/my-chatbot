@@ -6,11 +6,60 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [connectionError, setConnectionError] = useState(null);
+  const [oauthPopup, setOauthPopup] = useState(null);
 
   // Check if Google Calendar is connected on component mount
   useEffect(() => {
     checkCalendarConnection();
   }, [userId]);
+
+  // Handle OAuth popup messages
+  useEffect(() => {
+    const handleMessage = (event) => {
+      // Verify origin for security
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data.type === 'GOOGLE_CALENDAR_OAUTH_SUCCESS') {
+        setLoading(false);
+        setError(null);
+        setConnectionError(null);
+        checkCalendarConnection(); // Refresh connection status
+
+        // Close popup if still open
+        if (oauthPopup && !oauthPopup.closed) {
+          oauthPopup.close();
+        }
+        setOauthPopup(null);
+      } else if (event.data.type === 'GOOGLE_CALENDAR_OAUTH_ERROR') {
+        setLoading(false);
+        setError(event.data.error);
+        setConnectionError(event.data.error);
+
+        // Close popup if still open
+        if (oauthPopup && !oauthPopup.closed) {
+          oauthPopup.close();
+        }
+        setOauthPopup(null);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [oauthPopup]);
+
+  // Cleanup popup on component unmount
+  useEffect(() => {
+    return () => {
+      if (oauthPopup && !oauthPopup.closed) {
+        oauthPopup.close();
+      }
+    };
+  }, [oauthPopup]);
 
   const checkCalendarConnection = async () => {
     try {
@@ -48,23 +97,34 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
       const data = await response.json();
 
       if (response.ok) {
-        // Open OAuth URL in a new window
-        window.open(data.authUrl, '_blank', 'width=600,height=600');
+        // Open OAuth URL in a new popup window
+        const popup = window.open(
+          data.authUrl,
+          'google-oauth',
+          'width=500,height=600,scrollbars=yes,resizable=yes',
+        );
 
-        // Check connection status periodically
-        const checkInterval = setInterval(async () => {
-          await checkCalendarConnection();
-          if (isConnected) {
-            clearInterval(checkInterval);
+        setOauthPopup(popup);
+
+        // Check if popup was blocked
+        if (!popup || popup.closed) {
+          throw new Error('Popup was blocked. Please allow popups for this site.');
+        }
+
+        // Optional: Monitor if user manually closes the popup
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed);
             setLoading(false);
+            setOauthPopup(null);
+            // Don't show error if user just closed the popup
           }
-        }, 2000);
+        }, 1000);
 
-        // Stop checking after 2 minutes
+        // Clean up interval after 5 minutes
         setTimeout(() => {
-          clearInterval(checkInterval);
-          setLoading(false);
-        }, 120000);
+          clearInterval(checkClosed);
+        }, 300000);
       } else {
         throw new Error(data.error || 'Failed to connect to Google Calendar');
       }
@@ -72,6 +132,7 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
       setError(err.message);
       setConnectionError(err.message);
       setLoading(false);
+      setOauthPopup(null);
     }
   };
 
