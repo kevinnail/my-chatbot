@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import DeleteMessagesButton from '../DeleteButton/DeleteButton.js';
 import { useLoading } from '../../contexts/LoadingContext';
 
-const Header = ({ userId, setLog }) => {
+const Header = ({ userId }) => {
   const location = useLocation();
   const [isChat, setIsChat] = useState(true);
   const { isAnyLoading } = useLoading();
@@ -109,7 +109,7 @@ const Header = ({ userId, setLog }) => {
         </Link>
       </nav>
       <div style={{ visibility: isChat ? 'visible' : 'hidden', marginLeft: 'auto' }}>
-        <DeleteMessagesButton userId={userId} setLog={setLog} loading={isAnyLoading} />
+        <DeleteMessagesButton userId={userId} loading={isAnyLoading} />
       </div>
     </header>
   );

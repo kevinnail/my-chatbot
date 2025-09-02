@@ -4,7 +4,7 @@ import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
 import { useChatContext } from '../../contexts/ChatContext';
 
-const Chat = ({ userId, log, setLog }) => {
+const Chat = ({ userId }) => {
   const {
     input,
     setInput,
@@ -14,6 +14,8 @@ const Chat = ({ userId, log, setLog }) => {
     setContextPercent,
     tokenCount,
     handleInputChange,
+    log,
+    setLog,
   } = useChatContext();
 
   const [currentTime, setCurrentTime] = useState(new Date());

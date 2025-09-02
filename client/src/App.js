@@ -11,7 +11,6 @@ import { ChatProvider } from './contexts/ChatContext';
 export default function App() {
   const googleId = process.env.REACT_APP_GOOGLE_USER_ID;
   const [userId, setUserId] = useState(googleId);
-  const [log, setLog] = useState([]);
 
   return (
     <LoadingProvider>
@@ -25,9 +24,9 @@ export default function App() {
               background: 'black',
             }}
           >
-            <Header userId={userId} setLog={setLog} />
+            <Header userId={userId} />
             <Routes>
-              <Route path="/" element={<Chat userId={userId} log={log} setLog={setLog} />} />
+              <Route path="/" element={<Chat userId={userId} />} />
               <Route path="/gmail-mcp" element={<GmailMCP userId={userId} />} />
             </Routes>
             <Footer />

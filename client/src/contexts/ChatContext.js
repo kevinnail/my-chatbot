@@ -15,6 +15,7 @@ export const ChatProvider = ({ children }) => {
   const [input, setInput] = useState('');
   const [contextPercent, setContextPercent] = useState(0);
   const [tokenCount, setTokenCount] = useState(0);
+  const [log, setLog] = useState([]);
   const { chatLoading, setChatLoading } = useLoading();
 
   function countTokensFromString(text) {
@@ -42,6 +43,8 @@ export const ChatProvider = ({ children }) => {
     setContextPercent,
     tokenCount,
     handleInputChange,
+    log,
+    setLog,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
