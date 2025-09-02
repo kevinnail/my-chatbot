@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useLoading } from '../contexts/LoadingContext';
 
 export const useChat = () => {
   const [input, setInput] = useState('');
   const [log, setLog] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [contextPercent, setContextPercent] = useState(0);
   const [tokenCount, setTokenCount] = useState(0);
+  const { chatLoading, setChatLoading } = useLoading();
 
   function countTokensFromString(text) {
     // Very rough estimate: 1 token ≈ 4 characters in English
@@ -28,11 +29,11 @@ export const useChat = () => {
     setInput,
     log,
     setLog,
-    loading,
-    setLoading,
+    loading: chatLoading,
+    setLoading: setChatLoading,
     contextPercent,
     setContextPercent,
     tokenCount,
     handleInputChange,
   };
-}; 
+};

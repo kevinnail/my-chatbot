@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import './GmailMCP.css';
+import { useLoading } from '../../contexts/LoadingContext';
 import GoogleCalendar from '../GoogleCalendar/GoogleCalendar.js';
 
 const GmailMCP = ({ userId }) => {
   const [emails, setEmails] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { gmailLoading, setGmailLoading } = useLoading();
+  const loading = gmailLoading;
+  const setLoading = setGmailLoading;
   const [error, setError] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
