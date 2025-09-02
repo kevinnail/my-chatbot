@@ -564,7 +564,6 @@ const GmailMCP = ({ userId }) => {
                             )}
                           </div>
                         </div>
-
                         {email.analysis?.actionItems && email.analysis.actionItems.length > 0 && (
                           <div className="action-items">
                             <h5>Action Items:</h5>
@@ -575,11 +574,13 @@ const GmailMCP = ({ userId }) => {
                             </ul>
                           </div>
                         )}
-
+                      </div>
+                      <div>
+                        {' '}
                         {email.analysis?.calendarEvents &&
                           email.analysis.calendarEvents.length > 0 && (
                             <div className="calendar-events">
-                              <h5>📅 Calendar Events Created:</h5>
+                              <h5>Calendar Events Created:</h5>
                               {email.analysis.calendarEvents.map((event, idx) => (
                                 <div key={idx} className="calendar-event">
                                   {console.log('email that should have .summary', email)}
@@ -599,7 +600,6 @@ const GmailMCP = ({ userId }) => {
                               ))}
                             </div>
                           )}
-
                         {email.analysis?.draftResponse && (
                           <div className="draft-response">
                             <h5>📝 Draft Response:</h5>
@@ -607,28 +607,29 @@ const GmailMCP = ({ userId }) => {
                           </div>
                         )}
                       </div>
-
                       <div
                         className="email-actions-compact"
                         style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
                       >
-                        <button
-                          onClick={() => window.open(email.webLink, '_blank')}
-                          className="view-email-button"
-                        >
-                          View Gmail
-                        </button>
-                        {email.analysis?.draftResponse && (
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                           <button
-                            onClick={() => {
-                              const mailtoLink = `mailto:${email.from}?subject=Re: ${email.subject}&body=${encodeURIComponent(email.analysis.draftResponse)}`;
-                              window.open(mailtoLink);
-                            }}
-                            className="draft-response-button"
+                            onClick={() => window.open(email.webLink, '_blank')}
+                            className="view-email-button"
                           >
-                            Use Draft
+                            View Gmail
                           </button>
-                        )}
+                          {email.analysis?.draftResponse && (
+                            <button
+                              onClick={() => {
+                                const mailtoLink = `mailto:${email.from}?subject=Re: ${email.subject}&body=${encodeURIComponent(email.analysis.draftResponse)}`;
+                                window.open(mailtoLink);
+                              }}
+                              className="draft-response-button"
+                            >
+                              Use Draft
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
