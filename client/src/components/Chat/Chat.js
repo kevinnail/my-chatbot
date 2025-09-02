@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
@@ -15,6 +15,39 @@ const Chat = ({ userId, log, setLog }) => {
     tokenCount,
     handleInputChange,
   } = useChat();
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [callLLMStartTime, setcallLLMStartTime] = useState(null);
+
+  const calculateTimeSinceStart = () => {
+    if (!callLLMStartTime) return null;
+    const now = currentTime;
+    const startTime = new Date(callLLMStartTime);
+    const diffMs = now - startTime;
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const remainingSeconds = diffSeconds % 60;
+
+    if (diffMinutes > 0) {
+      return `${diffMinutes}m ${remainingSeconds}s`;
+    }
+    return `${diffSeconds}s`;
+  };
+
+  useEffect(() => {
+    if (callLLMStartTime) {
+      const interval = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [callLLMStartTime]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Timer state changed:', { callLLMStartTime, loading });
+  }, [callLLMStartTime, loading]);
 
   return (
     <main
@@ -36,7 +69,25 @@ const Chat = ({ userId, log, setLog }) => {
       }}
     >
       <ChatMessages log={log} loading={loading} />
-
+      {callLLMStartTime && (
+        <div
+          className="time-info"
+          style={{
+            padding: '10px',
+            backgroundColor: '#333',
+            color: '#00ff00',
+            textAlign: 'center',
+            borderRadius: '5px',
+            margin: '10px 0',
+          }}
+        >
+          <small>
+            {calculateTimeSinceStart()
+              ? `Running for: ${calculateTimeSinceStart()}`
+              : 'Starting...'}
+          </small>
+        </div>
+      )}
       <MessageInput
         userId={userId}
         input={input}
@@ -47,8 +98,8 @@ const Chat = ({ userId, log, setLog }) => {
         setContextPercent={setContextPercent}
         tokenCount={tokenCount}
         onInputChange={handleInputChange}
+        setcallLLMStartTime={setcallLLMStartTime}
       />
-
       <ContextProgressBar contextPercent={contextPercent} />
     </main>
   );

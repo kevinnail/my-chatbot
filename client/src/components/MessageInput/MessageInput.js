@@ -1,34 +1,45 @@
 import React from 'react';
 import { sendPrompt } from '../../services/fetch-chat';
 
-const MessageInput = ({ 
-  userId, 
-  input, 
-  setInput, 
-  loading, 
-  setLog, 
-  setLoading, 
+const MessageInput = ({
+  userId,
+  input,
+  setInput,
+  loading,
+  setLog,
+  setLoading,
   setContextPercent,
   tokenCount,
-  onInputChange 
+  onInputChange,
+  setcallLLMStartTime,
 }) => {
   const handleSend = () => {
+    setcallLLMStartTime(new Date());
+
     sendPrompt(userId, input, setLog, setInput, setLoading, setContextPercent);
   };
 
   return (
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'0.35rem',width:'100%'}}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '0.35rem',
+        width: '100%',
+      }}
+    >
       <textarea
         style={{
-          width:'70%',
-          fontSize:'1.05rem',
-          height:'70px',
-          display:loading?'none':'block',
-          color:'white',
-          backgroundColor:'black',
-          padding:'10px',
-          borderRadius:'10px',
-          border:'1px solid #4f62cb'
+          width: '70%',
+          fontSize: '1.05rem',
+          height: '70px',
+          display: loading ? 'none' : 'block',
+          color: 'white',
+          backgroundColor: 'black',
+          padding: '10px',
+          borderRadius: '10px',
+          border: '1px solid #4f62cb',
         }}
         value={input}
         placeholder={`Let's code!  What can I help build for you?`}
@@ -43,24 +54,28 @@ const MessageInput = ({
         }}
       />
       {!loading && (
-        <div style={{
-          width: '70%',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '0.5rem'
-        }}>
-          <div style={{
-            fontSize: '1rem',
-            color: '#888',
-            fontFamily: 'monospace',
-            letterSpacing: '0.05em'
-          }}>
+        <div
+          style={{
+            width: '70%',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '0.5rem',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '1rem',
+              color: '#888',
+              fontFamily: 'monospace',
+              letterSpacing: '0.05em',
+            }}
+          >
             ~{tokenCount} tokens in prompt
           </div>
-          <button 
+          <button
             style={{
-              fontSize: '0.77rem', 
+              fontSize: '0.77rem',
               borderRadius: '15px',
               padding: '.28rem 1.05rem',
               background: 'linear-gradient(90deg, #4af 0%, #0fa 100%)',
@@ -78,8 +93,15 @@ const MessageInput = ({
             disabled={loading}
             onClick={handleSend}
           >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:'0.2em'}}>
-              <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white"/>
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{ marginRight: '0.2em' }}
+            >
+              <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white" />
             </svg>
             Send
           </button>
@@ -89,4 +111,4 @@ const MessageInput = ({
   );
 };
 
-export default MessageInput; 
+export default MessageInput;
