@@ -11,7 +11,8 @@ export async function sendPrompt(
 ) {
   if (!input.trim()) return;
   const userMsg = input;
-  setLog((l) => [...l, { text: userMsg, role: 'user' }]);
+  const startTime = Date.now();
+  setLog((l) => [...l, { text: userMsg, role: 'user', timestamp: startTime }]);
   setInput('');
   setLoading(true);
   try {
@@ -52,8 +53,10 @@ export async function sendPrompt(
     }
 
     const { bot, context_percent } = data;
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
 
-    setLog((l) => [...l, { text: bot, role: 'bot' }]);
+    setLog((l) => [...l, { text: bot, role: 'bot', responseTime, timestamp: endTime }]);
     if (context_percent !== undefined && context_percent !== null) {
       setContextPercent(Number(context_percent));
     }
@@ -63,12 +66,16 @@ export async function sendPrompt(
     }
   } catch (e) {
     console.error('error sending prompt', e);
+    const errorTime = Date.now();
+    const responseTime = errorTime - startTime;
     // Add error message to log to maintain proper message positioning
     setLog((l) => [
       ...l,
       {
         text: `**Error**: ${e.message || 'Unable to get response from server. Please try again.'}`,
         role: 'error',
+        responseTime,
+        timestamp: errorTime,
       },
     ]);
     // Clear the timer when error response is received
