@@ -380,6 +380,11 @@ const GmailMCP = ({ userId }) => {
           <div className="sync-section">
             <div className="sync-header">
               <h3>Email Sync & Analysis</h3>
+              {lastSync && !loading && (
+                <div className="last-sync">
+                  <small>Last sync: {new Date(lastSync).toLocaleString()}</small>
+                </div>
+              )}
               <button onClick={syncEmails} disabled={loading} className="sync-button">
                 {loading ? 'Syncing...' : 'Sync & Analyze Emails'}
               </button>
@@ -419,12 +424,6 @@ const GmailMCP = ({ userId }) => {
                     </small>
                   </div>
                 )}
-              </div>
-            )}
-
-            {lastSync && !loading && (
-              <div className="last-sync">
-                <small>Last sync: {new Date(lastSync).toLocaleString()}</small>
               </div>
             )}
 

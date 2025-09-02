@@ -301,7 +301,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
 }
 
 .sync-header h3 {
@@ -436,8 +435,8 @@
 .filters-section {
   display: flex;
   gap: 20px;
-  margin: 20px 0;
-  padding: 15px;
+  margin: 6px 0;
+  padding: 6px;
   background: #222;
   border-radius: 8px;
 }
@@ -506,7 +505,7 @@
 .emails-list {
   display: flex;
   flex-direction: column;
-  margin-top: 20px;
+  margin-top: 6px;
 }
 
 /* Email Cards */
