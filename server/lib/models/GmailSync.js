@@ -6,6 +6,9 @@ class GmailSync {
     const result = await pool.query('SELECT last_sync FROM gmail_sync_status WHERE user_id = $1', [
       userId,
     ]);
+    if (result.rows.length === 0) {
+      return null;
+    }
     return result.rows[0]?.last_sync;
   }
 
