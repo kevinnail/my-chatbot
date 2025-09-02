@@ -8,6 +8,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 DROP TABLE IF EXISTS chat_memory CASCADE;
 DROP TABLE IF EXISTS gmail_tokens CASCADE;
 DROP TABLE IF EXISTS gmail_sync_status CASCADE;
+DROP TABLE IF EXISTS email_memory CASCADE;
 DROP TABLE IF EXISTS google_calendar_tokens CASCADE;
 
 -- Create chat_memory table
