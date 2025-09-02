@@ -123,7 +123,6 @@ router.post('/sync', async (req, res) => {
           console.error('Error storing email:', error);
         }
       }
-
       // Optionally store unlikely emails with low similarity (for completeness)
       for (const email of filterResults.unlikelyEmails) {
         try {
@@ -366,8 +365,8 @@ router.get('/emails/:userId', async (req, res) => {
       summary: email.llm_analysis?.summary || 'Analysis pending...',
       vectorSimilarity: email.similarity_score?.toFixed(3) || '0.000',
       analyzed: email.llm_analyzed,
-      category: email.llm_analysis?.category,
-      priority: email.llm_analysis?.priority,
+      category: email.llm_analysis?.category || null,
+      priority: email.llm_analysis?.priority || null,
     }));
 
     console.log(`Found ${formattedEmails.length} stored web-dev emails`);
