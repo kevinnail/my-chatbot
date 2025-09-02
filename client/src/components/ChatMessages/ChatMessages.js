@@ -9,14 +9,14 @@ import CopyButton from '../CopyButton/CopyButton.js';
 // Register the language for syntax highlighting
 SyntaxHighlighter.registerLanguage('javascript', js);
 
-const ChatMessages = ({ log, loading }) => {
+const ChatMessages = ({ log, loading, setcallLLMStartTime }) => {
   return (
-    <div style={{display:'flex',flexDirection:'column',gap:'1rem',marginBottom:'1.5rem'}}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
       {log.map((m, i) => {
         const isUser = m.role === 'user';
         const isError = m.role === 'error';
         const isBot = m.role === 'bot';
-        
+
         return (
           <div
             key={i}
@@ -34,9 +34,13 @@ const ChatMessages = ({ log, loading }) => {
                 color: '#ffffffd3',
                 borderRadius: '10px',
                 padding: '.75rem 1.25rem',
-                maxWidth: '70%',
+                minWidth: '70%',
                 wordBreak: 'break-word',
-                boxShadow: isUser ? '0 2px 8px #1118' : isError ? '0 2px 8px #f448' : '0 2px 8px #2228',
+                boxShadow: isUser
+                  ? '0 2px 8px #1118'
+                  : isError
+                    ? '0 2px 8px #f448'
+                    : '0 2px 8px #2228',
                 border: isError ? '1px solid #ff6b6b' : 'none',
               }}
             >
@@ -79,11 +83,15 @@ const ChatMessages = ({ log, loading }) => {
                       return <p style={{ margin: '1em 0' }}>{children}</p>;
                     },
                     a: ({ node, ...props }) => (
-                      <a style={{ color: '#4af', textDecoration: 'underline' }} {...props} >{props.children}</a>
+                      <a style={{ color: '#4af', textDecoration: 'underline' }} {...props}>
+                        {props.children}
+                      </a>
                     ),
                     pre: ({ node, ...props }) => <>{props.children}</>,
                     code: ({ node, inline, className, children, ...props }) => {
-                      const codeString = Array.isArray(children) ? children.join('') : String(children);
+                      const codeString = Array.isArray(children)
+                        ? children.join('')
+                        : String(children);
                       const language = (className || '').replace('language-', '');
 
                       // Helper: is this a filename-like string?
@@ -100,7 +108,9 @@ const ChatMessages = ({ log, loading }) => {
                             parts.push(codeString.slice(lastIndex, match.index));
                           }
                           parts.push(
-                            <span key={match.index} style={{ color: '#347a09' }}>{match[0]}</span>
+                            <span key={match.index} style={{ color: '#347a09' }}>
+                              {match[0]}
+                            </span>,
                           );
                           lastIndex = match.index + match[0].length;
                         }
@@ -127,7 +137,13 @@ const ChatMessages = ({ log, loading }) => {
 
                       // Block code: use SyntaxHighlighter
                       return (
-                        <div style={{ position: 'relative', marginBottom: '0.245em', marginTop: node?.position?.start?.offset > 0 ? '0.7em' : undefined }}>
+                        <div
+                          style={{
+                            position: 'relative',
+                            marginBottom: '0.245em',
+                            marginTop: node?.position?.start?.offset > 0 ? '0.7em' : undefined,
+                          }}
+                        >
                           <SyntaxHighlighter
                             language={language || 'text'}
                             style={vs2015}
@@ -178,7 +194,7 @@ const ChatMessages = ({ log, loading }) => {
         );
       })}
       {loading && (
-        <p className='loading-button' style={{fontSize:'1rem'}}>
+        <p className="loading-button" style={{ fontSize: '1rem' }}>
           Loading your response...
         </p>
       )}
@@ -186,4 +202,4 @@ const ChatMessages = ({ log, loading }) => {
   );
 };
 
-export default ChatMessages; 
+export default ChatMessages;
