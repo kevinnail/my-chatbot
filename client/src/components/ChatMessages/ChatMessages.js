@@ -85,10 +85,10 @@ const ChatMessages = ({ log, loading }) => {
                       let children = props.children;
                       if (Array.isArray(children) && children.length > 1) {
                         children = children.filter((child, idx, arr) => {
-                          // Remove if this child is a lone period and previous is a React element (likely a code block)
+                          // Remove if this child is a lone period/punctuation and previous is a React element (likely a code block)
                           if (
                             typeof child === 'string' &&
-                            child.trim().match(/^\.*$/) &&
+                            child.trim().match(/^[.!?;,:]*$/) &&
                             idx > 0 &&
                             React.isValidElement(arr[idx - 1])
                           ) {
