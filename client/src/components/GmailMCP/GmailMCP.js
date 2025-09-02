@@ -476,10 +476,6 @@ const GmailMCP = ({ userId }) => {
                             ? '#ffd93d'
                             : '#95e1d3'
                       }`,
-                      background: '#1a1a1a',
-                      margin: '15px 0',
-                      borderRadius: '10px',
-                      color: 'white',
                     }}
                   >
                     <div

@@ -45,17 +45,15 @@
   padding: 8px 16px;
   border-radius: 20px;
   font-weight: bold;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
 }
 
 .overall-status.ready {
-  background: #4caf50;
-  color: white;
+  color: #4caf50;
 }
 
 .overall-status.not-ready {
-  background: #ff9800;
-  color: white;
+  color: #ff9800;
 }
 
 .connection-status {
@@ -374,7 +372,7 @@
   background: #222;
   border-radius: 8px;
   padding: 15px;
-  margin: 15px 0;
+  /* margin: 15px 0; */
   font-size: 0.9rem;
   color: #639cff;
   margin-top: 5px;
@@ -513,9 +511,11 @@
   background: #1a1a1a;
   border-radius: 8px;
   padding: 15px;
-  margin-bottom: 15px;
+  margin-bottom: 6px;
   border-left: 4px solid #333;
   transition: all 0.3s ease;
+  background: #1a1a1a;
+  color: white;
 }
 
 .email-card:hover {
