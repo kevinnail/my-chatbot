@@ -14,10 +14,11 @@ router.post('/', async (req, res) => {
   try {
     const { msg, userId } = req.body;
 
-    // Store the user message first
-    await storeMessage({ userId, role: 'user', content: msg });
-
+    // Get memories BEFORE storing the current message to avoid duplication
     const memories = await buildPromptWithMemory({ userId, userInput: msg });
+
+    // Store the user message after getting memories
+    await storeMessage({ userId, role: 'user', content: msg });
     const systemPrompt = `
     You are a senior software engineer specializing in React, Express, and Node.js with over 10 years of experience. Your role is to provide precise, production-ready code solutions and direct technical guidance.
     
