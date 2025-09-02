@@ -29,6 +29,11 @@ io.on('connection', (socket) => {
     console.log(` Client joined sync updates for user ${userId}`);
   });
 
+  socket.on('join-chat', (userId) => {
+    socket.join(`chat-${userId}`);
+    console.log(`💬 Client joined chat for user ${userId}`);
+  });
+
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
