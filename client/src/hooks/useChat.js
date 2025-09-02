@@ -3,7 +3,6 @@ import { useLoading } from '../contexts/LoadingContext';
 
 export const useChat = () => {
   const [input, setInput] = useState('');
-  const [log, setLog] = useState([]);
   const [contextPercent, setContextPercent] = useState(0);
   const [tokenCount, setTokenCount] = useState(0);
   const { chatLoading, setChatLoading } = useLoading();
@@ -27,8 +26,6 @@ export const useChat = () => {
   return {
     input,
     setInput,
-    log,
-    setLog,
     loading: chatLoading,
     setLoading: setChatLoading,
     contextPercent,

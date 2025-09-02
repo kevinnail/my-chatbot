@@ -4,12 +4,10 @@ import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
 import { useChat } from '../../hooks/useChat';
 
-const Chat = ({ userId }) => {
+const Chat = ({ userId, log, setLog }) => {
   const {
     input,
     setInput,
-    log,
-    setLog,
     loading,
     setLoading,
     contextPercent,

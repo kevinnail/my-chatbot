@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import DeleteMessagesButton from '../DeleteButton/DeleteButton.js';
 import { useLoading } from '../../contexts/LoadingContext';
 
-const Header = ({ userId }) => {
+const Header = ({ userId, setLog }) => {
   const location = useLocation();
   const [isChat, setIsChat] = useState(true);
   const { isAnyLoading } = useLoading();
@@ -15,6 +15,7 @@ const Header = ({ userId }) => {
     }
     setIsChat(true);
   };
+
   const handleGmailMCP = (e) => {
     if (isAnyLoading) {
       e.preventDefault();
@@ -34,7 +35,7 @@ const Header = ({ userId }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        position: 'relative',
+        // position: 'relative',
         borderTopLeftRadius: '0',
         borderTopRightRadius: '0',
         boxShadow: '0 2px 8px #0008',
@@ -108,7 +109,7 @@ const Header = ({ userId }) => {
         </Link>
       </nav>
       <div style={{ visibility: isChat ? 'visible' : 'hidden', marginLeft: 'auto' }}>
-        <DeleteMessagesButton userId={userId} />
+        <DeleteMessagesButton userId={userId} setLog={setLog} />
       </div>
     </header>
   );
