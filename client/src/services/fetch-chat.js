@@ -1,6 +1,14 @@
 const BASE_URL = process.env.REACT_APP_BASE_URL;
 
-export async function sendPrompt(userId, input, setLog, setInput, setLoading, setContextPercent) {
+export async function sendPrompt(
+  userId,
+  input,
+  setLog,
+  setInput,
+  setLoading,
+  setContextPercent,
+  setcallLLMStartTime,
+) {
   if (!input.trim()) return;
   const userMsg = input;
   setLog((l) => [...l, { text: userMsg, role: 'user' }]);
@@ -49,6 +57,10 @@ export async function sendPrompt(userId, input, setLog, setInput, setLoading, se
     if (context_percent !== undefined && context_percent !== null) {
       setContextPercent(Number(context_percent));
     }
+    // Clear the timer when bot response is received
+    if (setcallLLMStartTime) {
+      setcallLLMStartTime(null);
+    }
   } catch (e) {
     console.error('error sending prompt', e);
     // Add error message to log to maintain proper message positioning
@@ -59,6 +71,10 @@ export async function sendPrompt(userId, input, setLog, setInput, setLoading, se
         role: 'error',
       },
     ]);
+    // Clear the timer when error response is received
+    if (setcallLLMStartTime) {
+      setcallLLMStartTime(null);
+    }
   } finally {
     setLoading(false);
   }
