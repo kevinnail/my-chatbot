@@ -19,6 +19,9 @@ router.post('/', async (req, res) => {
 
     // Store the user message after getting memories
     await storeMessage({ userId, role: 'user', content: msg });
+
+    // Get Socket.IO instance
+    const io = req.app.get('io');
     const systemPrompt = `
     You are a senior software engineer specializing in React, Express, and Node.js with over 10 years of experience. Your role is to provide precise, production-ready code solutions and direct technical guidance.
     
@@ -96,7 +99,7 @@ router.post('/', async (req, res) => {
           // repeat_penalty: 1.05,
           // top_k: 40,
         },
-        stream: false,
+        stream: true,
       }),
       signal: controller.signal,
       // Configure undici timeouts to prevent race condition
@@ -109,26 +112,72 @@ router.post('/', async (req, res) => {
 
     // Clear the timeout since we got a response
     clearTimeout(timeoutId);
-    const data = await response.json();
-    const reply =
-      data.message && typeof data.message.content === 'string' ? data.message.content.trim() : '';
 
-    // Store the bot's response
-    await storeMessage({ userId, role: 'bot', content: reply });
+    // Handle streaming response via WebSocket
+    let fullResponse = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
 
-    // Calculate context percentage based on ALL conversation history
-    const allMessages = await getAllMessages({ userId });
-    const allMessagesWithSystem = [{ role: 'system', content: systemPrompt }, ...allMessages];
-    const totalTokens = countTokens(allMessagesWithSystem);
-    const contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
-    const LLMEndTime = performance.now();
+    // Send initial response to confirm request received
+    res.json({ streaming: true, message: 'Streaming response via WebSocket' });
 
-    res.json({
-      bot:
-        data.message && typeof data.message.content === 'string' ? data.message.content.trim() : '',
-      prompt_eval_count: data.prompt_eval_count || 0,
-      context_percent: contextPercent,
-    });
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter((line) => line.trim());
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+
+            if (data.message && data.message.content) {
+              const content = data.message.content;
+              fullResponse += content;
+
+              // Emit streaming chunk via WebSocket
+              io.to(`chat-${userId}`).emit('chat-chunk', {
+                content,
+                fullResponse,
+                done: false,
+              });
+            }
+
+            if (data.done) {
+              // Store the complete response
+              await storeMessage({ userId, role: 'bot', content: fullResponse });
+
+              // Calculate context percentage
+              const allMessages = await getAllMessages({ userId });
+              const allMessagesWithSystem = [
+                { role: 'system', content: systemPrompt },
+                ...allMessages,
+              ];
+              const totalTokens = countTokens(allMessagesWithSystem);
+              const contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
+
+              // Emit completion via WebSocket
+              io.to(`chat-${userId}`).emit('chat-complete', {
+                fullResponse,
+                contextPercent,
+                done: true,
+              });
+
+              return;
+            }
+          } catch (parseError) {
+            console.error('Error parsing streaming chunk:', parseError);
+          }
+        }
+      }
+    } catch (streamError) {
+      console.error('Error reading stream:', streamError);
+      io.to(`chat-${userId}`).emit('chat-error', {
+        error: 'Streaming error occurred',
+      });
+    }
   } catch (error) {
     console.error('Error in chat controller:', error);
 
