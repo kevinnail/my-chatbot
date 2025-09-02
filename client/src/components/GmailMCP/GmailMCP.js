@@ -139,7 +139,7 @@ const GmailMCP = ({ userId }) => {
     const now = currentTime;
     const startTime = new Date(syncStartTime);
     const diffMs = now - startTime;
-    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffSeconds = Math.max(0, Math.floor(diffMs / 1000)); // Ensure non-negative
     const diffMinutes = Math.floor(diffSeconds / 60);
     const remainingSeconds = diffSeconds % 60;
 

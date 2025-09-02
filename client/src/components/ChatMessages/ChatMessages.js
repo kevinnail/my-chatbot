@@ -52,6 +52,7 @@ const ChatMessages = ({ log, loading }) => {
                 borderRadius: '10px',
                 padding: '.75rem 1.25rem',
                 minWidth: '70%',
+                maxWidth: '70%',
                 wordBreak: 'break-word',
                 boxShadow: isUser
                   ? '0 2px 8px #1118'
