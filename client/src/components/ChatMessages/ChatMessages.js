@@ -208,6 +208,19 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                 m.text
               )}
             </div>
+            {/* Show streaming indicator */}
+            {isBot && m.isStreaming && (
+              <div
+                style={{
+                  color: '#00ff00',
+                  fontSize: '0.8rem',
+                  marginTop: '5px',
+                  fontFamily: 'monospace',
+                }}
+              >
+                ● Streaming...
+              </div>
+            )}
             {(isBot || isError) && m.responseTime && (
               <div
                 style={{
