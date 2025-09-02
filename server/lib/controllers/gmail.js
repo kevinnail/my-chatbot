@@ -205,6 +205,18 @@ router.post('/sync', async (req, res) => {
     const preliminaryEmails = Array.from(preliminaryEmailsMap.values());
 
     console.log(`Returning ${preliminaryEmails.length} preliminary emails`);
+    console.log(
+      'Sample preliminary email:',
+      preliminaryEmails[0]
+        ? {
+            id: preliminaryEmails[0].id,
+            subject: preliminaryEmails[0].subject?.substring(0, 50),
+            analyzed: preliminaryEmails[0].analyzed,
+            status: preliminaryEmails[0].status,
+            summary: preliminaryEmails[0].summary?.substring(0, 50),
+          }
+        : 'No emails',
+    );
 
     // Step 3: Return preliminary results immediately
     res.json({
@@ -240,6 +252,14 @@ router.post('/sync', async (req, res) => {
               `🧠 Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.vectorSimilarity})`,
             );
 
+            // Emit "currently analyzing" event
+            req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzing', {
+              emailId: email.id,
+              subject: email.subject,
+              analyzedCount,
+              totalToAnalyze: emailsNeedingAnalysis.length,
+            });
+
             // Get full email body from database for analysis
             const fullEmail = await EmailMemory.getEmailById(userId, email.id);
             if (!fullEmail) {
@@ -270,6 +290,8 @@ router.post('/sync', async (req, res) => {
               analysisExists: !!analysis,
               analysisSummary: analysis?.summary?.substring(0, 50),
               room: `sync-updates-${userId}`,
+              analyzedCount,
+              totalToAnalyze: emailsNeedingAnalysis.length,
             });
 
             req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzed', socketData);
