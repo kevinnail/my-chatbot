@@ -202,7 +202,9 @@ describe('googleCalendar routes', () => {
       );
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('http://localhost:3000?calendar_connected=true');
+      expect(response.headers.location).toBe(
+        'http://localhost:3000/oauth-success.html?calendar_connected=true',
+      );
 
       expect(mockGetToken).toHaveBeenCalledWith(code);
 
@@ -227,7 +229,9 @@ describe('googleCalendar routes', () => {
       );
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('http://localhost:3000?error=oauth_failed');
+      expect(response.headers.location).toBe(
+        'http://localhost:3000/oauth-success.html?error=oauth_failed',
+      );
 
       expect(mockGetToken).toHaveBeenCalledWith(code);
 
@@ -250,7 +254,9 @@ describe('googleCalendar routes', () => {
       );
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('http://localhost:3000?error=oauth_failed');
+      expect(response.headers.location).toBe(
+        'http://localhost:3000/oauth-success.html?error=oauth_failed',
+      );
     });
   });
 
