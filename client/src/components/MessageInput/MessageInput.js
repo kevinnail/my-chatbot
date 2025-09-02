@@ -16,7 +16,7 @@ const MessageInput = ({
   const handleSend = () => {
     setcallLLMStartTime(new Date());
 
-    sendPrompt(userId, input, setLog, setInput, setLoading, setContextPercent);
+    sendPrompt(userId, input, setLog, setInput, setLoading, setContextPercent, setcallLLMStartTime);
   };
 
   return (
