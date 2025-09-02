@@ -479,7 +479,6 @@ const GmailMCP = ({ userId }) => {
                       }`,
                       background: '#1a1a1a',
                       margin: '15px 0',
-                      padding: '20px',
                       borderRadius: '10px',
                       color: 'white',
                     }}
@@ -584,9 +583,13 @@ const GmailMCP = ({ userId }) => {
                               <h5>📅 Calendar Events Created:</h5>
                               {email.analysis.calendarEvents.map((event, idx) => (
                                 <div key={idx} className="calendar-event">
-                                  <strong>{event.summary}</strong>
+                                  {console.log('email that should have .summary', email)}
+                                  <strong>{email.summary}</strong>
                                   <br />
-                                  {event.start} - {event.end}
+                                  {new Date(event.startTime).toLocaleDateString()}{' '}
+                                  {new Date(event.startTime).toLocaleTimeString()} -{' '}
+                                  {new Date(event.endTime).toLocaleDateString()}{' '}
+                                  {new Date(event.endTime).toLocaleTimeString()}
                                   {event.location && (
                                     <>
                                       <br />
