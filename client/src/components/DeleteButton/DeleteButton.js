@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { deleteMessages } from '../../services/fetch-chat.js';
+import { useChatContext } from '../../contexts/ChatContext';
 
 export default function DeleteMessagesButton({ userId, setLog, loading }) {
   const [hover, setHover] = useState(false);
   const [mouseDown, setMouseDown] = useState(false);
+  const { setContextPercent } = useChatContext();
 
   const handleDelete = async () => {
     try {
       setLog([]);
+      setContextPercent(0);
+
       await deleteMessages(userId);
     } catch (err) {
       console.error('Error deleting messages:', err);

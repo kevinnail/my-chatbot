@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
-import { useChat } from '../../hooks/useChat';
+import { useChatContext } from '../../contexts/ChatContext';
 
 const Chat = ({ userId, log, setLog }) => {
   const {
@@ -14,7 +14,7 @@ const Chat = ({ userId, log, setLog }) => {
     setContextPercent,
     tokenCount,
     handleInputChange,
-  } = useChat();
+  } = useChatContext();
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [callLLMStartTime, setcallLLMStartTime] = useState(null);
