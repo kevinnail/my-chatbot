@@ -12,7 +12,6 @@ export default function App() {
   const [userId, setUserId] = useState(googleId);
   const [log, setLog] = useState([]);
 
-  console.log(userId.userId);
   return (
     <LoadingProvider>
       <Router>
