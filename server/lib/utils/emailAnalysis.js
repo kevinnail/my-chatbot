@@ -1,296 +1,460 @@
-// Agentic email analysis using local Ollama
-export async function analyzeEmailWithLLM(subject, body, from) {
+import { google } from 'googleapis';
+import GoogleCalendar from '../models/GoogleCalendar.js';
+
+// Helper function to create calendar event
+async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
+  console.log('🗓️ Raw event args received:', eventArgs);
+
+  // Clean and validate event arguments
   try {
-    const systemPrompt = `You are an intelligent email agent that helps web developers manage their professional emails. 
-    You analyze emails and provide actionable insights. Your responses should be structured JSON with this format:
-    {
-      "isWebDevRelated": true/false,
-      "category": "job_application|job_rejection|job_acceptance|job_interview|job_offer|event|learning|tools|networking|newsletter|community|freelance|other",
-      "priority": "high|medium|low",
-      "summary": "Brief summary of the email content",
-      "actionItems": ["action1", "action2"],
-      "sentiment": "positive|negative|neutral",
-      "draftResponse": "Suggested response if appropriate, or null"
+    // Parse eventArgs if it's a string
+    let cleanArgs = eventArgs;
+    if (typeof eventArgs === 'string') {
+      try {
+        cleanArgs = JSON.parse(eventArgs);
+      } catch {
+        console.error('❌ Failed to parse eventArgs string:', eventArgs);
+        return;
+      }
     }
 
-    Focus on detecting web development related emails including:
-    
-    JOB RELATED:
-    - Job applications confirmations
-    - Interview invitations and scheduling
-    - Rejection letters
-    - Job offers and negotiations
-    - Application status updates
-    - Recruiter outreach
-    - Job board notifications (Built In, LinkedIn, Indeed, Stack Overflow Jobs, etc.)
-    - Contract/freelance opportunities
-    
-    EVENT RELATED:
-    - Tech conferences and meetups
-    - Webinars and workshops
-    - Hackathons and coding challenges
-    - Industry events and networking
-    - Training sessions and boot camps
-    - Company tech talks
-    
-    LEARNING RELATED:
-    - Course platforms (Udemy, Coursera, Pluralsight, etc.)
-    - Tutorial sites and coding platforms
-    - Certification programs
-    - Technical book releases
-    - Educational content updates
-    
-    TOOLS & TECHNOLOGY:
-    - Platform updates (AWS, Google Cloud, Azure, etc.)
-    - Framework releases (React, Angular, Vue, etc.)
-    - Development tool updates
-    - API documentation and changes
-    - Software licenses and subscriptions
-    - IDE and editor updates
-    
-    COMMUNITY & NETWORKING:
-    - Developer community updates
-    - Open source project notifications
-    - GitHub activity and contributions
-    - Technical forum discussions
-    - Developer newsletter subscriptions
-    - Coding community events
-    
-    OTHER PROFESSIONAL:
-    - Client communications
-    - Project updates and deadlines
-    - Team collaboration emails
-    - Code review notifications
-    - Professional development opportunities
+    // Validate and fix attendees
+    let attendees = [];
+    if (cleanArgs.attendees) {
+      console.log(
+        '🔧 Processing attendees:',
+        cleanArgs.attendees,
+        'Type:',
+        typeof cleanArgs.attendees,
+      );
 
-    Be comprehensive but accurate in your categorization.`;
+      if (typeof cleanArgs.attendees === 'string') {
+        // Try to parse string as JSON array first
+        try {
+          const parsed = JSON.parse(cleanArgs.attendees);
+          console.log('🔧 Parsed attendees JSON:', parsed, 'Is array:', Array.isArray(parsed));
+          if (Array.isArray(parsed)) {
+            attendees = parsed;
+          } else {
+            attendees = [parsed]; // Single item
+          }
+        } catch (parseError) {
+          console.log('🔧 Failed to parse attendees as JSON:', parseError.message);
+          // If not JSON, split by comma or treat as single email
+          attendees = cleanArgs.attendees.includes(',')
+            ? cleanArgs.attendees.split(',').map((email) => email.trim())
+            : [cleanArgs.attendees.trim()];
+        }
+      } else if (Array.isArray(cleanArgs.attendees)) {
+        attendees = cleanArgs.attendees;
+      }
 
-    const userPrompt = `Analyze this email:
-    Subject: ${subject}
-    Body: ${body}
-    From: ${from}
+      // Ensure all attendees are valid email strings
+      attendees = attendees
+        .filter((email) => email && typeof email === 'string' && email.trim().length > 0)
+        .map((email) => email.trim());
 
-Provide your analysis in the JSON format specified.`;
+      console.log('🔧 Final attendees array:', attendees);
+    }
+
+    // Validate and fix dates
+    const currentYear = new Date().getFullYear();
+    const currentDate = new Date();
+
+    let startDateTime = cleanArgs.startDateTime;
+    let endDateTime = cleanArgs.endDateTime;
+
+    // Fix year if it's in the past (assume next year)
+    if (startDateTime) {
+      const startDate = new Date(startDateTime);
+      if (startDate < currentDate && startDate.getFullYear() === currentYear) {
+        startDate.setFullYear(currentYear + 1);
+        startDateTime = startDate.toISOString();
+        console.log('🔧 Fixed start date to next year:', startDateTime);
+      }
+    }
+
+    // Fix empty or invalid end date
+    if (!endDateTime || endDateTime === '' || endDateTime === 'null') {
+      if (startDateTime) {
+        const start = new Date(startDateTime);
+        const end = new Date(start.getTime() + 60 * 60 * 1000); // Add 1 hour
+        endDateTime = end.toISOString();
+        console.log('🔧 Generated end date (1 hour after start):', endDateTime);
+      } else {
+        console.error('❌ Cannot create event without valid start/end times');
+        return;
+      }
+    }
+
+    // Update the cleaned args
+    eventArgs = {
+      ...cleanArgs,
+      attendees,
+      startDateTime,
+      endDateTime,
+    };
+
+    console.log('🗓️ Cleaned event args:', eventArgs);
+  } catch (cleanupError) {
+    console.error('❌ Error cleaning event args:', cleanupError);
+    return;
+  }
+
+  try {
+    const hasValidTokens = await GoogleCalendar.hasValidTokens(userId);
+    if (!hasValidTokens) {
+      console.log('User does not have valid Google Calendar tokens, skipping event creation');
+      return;
+    }
+
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI,
+    );
+    const tokens = await GoogleCalendar.getTokens(userId);
+    oauth2Client.setCredentials(tokens);
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    // Conflict detection
+    const startTime = new Date(eventArgs.startDateTime);
+    const endTime = new Date(eventArgs.endDateTime);
+    try {
+      const existing = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: startTime.toISOString(),
+        timeMax: endTime.toISOString(),
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+      if (existing.data.items?.length) {
+        const count = existing.data.items.length;
+        console.log(`CONFLICT DETECTED: ${count} event${count > 1 ? 's' : ''} at this time`);
+        const conflictNote =
+          `\n\nCONFLICT WARNING: ${count} existing event${count > 1 ? 's' : ''}:\n` +
+          existing.data.items.map((e) => `• ${e.summary}`).join('\n');
+        eventArgs.description = (eventArgs.description || '') + conflictNote;
+      }
+    } catch (err) {
+      console.error('Error checking conflicts:', err);
+    }
+
+    const event = {
+      summary: eventArgs.title,
+      description:
+        eventArgs.description ||
+        `Created from email: ${emailSubject}\n\nOriginal email from: ${emailFrom}`,
+      location: eventArgs.location,
+      start: { dateTime: eventArgs.startDateTime, timeZone: 'America/Los_Angeles' },
+      end: { dateTime: eventArgs.endDateTime, timeZone: 'America/Los_Angeles' },
+      attendees: eventArgs.attendees?.map((email) => ({ email })) || [],
+    };
+
+    const res = await calendar.events.insert({ calendarId: 'primary', resource: event });
+    console.log(`✅ Event created: ${res.data.htmlLink}`);
+    return res.data;
+  } catch (error) {
+    console.error('Error creating calendar event:', error);
+    if (error.response) console.error('API details:', error.response.data);
+    throw error;
+  }
+}
+
+// Email analysis with Ollama
+export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
+  const currentYear = new Date().getFullYear();
+  const systemPrompt = `You are an email analysis agent. You must ALWAYS return valid JSON in this exact format:
+
+{
+  "isWebDevRelated": true/false,
+  "category": "job_application|job_rejection|job_acceptance|job_interview|job_offer|event|learning|tools|networking|newsletter|community|freelance|other",
+  "priority": "high|medium|low", 
+  "summary": "Brief summary of the email content",
+  "actionItems": ["action1", "action2"],
+  "sentiment": "positive|negative|neutral",
+  "draftResponse": "Suggested response if appropriate, or null"
+}
+
+CALENDAR EVENTS: Only create calendar events for emails with:
+1. Clear appointment keywords (appointment, meeting, interview, doctor, dentist, call scheduled)
+2. Specific date AND time mentioned (not copyright dates)
+3. Actual scheduling context (not newsletters/job listings)
+
+NEVER create events for: job newsletters, marketing emails, general announcements.
+
+When creating calendar events, use current year ${currentYear}. If a date appears to be in the past, assume next year.
+
+Focus on web development emails: jobs, interviews, tech events, learning platforms, tools, developer community content.`;
+
+  // Define the calendar event creation tool
+
+  const userPrompt = `Analyze this email:\nSubject: ${subject}\nBody: ${body}\nFrom: ${from}`;
+
+  const tools = [
+    {
+      type: 'function',
+      function: {
+        name: 'create_calendar_event',
+        description:
+          'Create a calendar event for appointments, meetings, interviews, or other scheduled events',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: {
+              type: 'string',
+              description: 'The title/summary of the event',
+            },
+            description: {
+              type: 'string',
+              description: 'Detailed description of the event',
+            },
+            startDateTime: {
+              type: 'string',
+              description: 'Start date and time in ISO format (e.g., 2024-01-15T10:00:00)',
+            },
+            endDateTime: {
+              type: 'string',
+              description: 'End date and time in ISO format (e.g., 2024-01-15T11:00:00)',
+            },
+            location: {
+              type: 'string',
+              description: 'Location of the event (optional)',
+            },
+            attendees: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'List of attendee email addresses',
+            },
+          },
+          required: ['title', 'startDateTime', 'endDateTime'],
+        },
+      },
+    },
+  ];
+
+  // Client-side timeout
+  const controller = new AbortController();
+  const clientTimeout = setTimeout(() => controller.abort(), 20 * 60 * 1000); // 20m
+
+  try {
+    const payload = {
+      model: process.env.OLLAMA_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      tools,
+      keep_alive: '20m',
+      options: { temperature: 0.3, top_p: 0.9 },
+      stream: false,
+    };
+
+    const LLMStartTime = performance.now();
 
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        options: {
-          temperature: 0.3, // Lower temperature for more consistent JSON output
-          top_p: 0.9,
-        },
-        stream: false,
-      }),
+      body: JSON.stringify(payload),
+      signal: controller.signal,
     });
 
-    const data = await response.json();
-    const rawResponse = data.message?.content || '';
+    clearTimeout(clientTimeout);
 
-    try {
-      // Try to parse JSON response
-      const analysisMatch = rawResponse.match(/\{[\s\S]*\}/);
-      if (analysisMatch) {
-        return JSON.parse(analysisMatch[0]);
-      }
-    } catch (parseError) {
-      console.error('Error parsing LLM JSON response:', parseError);
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Ollama API error: ${response.status} - ${errBody}`);
     }
 
-    // Fallback analysis if JSON parsing fails
-    const fallbackAnalysis = {
-      isWebDevRelated: checkWebDevKeywords(subject, body, from),
-      category: 'other',
-      priority: 'medium',
-      summary: rawResponse.slice(0, 150) + '...',
-      actionItems: [],
-      sentiment: 'neutral',
-      draftResponse: null,
-    };
+    const data = await response.json();
+    console.log('🔍 Raw Ollama response:', JSON.stringify(data, null, 2));
+    const LLMEndTime = performance.now();
+    console.log(
+      `FINISH LLM CALL total time spent: ${(LLMEndTime - LLMStartTime).toFixed(1) / 1000 / 60} minutes`,
+    );
 
-    return fallbackAnalysis;
-  } catch (error) {
-    console.error('Error analyzing email with LLM:', error);
-    return {
-      isWebDevRelated: checkWebDevKeywords(subject, body, from),
-      category: 'other',
-      priority: 'low',
-      summary: 'Analysis failed - please review manually',
-      actionItems: [],
-      sentiment: 'neutral',
-      draftResponse: null,
-    };
+    let raw =
+      data.message && typeof data.message.content === 'string'
+        ? data.message.content.trim()
+        : JSON.stringify(data);
+    const toolsCalled = data.message?.tool_calls || [];
+    // console.log('🔍 Extracted content:', raw);
+    console.log('🔍 Tool calls found:', toolsCalled);
+    console.log('userId', userId);
+
+    // Track calendar events created
+    let calendarEvents = [];
+
+    // If we have tool calls but empty content, generate a contextual analysis
+    if (toolsCalled.length > 0 && (!raw || raw === '')) {
+      console.log('🔧 Empty content with tool calls detected, generating contextual analysis');
+
+      // Determine category based on email content
+      const emailContent = `${subject} ${body} ${from}`.toLowerCase();
+      let category = 'event';
+      let priority = 'high';
+      let summary = `Calendar event created for: ${subject}`;
+      let actionItems = ['Calendar event has been created', 'Check your calendar for details'];
+
+      // Check if it's a job newsletter or similar (shouldn't have gotten a calendar event)
+      const isJobNewsletter =
+        emailContent.includes('job matches') ||
+        emailContent.includes('job recommendations') ||
+        emailContent.includes('builtin') ||
+        emailContent.includes('built in') ||
+        emailContent.includes('linkedin') ||
+        emailContent.includes('indeed') ||
+        emailContent.includes('newsletter') ||
+        emailContent.includes('unsubscribe') ||
+        emailContent.includes('update email frequency') ||
+        emailContent.includes('job preferences') ||
+        emailContent.includes('salary') ||
+        emailContent.includes('remote') ||
+        emailContent.includes('hybrid') ||
+        (emailContent.includes('job') && emailContent.includes('board'));
+
+      if (isJobNewsletter) {
+        category = 'newsletter';
+        priority = 'low';
+        summary = `Job newsletter from ${from}`;
+        actionItems = ['Review job opportunities', 'Apply to relevant positions'];
+        console.log(
+          '⚠️ WARNING: Calendar event was created for a job newsletter - this should not happen!',
+        );
+      }
+
+      raw = JSON.stringify({
+        isWebDevRelated: true,
+        category,
+        priority,
+        summary,
+        actionItems,
+        sentiment: 'neutral',
+        draftResponse: null,
+        calendarEvents: [], // Add calendar events to contextual analysis
+      });
+    }
+    // Invoke calendar tool with safety checks
+    if (userId && toolsCalled.length) {
+      // Safety check: Don't create calendar events for job newsletters
+      const emailContent = `${subject} ${body} ${from}`.toLowerCase();
+      const isJobNewsletter =
+        emailContent.includes('job matches') ||
+        emailContent.includes('job recommendations') ||
+        emailContent.includes('builtin') ||
+        emailContent.includes('built in') ||
+        emailContent.includes('linkedin') ||
+        emailContent.includes('indeed') ||
+        emailContent.includes('newsletter') ||
+        emailContent.includes('unsubscribe') ||
+        emailContent.includes('update email frequency') ||
+        emailContent.includes('job preferences') ||
+        emailContent.includes('salary') ||
+        emailContent.includes('remote') ||
+        emailContent.includes('hybrid') ||
+        (emailContent.includes('job') && emailContent.includes('board'));
+
+      if (isJobNewsletter) {
+        console.log('🚫 BLOCKED: Preventing calendar event creation for job newsletter');
+        console.log('📧 Email subject:', subject);
+        console.log('📧 Email from:', from);
+      } else {
+        for (const call of toolsCalled) {
+          console.log('🔍 Individual tool call:', JSON.stringify(call, null, 2));
+          try {
+            if (call.function && call.function.name === 'create_calendar_event') {
+              let args = call.function.arguments;
+
+              // Parse arguments if they're a string
+              if (typeof args === 'string') {
+                try {
+                  args = JSON.parse(args);
+                } catch (parseError) {
+                  console.error('❌ Failed to parse tool call arguments:', parseError);
+                  continue;
+                }
+              }
+
+              console.log('🗓️ Creating calendar event with args:', args);
+              const eventResult = await createCalendarEvent(userId, args, subject, from);
+
+              // Capture calendar event data if creation was successful
+              if (eventResult && eventResult.htmlLink) {
+                calendarEvents.push({
+                  title: eventResult.summary || args.title,
+                  link: eventResult.htmlLink,
+                  startTime: eventResult.start?.dateTime || args.startDateTime,
+                  endTime: eventResult.end?.dateTime || args.endDateTime,
+                  location: eventResult.location || args.location,
+                });
+                console.log('✅ Calendar event captured:', eventResult.htmlLink);
+              }
+            } else {
+              console.log('⚠️ Unknown tool call structure or function name');
+            }
+          } catch (error) {
+            console.error('❌ Error invoking tool call:', error);
+          }
+        }
+      }
+    }
+
+    try {
+      // Try to parse the raw response as JSON directly first
+      const parsed = JSON.parse(raw);
+
+      // Add calendar events to the parsed analysis
+      if (calendarEvents.length > 0) {
+        parsed.calendarEvents = calendarEvents;
+      }
+
+      return parsed;
+    } catch {
+      try {
+        // If that fails, try to extract JSON from the response
+        const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+      } catch {
+        // Ignore nested catch
+      }
+
+      try {
+        // Handle the case where LLM returns function call format with embedded JSON
+        const functionCallMatch = raw.match(/"required_json":\s*"([^"]+)"/);
+        if (functionCallMatch) {
+          const escapedJson = functionCallMatch[1];
+          const unescapedJson = escapedJson.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+          console.log('🔧 Extracted JSON from function call:', unescapedJson);
+          return JSON.parse(unescapedJson);
+        }
+      } catch (parseError) {
+        console.error('🔧 Failed to parse embedded JSON:', parseError);
+      }
+
+      // If all JSON parsing fails, return fallback
+      console.warn('🔧 Falling back to default analysis structure');
+      const fallback = {
+        summary: raw.slice(0, 150),
+        actionItems: [],
+        sentiment: 'neutral',
+        isWebDevRelated: false,
+        category: 'other',
+        priority: 'low',
+        draftResponse: null,
+      };
+
+      // Add calendar events to fallback if any were created
+      if (calendarEvents.length > 0) {
+        fallback.calendarEvents = calendarEvents;
+      }
+
+      return fallback;
+    }
+  } catch (err) {
+    console.error('LLM analysis error:', err);
+    return { summary: 'Analysis failed', actionItems: [], sentiment: 'neutral' };
   }
-}
-
-// Fallback web development keyword detection
-export function checkWebDevKeywords(subject, body, from) {
-  const webDevKeywords = [
-    // Job related terms
-    'job',
-    'interview',
-    'application',
-    'position',
-    'career',
-    'hiring',
-    'recruiter',
-    'opportunity',
-    'candidate',
-    'resume',
-    'cv',
-    'offer',
-    'salary',
-    'benefits',
-    'rejection',
-    'not selected',
-    'moved forward',
-
-    // Developer roles
-    'developer',
-    'engineer',
-    'software engineer',
-    'web developer',
-    'frontend developer',
-    'backend developer',
-    'full stack developer',
-    'full stack engineer',
-    'fullstack',
-    'mobile developer',
-    'react developer',
-    'javascript developer',
-    'node.js developer',
-    'python developer',
-    'java developer',
-    'php developer',
-    'devops engineer',
-    'ui developer',
-    'ux developer',
-    'front end',
-    'back end',
-    'frontend',
-    'backend',
-
-    // Technologies and frameworks
-    'react',
-    'angular',
-    'vue',
-    'javascript',
-    'typescript',
-    'node.js',
-    'python',
-    'java',
-    'php',
-    'ruby',
-    'html',
-    'css',
-    'sass',
-    'scss',
-    'bootstrap',
-    'tailwind',
-    'mongodb',
-    'mysql',
-    'postgresql',
-    'redis',
-    'aws',
-    'azure',
-    'google cloud',
-    'docker',
-    'kubernetes',
-    'git',
-    'github',
-    'gitlab',
-    'bitbucket',
-
-    // Company types and job boards
-    'built in',
-    'linkedin',
-    'indeed',
-    'stack overflow',
-    'github jobs',
-    'angel list',
-    'glassdoor',
-    'dice',
-    'monster',
-    'ziprecruiter',
-    'flexa',
-    'startup',
-    'tech company',
-
-    // Event related
-    'conference',
-    'meetup',
-    'webinar',
-    'workshop',
-    'hackathon',
-    'coding challenge',
-    'tech talk',
-    'training',
-    'bootcamp',
-    'event',
-    'networking',
-
-    // Learning platforms
-    'udemy',
-    'coursera',
-    'pluralsight',
-    'codecademy',
-    'freecodecamp',
-    'lynda',
-    'edx',
-    'khan academy',
-    'treehouse',
-    'skillshare',
-    'tutorial',
-    'course',
-
-    // Tools and platforms
-    'visual studio code',
-    'vscode',
-    'sublime text',
-    'atom',
-    'intellij',
-    'webstorm',
-    'figma',
-    'sketch',
-    'adobe xd',
-    'postman',
-    'insomnia',
-    'slack',
-    'discord',
-    'jira',
-    'trello',
-    'asana',
-    'notion',
-    'confluence',
-
-    // Community and newsletters
-    'hacker news',
-    'dev.to',
-    'medium',
-    'newsletter',
-    'weekly',
-    'digest',
-    'open source',
-    'github',
-    'contribution',
-    'pull request',
-    'code review',
-
-    // Professional development
-    'certification',
-    'learning path',
-    'skill development',
-    'career growth',
-    'professional development',
-    'tech trends',
-    'industry update',
-  ];
-
-  const text = `${subject} ${body} ${from}`.toLowerCase();
-  return webDevKeywords.some((keyword) => text.includes(keyword));
 }

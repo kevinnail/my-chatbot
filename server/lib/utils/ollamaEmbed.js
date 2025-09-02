@@ -6,9 +6,9 @@ export async function getEmbedding(input) {
       body: JSON.stringify({
         model: 'mxbai-embed-large',
         input,
+        keep_alive: '60m',
       }),
     });
-
     if (!res.ok) {
       throw new Error(`Ollama embedding API error: ${res.status} ${res.statusText}`);
     }

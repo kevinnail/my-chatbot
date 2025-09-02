@@ -62,7 +62,7 @@ router.post('/sync', async (req, res) => {
   try {
     const { userId } = req.body;
 
-    console.log('🚀 Starting persistent vector-powered email sync...');
+    console.log('Starting persistent vector-powered email sync...');
 
     // Get last sync time for tracking purposes
     const lastSync = await GmailSync.getLastSyncTime(userId);
@@ -77,11 +77,11 @@ router.post('/sync', async (req, res) => {
       ['SINCE', thirtyDaysAgo], // From last 30 days
     ];
 
-    console.log('📧 Fetching emails via IMAP...');
+    console.log('Fetching emails via IMAP...');
 
     // Get emails via IMAP
     const rawEmails = await getEmailsViaImap(searchCriteria);
-    console.log(`📬 Found ${rawEmails.length} raw emails`);
+    console.log(`Found ${rawEmails.length} raw emails`);
 
     // Step 1: Filter out emails already in database and calculate similarity for new ones
     const newEmails = [];
@@ -101,7 +101,7 @@ router.post('/sync', async (req, res) => {
       const filterResults = await preFilterWebDevEmails(newEmails);
 
       console.log(
-        `📊 Pre-filter results: ${filterResults.likelyWebDevEmails.length} likely web-dev emails, ${filterResults.reductionPercentage}% reduction`,
+        ` Pre-filter results: ${filterResults.likelyWebDevEmails.length} likely web-dev emails, ${filterResults.reductionPercentage}% reduction`,
       );
 
       // Store likely web-dev emails with their similarity scores
@@ -123,7 +123,6 @@ router.post('/sync', async (req, res) => {
           console.error('Error storing email:', error);
         }
       }
-
       // Optionally store unlikely emails with low similarity (for completeness)
       for (const email of filterResults.unlikelyEmails) {
         try {
@@ -204,7 +203,19 @@ router.post('/sync', async (req, res) => {
 
     const preliminaryEmails = Array.from(preliminaryEmailsMap.values());
 
-    console.log(`📦 Returning ${preliminaryEmails.length} preliminary emails`);
+    console.log(`Returning ${preliminaryEmails.length} preliminary emails`);
+    console.log(
+      'Sample preliminary email:',
+      preliminaryEmails[0]
+        ? {
+            id: preliminaryEmails[0].id,
+            subject: preliminaryEmails[0].subject?.substring(0, 50),
+            analyzed: preliminaryEmails[0].analyzed,
+            status: preliminaryEmails[0].status,
+            summary: preliminaryEmails[0].summary?.substring(0, 50),
+          }
+        : 'No emails',
+    );
 
     // Step 3: Return preliminary results immediately
     res.json({
@@ -240,6 +251,14 @@ router.post('/sync', async (req, res) => {
               `🧠 Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.vectorSimilarity})`,
             );
 
+            // Emit "currently analyzing" event
+            req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzing', {
+              emailId: email.id,
+              subject: email.subject,
+              analyzedCount,
+              totalToAnalyze: emailsNeedingAnalysis.length,
+            });
+
             // Get full email body from database for analysis
             const fullEmail = await EmailMemory.getEmailById(userId, email.id);
             if (!fullEmail) {
@@ -247,18 +266,34 @@ router.post('/sync', async (req, res) => {
               continue;
             }
 
-            const analysis = await analyzeEmailWithLLM(email.subject, fullEmail.body, email.from);
+            const analysis = await analyzeEmailWithLLM(
+              email.subject,
+              fullEmail.body,
+              email.from,
+              userId,
+            );
             await EmailMemory.updateEmailAnalysis(userId, email.id, analysis);
 
             analyzedCount++;
 
             // Emit real-time update for this email
-            req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzed', {
+            const socketData = {
               emailId: email.id,
               analysis,
               analyzedCount,
               totalToAnalyze: emailsNeedingAnalysis.length,
+            };
+
+            console.log('🔍 Emitting email-analyzed event:', {
+              emailId: email.id,
+              analysisExists: !!analysis,
+              analysisSummary: analysis?.summary?.substring(0, 50),
+              room: `sync-updates-${userId}`,
+              analyzedCount,
+              totalToAnalyze: emailsNeedingAnalysis.length,
             });
+
+            req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzed', socketData);
 
             console.log(
               `✅ Analysis complete for email ${analyzedCount}/${emailsNeedingAnalysis.length}`,
@@ -275,7 +310,7 @@ router.post('/sync', async (req, res) => {
         const reductionPercentage =
           rawEmails.length > 0 ? Math.round((totalSaved / rawEmails.length) * 100) : 0;
 
-        console.log(`📈 Background analysis complete!
+        console.log(`Background analysis complete!
           - Total emails fetched: ${rawEmails.length}
           - New emails stored: ${newEmailsStored}  
           - Emails analyzed: ${analyzedCount}
@@ -312,7 +347,7 @@ router.get('/emails/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit = 50 } = req.query;
 
-    console.log(`📚 Getting stored web-dev emails for user ${userId}`);
+    console.log(`Getting stored web-dev emails for user ${userId}`);
 
     const webDevEmails = await EmailMemory.getWebDevEmails({
       userId,
@@ -330,11 +365,11 @@ router.get('/emails/:userId', async (req, res) => {
       summary: email.llm_analysis?.summary || 'Analysis pending...',
       vectorSimilarity: email.similarity_score?.toFixed(3) || '0.000',
       analyzed: email.llm_analyzed,
-      category: email.llm_analysis?.category,
-      priority: email.llm_analysis?.priority,
+      category: email.llm_analysis?.category || null,
+      priority: email.llm_analysis?.priority || null,
     }));
 
-    console.log(`📊 Found ${formattedEmails.length} stored web-dev emails`);
+    console.log(`Found ${formattedEmails.length} stored web-dev emails`);
 
     res.json({
       emails: formattedEmails,

@@ -1,13 +1,10 @@
 import { getEmbedding } from './ollamaEmbed.js';
-import { checkWebDevKeywords } from './emailAnalysis.js';
 
-// Vector pre-filtering for web development emails
-export async function preFilterWebDevEmails(emails) {
-  try {
-    console.log('🔍 Pre-filtering emails using vector similarity...');
-
-    // Create a reference embedding for "web development emails"
-    const webDevReference = `
+// Email category definitions - easily extensible for new types
+const EMAIL_CATEGORIES = {
+  web_dev: {
+    threshold: 0.52,
+    referenceText: `
       web development job application matches interview position software engineer developer     
        rejection not selected moved forward resume react javascript node.js express typescript      
        frontend backend full stack developer career coding programming technical interview
@@ -28,33 +25,89 @@ export async function preFilterWebDevEmails(emails) {
       deep learning neural network data science ML engineer data engineer AI engineer NLP
       natural language processing computer vision transformer GPT BERT LLM embeddings
       RAG vector database
-    `;
+    `,
+  },
+  appointment: {
+    threshold: 0.55,
+    referenceText: `
+      appointment scheduled meeting call doctor dentist medical clinic hospital consultation
+      follow-up catch up phone call video call zoom teams coffee lunch dinner one-on-one
+      standup sync check-in service maintenance reminder calendar invite invitation
+      reschedule confirm confirmation appointment booking schedule meeting room
+      healthcare medical checkup dental cleaning eye exam physical therapy massage
+      haircut salon spa grooming pet vet veterinary service repair technician
+      plumber electrician contractor handyman delivery pickup installation setup
+      client meeting sales call demo presentation interview performance review
+      social event date hangout party celebration birthday anniversary wedding
+      conference workshop seminar training session course lesson tutorial
+      government appointment DMV passport visa embassy consulate court hearing
+      financial advisor bank loan mortgage insurance real estate showing
+      therapy counseling coaching mentoring spiritual guidance religious service
+    `,
+  },
+};
 
-    const referenceEmbedding = await getEmbedding(webDevReference);
+// Vector pre-filtering for categorized emails
+export async function preFilterWebDevEmails(emails) {
+  try {
+    console.log('Pre-filtering emails using vector similarity...');
 
-    // Calculate similarity for each email
+    // Generate embeddings for all categories
+    const categoryEmbeddings = {};
+    for (const [categoryName, config] of Object.entries(EMAIL_CATEGORIES)) {
+      categoryEmbeddings[categoryName] = await getEmbedding(config.referenceText);
+    }
+
+    // Calculate similarity for each email against all categories
     const emailsWithSimilarity = await Promise.all(
       emails.map(async (email) => {
         const emailContent = `${email.subject} ${email.body} ${email.from}`;
         const emailEmbedding = await getEmbedding(emailContent);
 
-        // Calculate cosine similarity
-        const similarity = calculateCosineSimilarity(referenceEmbedding, emailEmbedding);
+        // Calculate similarity scores for all categories
+        const categoryScores = {};
+        let bestCategory = null;
+        let bestScore = 0;
+
+        for (const [categoryName, config] of Object.entries(EMAIL_CATEGORIES)) {
+          const similarity = calculateCosineSimilarity(
+            categoryEmbeddings[categoryName],
+            emailEmbedding,
+          );
+          categoryScores[categoryName] = similarity;
+
+          if (similarity > config.threshold && similarity > bestScore) {
+            bestCategory = categoryName;
+            bestScore = similarity;
+          }
+        }
+
+        // Determine the primary category and reason
+        const reason = bestCategory || 'low_similarity';
 
         console.log(
-          `📧 Email: "${email.subject.substring(0, 50)}..." - Similarity: ${similarity.toFixed(3)}`,
+          ` Email: "${email.subject.substring(0, 50)}..." - Best: ${bestCategory || 'none'} (${bestScore.toFixed(3)}) - Scores: ${Object.entries(
+            categoryScores,
+          )
+            .map(([cat, score]) => `${cat}:${score.toFixed(3)}`)
+            .join(', ')}`,
         );
 
         return {
           ...email,
-          similarity,
-          likelyWebDev: similarity > 0.52, // Match the analysis threshold
+          similarity: categoryScores.web_dev, // Keep for backward compatibility
+          categoryScores,
+          primaryCategory: bestCategory,
+          bestScore,
+          likelyWebDev: bestCategory === 'web_dev',
+          isAppointmentRelated: bestCategory === 'appointment',
+          reason,
         };
       }),
     );
 
-    // Sort by similarity and return top candidates
-    const sortedEmails = emailsWithSimilarity.sort((a, b) => b.similarity - a.similarity);
+    // Sort by best similarity score across all categories
+    const sortedEmails = emailsWithSimilarity.sort((a, b) => b.bestScore - a.bestScore);
 
     // Always include at least the top 3 most similar emails (or fewer if less than 3 total)
     const minEmailsToAnalyze = Math.min(3, emails.length);
@@ -64,11 +117,21 @@ export async function preFilterWebDevEmails(emails) {
     );
     const unlikelyEmails = sortedEmails.slice(likelyWebDevEmails.length);
 
-    console.log(`📊 Vector pre-filtering results:
+    // Categorize emails for reporting
+    const appointmentEmails = emailsWithSimilarity.filter((email) => email.isAppointmentRelated);
+    const webDevEmails = emailsWithSimilarity.filter(
+      (email) => email.likelyWebDev && !email.isAppointmentRelated,
+    );
+    const lowSimilarityEmails = emailsWithSimilarity.filter(
+      (email) => !email.likelyWebDev && !email.isAppointmentRelated,
+    );
+
+    console.log(`Vector pre-filtering results:
       - Total emails: ${emails.length}
-      - Likely web-dev: ${likelyWebDevEmails.length}
-      - Unlikely: ${unlikelyEmails.length}
-      - LLM calls reduced by: ${Math.round((unlikelyEmails.length / emails.length) * 100)}%`);
+      - Web-dev emails: ${webDevEmails.length}
+      - Appointment emails: ${appointmentEmails.length}
+      - Low similarity: ${lowSimilarityEmails.length}
+      - LLM calls reduced by: ${Math.round((lowSimilarityEmails.length / emails.length) * 100)}%`);
 
     return {
       likelyWebDevEmails,
@@ -78,11 +141,10 @@ export async function preFilterWebDevEmails(emails) {
     };
   } catch (error) {
     console.error('Error in vector pre-filtering:', error);
-    // Fallback to keyword filtering if vector fails
+    // Fallback to processing all emails if vector similarity fails
+    console.log('Falling back to processing all emails due to vector similarity error');
     return {
-      likelyWebDevEmails: emails.filter((email) =>
-        checkWebDevKeywords(email.subject, email.body, email.from),
-      ),
+      likelyWebDevEmails: emails,
       unlikelyEmails: [],
       totalEmails: emails.length,
       reductionPercentage: 0,
@@ -109,4 +171,17 @@ export function calculateCosineSimilarity(embedding1, embedding2) {
 
   // Return cosine similarity
   return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
+}
+
+// Helper function to add new email categories dynamically
+export function addEmailCategory(categoryName, referenceText, threshold = 0.55) {
+  EMAIL_CATEGORIES[categoryName] = {
+    threshold,
+    referenceText,
+  };
+}
+
+// Helper function to get all available categories
+export function getAvailableCategories() {
+  return Object.keys(EMAIL_CATEGORIES);
 }

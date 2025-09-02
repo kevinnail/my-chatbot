@@ -28,7 +28,7 @@ Add these environment variables to your `server/.env` file:
 # Google OAuth Configuration (for Gmail API)
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:4000/api/mcp/gmail/callback
+GOOGLE_REDIRECT_URI=http://localhost:4000/api/gmail/callback
 
 # Client URL (for OAuth redirects)
 CLIENT_URL=http://localhost:3000
@@ -52,7 +52,7 @@ OLLAMA_MODEL=llama3.1:8b
    - Click "Create Credentials" > "OAuth 2.0 Client ID"
    - Choose "Web application"
    - Add authorized redirect URIs:
-     - `http://localhost:4000/api/mcp/gmail/callback`
+     - `http://localhost:4000/api/gmail/callback`
    - Copy the Client ID and Client Secret
 
 ## Database Setup

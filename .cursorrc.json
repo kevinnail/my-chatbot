@@ -1,0 +1,28 @@
+{
+  "rules": [
+    {
+      "id": "no_ego_strokes",
+      "description": "Filter out praise and compliments",
+      "match": ".*",
+      "actions": [
+        {
+          "type": "filterPhrases",
+          "phrases": [
+            "You're absolutely right!",
+            "You are absolutely right!",
+            "You're correct",
+            "You are correct",
+            "Absolutely",
+            "Exactly",
+            "Good point",
+            "Nice",
+            "Great",
+            "I agree",
+            "Well said",
+            "Spot on"
+          ]
+        }
+      ]
+    }
+  ]
+}

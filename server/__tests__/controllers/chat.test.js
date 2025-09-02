@@ -43,7 +43,7 @@ describe('chat routes', () => {
     await cleanup();
   });
 
-  describe('POST /api/chat', () => {
+  describe('POST /api/chatbot', () => {
     it('should send a message and receive a bot response', async () => {
       // Mock Ollama API response
       const mockOllamaResponse = {
@@ -82,7 +82,7 @@ describe('chat routes', () => {
         userId: 'test_user_1',
       };
 
-      const response = await request(app).post('/api/chat').send(testMessage);
+      const response = await request(app).post('/api/chatbot').send(testMessage);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -156,7 +156,7 @@ describe('chat routes', () => {
         userId: 'test_user_2',
       };
 
-      const response = await request(app).post('/api/chat').send(testMessage);
+      const response = await request(app).post('/api/chatbot').send(testMessage);
 
       expect(response.status).toBe(200);
       expect(response.body.bot).toBe('');
@@ -196,7 +196,7 @@ describe('chat routes', () => {
         userId: 'test_user_3',
       };
 
-      const response = await request(app).post('/api/chat').send(testMessage);
+      const response = await request(app).post('/api/chatbot').send(testMessage);
 
       expect(response.status).toBe(200);
       expect(response.body.bot).toBe('');
@@ -239,14 +239,14 @@ describe('chat routes', () => {
       // Send multiple messages to build up context
       for (let i = 0; i < 3; i++) {
         await request(app)
-          .post('/api/chat')
+          .post('/api/chatbot')
           .send({
             msg: `Test message ${i + 1}`,
             userId,
           });
       }
 
-      const finalResponse = await request(app).post('/api/chat').send({
+      const finalResponse = await request(app).post('/api/chatbot').send({
         msg: 'Final test message',
         userId,
       });
@@ -263,7 +263,7 @@ describe('chat routes', () => {
     });
 
     it('should handle missing required fields', async () => {
-      const response = await request(app).post('/api/chat').send({
+      const response = await request(app).post('/api/chatbot').send({
         msg: 'Test message',
         // Missing userId
       });
@@ -280,13 +280,13 @@ describe('chat routes', () => {
         userId: 'test_user_error',
       };
 
-      const response = await request(app).post('/api/chat').send(testMessage);
+      const response = await request(app).post('/api/chatbot').send(testMessage);
 
       expect(response.status).toBe(500);
     });
   });
 
-  describe('DELETE /api/chat/:userId', () => {
+  describe('DELETE /api/chatbot/:userId', () => {
     it('should delete all messages for a user', async () => {
       const userId = 'test_user_delete';
 
@@ -308,7 +308,7 @@ describe('chat routes', () => {
       expect(parseInt(beforeDelete[0].count)).toBe(2);
 
       // Delete messages
-      const response = await request(app).delete(`/api/chat/${userId}`);
+      const response = await request(app).delete(`/api/chatbot/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -324,7 +324,7 @@ describe('chat routes', () => {
     });
 
     it('should handle deletion of non-existent user', async () => {
-      const response = await request(app).delete('/api/chat/non_existent_user');
+      const response = await request(app).delete('/api/chatbot/non_existent_user');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -347,7 +347,7 @@ describe('chat routes', () => {
       );
 
       // Delete messages for userId2 only
-      const response = await request(app).delete(`/api/chat/${userId2}`);
+      const response = await request(app).delete(`/api/chatbot/${userId2}`);
 
       expect(response.status).toBe(200);
 

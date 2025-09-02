@@ -15,7 +15,7 @@ const setupTestDb = async () => {
   });
 
   try {
-    console.log('🗄️  Setting up test database...');
+    console.log('Setting up test database...');
 
     // Create test database if it doesn't exist
     await adminPool.query('CREATE DATABASE chatbot_test;');
@@ -24,7 +24,7 @@ const setupTestDb = async () => {
   } catch (error) {
     if (error.code === '42P04') {
       // eslint-disable-next-line no-console
-      console.log('📋 Test database already exists, continuing...');
+      console.log('Test database already exists, continuing...');
     } else {
       // eslint-disable-next-line no-console
       console.error('❌ Failed to create test database:', error);

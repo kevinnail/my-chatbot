@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import Header from './components/Header/Header';
 import Chat from './components/Chat/Chat';
 import Footer from './components/Footer/Footer';
-import GmailMCP from './components/GmailMCP/GmailMCP';
+import GmailMCP from './components/GmailMCP/GmailMCP.js';
 
 export default function App() {
-  const [userId, setUserId] = useState('1'); // Default to 1 since this is local
+  const googleId = process.env.REACT_APP_GOOGLE_USER_ID;
+  const [userId, setUserId] = useState(googleId);
 
+  console.log(userId.userId);
   return (
     <Router>
       <div
