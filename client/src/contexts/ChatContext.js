@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useLoading } from './LoadingContext';
 
 const ChatContext = createContext();
@@ -28,11 +28,6 @@ export const ChatProvider = ({ children }) => {
     setInput(newInput);
     setTokenCount(countTokensFromString(newInput));
   }
-
-  // Keep token count in sync with input (useful when input is cleared by other means)
-  useEffect(() => {
-    setTokenCount(countTokensFromString(input));
-  }, [input]);
 
   const value = {
     input,
