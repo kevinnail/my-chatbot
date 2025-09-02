@@ -16,6 +16,7 @@ const GmailMCP = ({ userId }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [analysisProgress, setAnalysisProgress] = useState({ analyzed: 0, total: 0 });
   const [analysisInProgress, setAnalysisInProgress] = useState(false);
+  const [currentlyAnalyzing, setCurrentlyAnalyzing] = useState(null);
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [showGmailInstructions, setShowGmailInstructions] = useState(false);
   const [showCalendarInstructions, setShowCalendarInstructions] = useState(false);
@@ -53,7 +54,15 @@ const GmailMCP = ({ userId }) => {
       setEmails((prevEmails) => {
         const updatedEmails = prevEmails.map((email) =>
           email.id === data.emailId
-            ? { ...email, analysis: data.analysis, status: 'analyzed' }
+            ? {
+                ...email,
+                analysis: data.analysis,
+                status: 'analyzed',
+                analyzed: true,
+                summary: data.analysis?.summary || 'Analysis complete',
+                category: data.analysis?.category,
+                priority: data.analysis?.priority,
+              }
             : email,
         );
 
@@ -68,15 +77,35 @@ const GmailMCP = ({ userId }) => {
 
         return updatedEmails;
       });
+
+      // Update analysis progress
+      setAnalysisProgress((prev) => ({
+        analyzed: data.analyzedCount || prev.analyzed + 1,
+        total: data.totalToAnalyze || prev.total,
+      }));
+
+      // Clear currently analyzing when done
+      setCurrentlyAnalyzing(null);
+    });
+
+    socket.on('email-analyzing', (data) => {
+      console.log('🔍 Email being analyzed:', data.emailId);
+      setCurrentlyAnalyzing({
+        emailId: data.emailId,
+        subject: data.subject,
+        progress: data.analyzedCount || 0,
+        total: data.totalToAnalyze || 0,
+      });
     });
 
     socket.on('sync-complete', (data) => {
       console.log('✅ Sync complete:', data);
-      setEmails(data.emails || []);
+      // Don't replace emails - they're already set from preliminary results and updated via email-analyzed events
       setLastSync(new Date());
       setLoading(false);
       setAnalysisInProgress(false);
       setSyncStartTime(null);
+      setCurrentlyAnalyzing(null);
     });
 
     socket.on('sync-error', (data) => {
@@ -85,6 +114,7 @@ const GmailMCP = ({ userId }) => {
       setAnalysisInProgress(false);
       setLoading(false);
       setSyncStartTime(null);
+      setCurrentlyAnalyzing(null);
     });
 
     socket.on('disconnect', () => {
@@ -195,6 +225,16 @@ const GmailMCP = ({ userId }) => {
 
       const data = await response.json();
       console.log('🔄 Sync initiated:', data);
+
+      // Set preliminary emails immediately
+      if (data.emails) {
+        console.log(`📧 Setting ${data.emails.length} preliminary emails`);
+        setEmails(data.emails);
+        setAnalysisProgress({
+          analyzed: data.emails.filter((e) => e.analyzed).length,
+          total: data.emails.length,
+        });
+      }
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -365,6 +405,11 @@ const GmailMCP = ({ userId }) => {
                     }}
                   ></div>
                 </div>
+                {currentlyAnalyzing && (
+                  <div className="currently-analyzing">
+                    <small>🔍 Analyzing: "{currentlyAnalyzing.subject?.substring(0, 50)}..."</small>
+                  </div>
+                )}
                 {syncStartTime && (
                   <div className="time-info">
                     <small>
@@ -501,20 +546,62 @@ const GmailMCP = ({ userId }) => {
                           </div>
                         )}
 
-                        {email.analysis?.summary && (
-                          <div className="analysis-summary-compact">
-                            <div style={{ marginTop: '15px' }}>
-                              <strong style={{ color: '#639cff' }}>AI Summary:</strong>
-                              <p style={{ margin: '5px 0', fontSize: '0.95rem', color: '#f0f0f0' }}>
-                                {email.analysis.summary}
-                              </p>
-                            </div>
+                        <div className="analysis-summary-compact">
+                          <div style={{ marginTop: '15px' }}>
+                            <strong style={{ color: '#639cff' }}>AI Summary:</strong>
+                            <p
+                              style={{
+                                margin: '5px 0',
+                                fontSize: '0.95rem',
+                                color: email.analyzed ? '#f0f0f0' : '#ffa500',
+                                fontStyle: email.analyzed ? 'normal' : 'italic',
+                              }}
+                            >
+                              {email.analysis?.summary || email.summary || 'Analysis pending...'}
+                            </p>
+                            {email.analysis?.sentiment && (
+                              <span className={`sentiment-badge ${email.analysis.sentiment}`}>
+                                {email.analysis.sentiment.toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {email.analysis?.actionItems && email.analysis.actionItems.length > 0 && (
+                          <div className="action-items">
+                            <h5>Action Items:</h5>
+                            <ul>
+                              {email.analysis.actionItems.map((action, idx) => (
+                                <li key={idx}>{action}</li>
+                              ))}
+                            </ul>
                           </div>
                         )}
 
+                        {email.analysis?.calendarEvents &&
+                          email.analysis.calendarEvents.length > 0 && (
+                            <div className="calendar-events">
+                              <h5>📅 Calendar Events Created:</h5>
+                              {email.analysis.calendarEvents.map((event, idx) => (
+                                <div key={idx} className="calendar-event">
+                                  <strong>{event.summary}</strong>
+                                  <br />
+                                  {event.start} - {event.end}
+                                  {event.location && (
+                                    <>
+                                      <br />
+                                      📍 {event.location}
+                                    </>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                         {email.analysis?.draftResponse && (
-                          <div className="draft-response-compact">
-                            <strong>Draft:</strong> {email.analysis.draftResponse}
+                          <div className="draft-response">
+                            <h5>📝 Draft Response:</h5>
+                            <div className="draft-text">{email.analysis.draftResponse}</div>
                           </div>
                         )}
                       </div>

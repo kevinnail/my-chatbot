@@ -376,7 +376,7 @@
 }
 
 .email-card:hover {
-  transform: translateY(-2px);
+  /* transform: translateY(-2px); */
   box-shadow: 0 4px 12px rgba(99, 156, 255, 0.2);
 }
 
@@ -462,7 +462,7 @@
 
 .connect-button:hover:not(:disabled) {
   background: linear-gradient(135deg, #0099cc 0%, #007aa3 100%);
-  transform: translateY(-2px);
+  /* transform: translateY(-2px); */
 }
 
 .connect-button:disabled {
@@ -506,7 +506,7 @@
 
 .sync-button:hover:not(:disabled) {
   background: linear-gradient(135deg, #0099cc 0%, #007aa3 100%);
-  transform: translateY(-2px);
+  /* transform: translateY(-2px); */
 }
 
 .sync-button:disabled {
@@ -632,7 +632,7 @@
 }
 
 .email-card:hover {
-  transform: translateY(-2px);
+  /* transform: translateY(-2px); */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -881,65 +881,99 @@
   margin-right: 8px;
 }
 
-/* Remove the old bulky styles */
-.email-title-row {
-  display: none;
-}
-
-.email-meta {
-  display: none;
-}
-
-.email-analysis {
-  display: none;
-}
-
-.email-summary {
-  display: none;
-}
-
-.email-summary h5 {
-  display: none;
-}
-
-.email-summary p {
-  display: none;
-}
-
+/* Action items styling */
 .action-items {
-  display: none;
+  margin: 10px 0;
 }
 
 .action-items h5 {
-  display: none;
+  color: #639cff;
+  margin: 5px 0;
+  font-size: 0.9rem;
 }
 
 .action-items ul {
-  display: none;
+  margin: 5px 0;
+  padding-left: 15px;
 }
 
 .action-items li {
-  display: none;
+  color: #ddd;
+  font-size: 0.85rem;
+  margin: 3px 0;
 }
 
+/* Draft response styling */
 .draft-response {
-  display: none;
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(255, 136, 0, 0.1);
+  border-left: 3px solid #ff8800;
+  border-radius: 5px;
 }
 
 .draft-response h5 {
-  display: none;
+  color: #ff8800;
+  margin: 0 0 5px 0;
+  font-size: 0.9rem;
 }
 
 .draft-text {
-  display: none;
+  color: #f0f0f0;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
-.email-actions {
-  display: none;
+/* Calendar events styling */
+.calendar-events {
+  margin: 10px 0;
+}
+
+.calendar-events h5 {
+  color: #00ff88;
+  margin: 5px 0;
+  font-size: 0.9rem;
+}
+
+.calendar-event {
+  background: rgba(0, 255, 136, 0.1);
+  border-left: 3px solid #00ff88;
+  padding: 8px;
+  margin: 5px 0;
+  border-radius: 5px;
+  font-size: 0.85rem;
 }
 
 .sentiment-badge {
-  display: none;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+.sentiment-badge.positive {
+  background: rgba(0, 255, 136, 0.2);
+  color: #00ff88;
+}
+
+.sentiment-badge.negative {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+}
+
+.sentiment-badge.neutral {
+  background: rgba(153, 153, 153, 0.2);
+  color: #999;
+}
+
+.currently-analyzing {
+  margin: 5px 0;
+  padding: 5px 0;
+  color: #ffa500;
+  font-style: italic;
+  text-align: center;
 }
 
 /* Responsive adjustments */
