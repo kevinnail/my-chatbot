@@ -44,11 +44,6 @@ const Chat = ({ userId, log, setLog }) => {
     }
   }, [callLLMStartTime]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Timer state changed:', { callLLMStartTime, loading });
-  }, [callLLMStartTime, loading]);
-
   return (
     <main
       style={{
@@ -68,7 +63,7 @@ const Chat = ({ userId, log, setLog }) => {
         width: '90%',
       }}
     >
-      <ChatMessages log={log} loading={loading} />
+      <ChatMessages log={log} loading={loading} setcallLLMStartTime={setcallLLMStartTime} />
       {callLLMStartTime && (
         <div
           className="time-info"
