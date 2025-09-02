@@ -270,9 +270,6 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
     const data = await response.json();
     console.log('🔍 Raw Ollama response:', JSON.stringify(data, null, 2));
     const LLMEndTime = performance.now();
-    console.log(
-      `FINISH LLM CALL total time spent: ${(LLMEndTime - LLMStartTime).toFixed(1) / 1000 / 60} minutes`,
-    );
 
     let raw =
       data.message && typeof data.message.content === 'string'
