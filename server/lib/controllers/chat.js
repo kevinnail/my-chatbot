@@ -14,10 +14,10 @@ router.post('/', async (req, res) => {
   try {
     const { msg, userId } = req.body;
 
-    // Get memories BEFORE storing the current message to avoid duplication
+    // Get memories BEFORE storing current message (to avoid including current message in context)
     const memories = await buildPromptWithMemory({ userId, userInput: msg });
 
-    // Store the user message after getting memories
+    // Store the user message AFTER getting memories
     await storeMessage({ userId, role: 'user', content: msg });
 
     // Get Socket.IO instance
@@ -69,6 +69,13 @@ router.post('/', async (req, res) => {
       ...memories,
       { role: 'user', content: msg },
     ];
+
+    // DEBUG: Log the exact messages being sent to LLM
+    console.log('\n=== MESSAGES SENT TO LLM ===');
+    messages.forEach((msg, index) => {
+      console.log(`${index}: [${msg.role}] ${msg.content.substring(0, 100)}...`);
+    });
+    console.log('=== END MESSAGES ===\n');
 
     // Create AbortController for timeout handling - reduced to 5 minutes
     const controller = new AbortController();
