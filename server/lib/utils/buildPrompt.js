@@ -1,15 +1,28 @@
 import ChatMemory from '../models/ChatMemory.js';
 
 export async function buildPromptWithMemory({ userId, userInput }) {
-  // Get both relevant and recent messages, sorted chronologically
-  const memories = await ChatMemory.getHybridMessages({
+  // Get recent messages first (most important for context continuity)
+  const recentMessages = await ChatMemory.getRecentMessages({ userId, limit: 8 });
+
+  // Get only a few highly relevant messages to supplement context
+  const relevantMessages = await ChatMemory.getRelevantMessages({
     userId,
     inputText: userInput,
-    relevantLimit: 10,
-    recentLimit: 10,
+    limit: 3,
   });
 
-  // Remove timestamp for the LLM (unless you want to include it)
+  // Prioritize recent messages, then add relevant ones that aren't duplicates
+  const combined = [...recentMessages];
+  for (const msg of relevantMessages) {
+    if (!combined.some((existing) => existing.content === msg.content)) {
+      combined.push(msg);
+    }
+  }
+
+  // Sort chronologically to maintain conversation flow
+  const memories = combined.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  // Remove timestamp for the LLM
   return memories.map(({ role, content }) => ({ role, content }));
 }
 
