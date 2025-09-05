@@ -57,7 +57,7 @@ const Header = ({ userId }) => {
         </span>
         <span
           style={{ fontSize: '1.05rem', userSelect: 'none' }}
-        >{`${isChat ? 'My Coding Assistant' : 'Gmail Assistant'}`}</span>
+        >{`${isChat ? 'My Coding Assistant' : 'Gmail and Google Calendar Assistant'}`}</span>
       </div>
 
       <nav
