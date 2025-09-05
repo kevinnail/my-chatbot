@@ -30,5 +30,7 @@
   "eslint.experimental.useFlatConfig": true,
   "eslint.workingDirectories": ["./"],
   "eslint.nodePath": "./node_modules",
-  "eslint.codeActionsOnSave.mode": "all"
+  "eslint.codeActionsOnSave.mode": "all",
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "eslint.debug": true
 }
