@@ -18,7 +18,7 @@ export async function sendPrompt(
   setInput,
   setLoading,
   setContextPercent,
-  setcallLLMStartTime,
+  setCallLLMStartTime,
 ) {
   if (!input.trim()) return;
   const userMsg = input;
@@ -71,8 +71,8 @@ export async function sendPrompt(
     }
 
     setLoading(false);
-    if (setcallLLMStartTime) {
-      setcallLLMStartTime(null);
+    if (setCallLLMStartTime) {
+      setCallLLMStartTime(null);
     }
 
     // Clean up listeners
@@ -98,8 +98,8 @@ export async function sendPrompt(
     ]);
 
     setLoading(false);
-    if (setcallLLMStartTime) {
-      setcallLLMStartTime(null);
+    if (setCallLLMStartTime) {
+      setCallLLMStartTime(null);
     }
 
     // Clean up listeners
@@ -146,8 +146,8 @@ export async function sendPrompt(
       }
 
       setLoading(false);
-      if (setcallLLMStartTime) {
-        setcallLLMStartTime(null);
+      if (setCallLLMStartTime) {
+        setCallLLMStartTime(null);
       }
 
       // Clean up listeners if not streaming
@@ -174,8 +174,8 @@ export async function sendPrompt(
     ]);
 
     setLoading(false);
-    if (setcallLLMStartTime) {
-      setcallLLMStartTime(null);
+    if (setCallLLMStartTime) {
+      setCallLLMStartTime(null);
     }
 
     // Clean up listeners

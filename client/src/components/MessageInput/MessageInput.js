@@ -11,12 +11,12 @@ const MessageInput = ({
   setContextPercent,
   tokenCount,
   onInputChange,
-  setcallLLMStartTime,
+  setCallLLMStartTime,
 }) => {
   const handleSend = () => {
-    setcallLLMStartTime(new Date());
+    setCallLLMStartTime(new Date());
 
-    sendPrompt(userId, input, setLog, setInput, setLoading, setContextPercent, setcallLLMStartTime);
+    sendPrompt(userId, input, setLog, setInput, setLoading, setContextPercent, setCallLLMStartTime);
   };
 
   return (
@@ -42,7 +42,9 @@ const MessageInput = ({
           border: '1px solid #4f62cb',
         }}
         value={input}
-        placeholder={`Let's code!  What can I help build for you?`}
+        placeholder={`
+          Let's code!  What can I help build for you?
+          `}
         disabled={loading}
         onChange={onInputChange}
         onKeyDown={(e) => {

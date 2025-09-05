@@ -19,7 +19,7 @@ const Chat = ({ userId }) => {
   } = useChatContext();
 
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [callLLMStartTime, setcallLLMStartTime] = useState(null);
+  const [callLLMStartTime, setCallLLMStartTime] = useState(null);
 
   const calculateTimeSinceStart = () => {
     if (!callLLMStartTime) return null;
@@ -69,7 +69,7 @@ const Chat = ({ userId }) => {
         log={log}
         loading={loading}
         callLLMStartTime={callLLMStartTime}
-        setcallLLMStartTime={setcallLLMStartTime}
+        setCallLLMStartTime={setCallLLMStartTime}
         calculateTimeSinceStart={calculateTimeSinceStart}
       />
 
@@ -83,7 +83,7 @@ const Chat = ({ userId }) => {
         setContextPercent={setContextPercent}
         tokenCount={tokenCount}
         onInputChange={handleInputChange}
-        setcallLLMStartTime={setcallLLMStartTime}
+        setCallLLMStartTime={setCallLLMStartTime}
       />
       <ContextProgressBar contextPercent={contextPercent} />
     </main>
