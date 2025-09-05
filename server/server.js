@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import app from './lib/app.js';
 
 const API_URL = process.env.API_URL || 'http://localhost';
-const PORT = process.env.PORT || 7890;
+const PORT = process.env.PORT || 4000;
 
 // Create HTTP server
 const server = createServer(app);
