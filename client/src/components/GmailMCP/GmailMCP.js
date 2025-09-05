@@ -275,7 +275,6 @@ const GmailMCP = ({ userId }) => {
     <div className="gmail-mcp">
       {/* Consolidated Status Header */}
       <div className="gmail-mcp-header">
-        <h2>Gmail Assistant (Web Dev)</h2>
         <div className="consolidated-status">
           <div className="status-item">
             <span className="status-label">Gmail:</span>
