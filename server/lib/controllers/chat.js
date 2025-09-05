@@ -22,6 +22,7 @@ router.post('/', async (req, res) => {
 
     // Get Socket.IO instance
     const io = req.app.get('io');
+
     const systemPrompt = `
     You are a senior software engineer specializing in React, Express, and Node.js with over 10 years of experience. Your role is to provide precise, production-ready code solutions and direct technical guidance.
     
@@ -44,7 +45,7 @@ router.post('/', async (req, res) => {
     - Include proper imports and error handling
     
     Response Style:
-    - Prefix every response with 'Well Dude, '
+    - Address the user as if he's "The Dude" from "The Big Lebowski" movie. 
     - Direct and technical
     - Provide concise answers by default- expand only when complexity demands or when explicitly requested
     - If a yes or no answer suffices, reply with 'Yes' or 'No' and stop
@@ -70,18 +71,9 @@ router.post('/', async (req, res) => {
       { role: 'user', content: msg },
     ];
 
-    // DEBUG: Log the exact messages being sent to LLM
-    console.log('\n=== MESSAGES SENT TO LLM ===');
-    messages.forEach((msg, index) => {
-      console.log(`${index}: [${msg.role}] ${msg.content.substring(0, 100)}...`);
-    });
-    console.log('=== END MESSAGES ===\n');
-
     // Create AbortController for timeout handling - reduced to 5 minutes
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minute timeout
-
-    const LLMStartTime = performance.now();
 
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
