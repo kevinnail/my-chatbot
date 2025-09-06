@@ -12,9 +12,9 @@ const MessageInput = ({
   tokenCount,
   onInputChange,
   setCallLLMStartTime,
+  coachOrChat,
+  setCoachOrChat,
 }) => {
-  const [coachOrChat, setCoachOrChat] = useState('chat');
-
   const handleSend = () => {
     setCallLLMStartTime(new Date());
     const prompt = {
