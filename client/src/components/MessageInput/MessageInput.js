@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { sendPrompt } from '../../services/fetch-chat';
 
 const MessageInput = ({
@@ -13,10 +13,26 @@ const MessageInput = ({
   onInputChange,
   setCallLLMStartTime,
 }) => {
+  const [coachOrChat, setCoachOrChat] = useState('chat');
+
   const handleSend = () => {
     setCallLLMStartTime(new Date());
+    const prompt = {
+      userId,
+      input,
+      setLog,
+      setInput,
+      setLoading,
+      setContextPercent,
+      setCallLLMStartTime,
+      coachOrChat,
+    };
 
-    sendPrompt(userId, input, setLog, setInput, setLoading, setContextPercent, setCallLLMStartTime);
+    sendPrompt(prompt);
+  };
+
+  const handleChatOption = () => {
+    setCoachOrChat(coachOrChat === 'chat' ? 'coach' : 'chat');
   };
 
   return (
@@ -42,9 +58,15 @@ const MessageInput = ({
           border: '1px solid #4f62cb',
         }}
         value={input}
-        placeholder={`
+        placeholder={
+          coachOrChat === 'chat'
+            ? `
           Let's code!  What can I help build for you?
-          `}
+          `
+            : `
+          What can I do to help with your job search? 
+            `
+        }
         disabled={loading}
         onChange={onInputChange}
         onKeyDown={(e) => {
@@ -75,6 +97,27 @@ const MessageInput = ({
           >
             ~{tokenCount} tokens in prompt
           </div>
+          <button
+            onClick={handleChatOption}
+            style={{
+              fontSize: '0.77rem',
+              borderRadius: '15px',
+              padding: '.28rem 1.05rem',
+              background: 'black',
+              color: 'rgb(99, 156, 255)',
+              border: 'none',
+              boxShadow: '0 2px 12px #0af4',
+              fontWeight: 'bold',
+              letterSpacing: '.08em',
+              cursor: 'pointer',
+              transition: 'background 0.3s, transform 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.7em',
+            }}
+          >
+            Set to {coachOrChat === 'chat' ? 'coach' : 'chat'} mode
+          </button>
           <button
             style={{
               fontSize: '0.77rem',
