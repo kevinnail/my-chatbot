@@ -33,7 +33,13 @@ export default [
       'rest-spread-spacing': 'error',
       'prefer-arrow-callback': 'error',
       'object-shorthand': ['error', 'always'],
-      'no-unused-vars': ['error'],
+      'no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
       'react/react-in-jsx-scope': 'off',
       'no-undef': 'error',
       'react/prop-types': 'off',
