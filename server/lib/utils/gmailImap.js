@@ -54,7 +54,7 @@ export function getEmailsViaImap(searchCriteria) {
     const emails = [];
 
     imap.once('ready', () => {
-      imap.openBox('INBOX', true, (err, box) => {
+      imap.openBox('INBOX', true, (err, _box) => {
         if (err) {
           reject(err);
           return;
@@ -82,11 +82,11 @@ export function getEmailsViaImap(searchCriteria) {
 
           const fetch = imap.fetch(limitedResults, { bodies: '', markSeen: false });
 
-          fetch.on('message', (msg, seqno) => {
+          fetch.on('message', (msg, _seqno) => {
             let body = '';
             let attributes = null;
 
-            msg.on('body', (stream, info) => {
+            msg.on('body', (stream, _info) => {
               let buffer = '';
               stream.on('data', (chunk) => {
                 buffer += chunk.toString('utf8');

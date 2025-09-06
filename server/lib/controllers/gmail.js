@@ -21,7 +21,7 @@ router.get('/status/:userId', async (req, res) => {
     try {
       await testImapConnection();
     } catch (err) {
-      return res.json({ connected: false, error: 'IMAP connection failed' });
+      return res.json({ connected: false, error: err.message || 'IMAP connection failed' });
     }
 
     // Get last sync time
@@ -61,7 +61,7 @@ router.get('/callback', async (req, res) => {
 router.post('/sync', async (req, res) => {
   try {
     const { userId } = req.body;
-
+    // eslint-disable-next-line no-console
     console.log('Starting persistent vector-powered email sync...');
 
     // Get last sync time for tracking purposes
@@ -77,10 +77,12 @@ router.post('/sync', async (req, res) => {
       ['SINCE', thirtyDaysAgo], // From last 30 days
     ];
 
+    // eslint-disable-next-line no-console
     console.log('Fetching emails via IMAP...');
 
     // Get emails via IMAP
     const rawEmails = await getEmailsViaImap(searchCriteria);
+    // eslint-disable-next-line no-console
     console.log(`Found ${rawEmails.length} raw emails`);
 
     // Step 1: Filter out emails already in database and calculate similarity for new ones
@@ -90,7 +92,7 @@ router.post('/sync', async (req, res) => {
       if (!exists) {
         newEmails.push(email);
       }
-    }
+    } // eslint-disable-next-line no-console
     console.log(
       `✨ Found ${newEmails.length} new emails (${rawEmails.length - newEmails.length} already stored)`,
     );
@@ -100,6 +102,7 @@ router.post('/sync', async (req, res) => {
       // Use the preFilterWebDevEmails function to efficiently filter emails
       const filterResults = await preFilterWebDevEmails(newEmails);
 
+      // eslint-disable-next-line no-console
       console.log(
         ` Pre-filter results: ${filterResults.likelyWebDevEmails.length} likely web-dev emails, ${filterResults.reductionPercentage}% reduction`,
       );
@@ -202,20 +205,8 @@ router.post('/sync', async (req, res) => {
     });
 
     const preliminaryEmails = Array.from(preliminaryEmailsMap.values());
-
+    // eslint-disable-next-line no-console
     console.log(`Returning ${preliminaryEmails.length} preliminary emails`);
-    console.log(
-      'Sample preliminary email:',
-      preliminaryEmails[0]
-        ? {
-            id: preliminaryEmails[0].id,
-            subject: preliminaryEmails[0].subject?.substring(0, 50),
-            analyzed: preliminaryEmails[0].analyzed,
-            status: preliminaryEmails[0].status,
-            summary: preliminaryEmails[0].summary?.substring(0, 50),
-          }
-        : 'No emails',
-    );
 
     // Step 3: Return preliminary results immediately
     res.json({
@@ -239,6 +230,7 @@ router.post('/sync', async (req, res) => {
         // Analyze all emails shown to user that need analysis
         const emailsNeedingAnalysis = preliminaryEmails.filter((email) => !email.analyzed);
 
+        // eslint-disable-next-line no-console
         console.log(
           `🤖 Background analysis starting for ${emailsNeedingAnalysis.length} emails from preliminary results`,
         );
@@ -247,6 +239,7 @@ router.post('/sync', async (req, res) => {
         let analyzedCount = 0;
         for (const email of emailsNeedingAnalysis) {
           try {
+            // eslint-disable-next-line no-console
             console.log(
               `🧠 Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.vectorSimilarity})`,
             );
@@ -262,6 +255,7 @@ router.post('/sync', async (req, res) => {
             // Get full email body from database for analysis
             const fullEmail = await EmailMemory.getEmailById(userId, email.id);
             if (!fullEmail) {
+              // eslint-disable-next-line no-console
               console.warn(`Email ${email.id} not found in database`);
               continue;
             }
@@ -284,6 +278,7 @@ router.post('/sync', async (req, res) => {
               totalToAnalyze: emailsNeedingAnalysis.length,
             };
 
+            // eslint-disable-next-line no-console
             console.log('🔍 Emitting email-analyzed event:', {
               emailId: email.id,
               analysisExists: !!analysis,
@@ -295,6 +290,7 @@ router.post('/sync', async (req, res) => {
 
             req.app.get('io')?.to(`sync-updates-${userId}`).emit('email-analyzed', socketData);
 
+            // eslint-disable-next-line no-console
             console.log(
               `✅ Analysis complete for email ${analyzedCount}/${emailsNeedingAnalysis.length}`,
             );
@@ -310,6 +306,7 @@ router.post('/sync', async (req, res) => {
         const reductionPercentage =
           rawEmails.length > 0 ? Math.round((totalSaved / rawEmails.length) * 100) : 0;
 
+        // eslint-disable-next-line no-console
         console.log(`Background analysis complete!
           - Total emails fetched: ${rawEmails.length}
           - New emails stored: ${newEmailsStored}  
@@ -347,6 +344,7 @@ router.get('/emails/:userId', async (req, res) => {
     const { userId } = req.params;
     const { limit = 50 } = req.query;
 
+    // eslint-disable-next-line no-console
     console.log(`Getting stored web-dev emails for user ${userId}`);
 
     const webDevEmails = await EmailMemory.getWebDevEmails({
@@ -369,6 +367,7 @@ router.get('/emails/:userId', async (req, res) => {
       priority: email.llm_analysis?.priority || null,
     }));
 
+    // eslint-disable-next-line no-console
     console.log(`Found ${formattedEmails.length} stored web-dev emails`);
 
     res.json({

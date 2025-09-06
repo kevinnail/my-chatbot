@@ -15,6 +15,7 @@ const setupTestDb = async () => {
   });
 
   try {
+    // eslint-disable-next-line no-console
     console.log('Setting up test database...');
 
     // Create test database if it doesn't exist
@@ -26,7 +27,6 @@ const setupTestDb = async () => {
       // eslint-disable-next-line no-console
       console.log('Test database already exists, continuing...');
     } else {
-      // eslint-disable-next-line no-console
       console.error('❌ Failed to create test database:', error);
       throw error;
     }
@@ -52,7 +52,6 @@ const setupTestDb = async () => {
     // eslint-disable-next-line no-console
     console.log('✅ Test database setup complete!');
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('❌ Test database setup failed:', error);
     throw error;
   } finally {

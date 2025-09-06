@@ -21,6 +21,7 @@ class EmailMemory {
       );
 
     if (isAppointmentRelated) {
+      // eslint-disable-next-line no-console
       console.log(
         ` Storing appointment-related email: "${subject}" (similarity: ${similarityScore?.toFixed(3)})`,
       );
@@ -94,7 +95,7 @@ class EmailMemory {
     const values = [userId];
 
     if (since) {
-      query += ` AND email_date > $2`;
+      query += ' AND email_date > $2';
       values.push(since);
     }
 
@@ -107,6 +108,7 @@ class EmailMemory {
 
   // Get emails that need LLM analysis (high similarity OR appointment-related but not yet analyzed)
   static async getEmailsNeedingAnalysis({ userId, minSimilarity, limit = 10 }) {
+    // eslint-disable-next-line no-console
     console.log(
       ` Getting emails needing analysis for user ${userId} with minSimilarity ${minSimilarity}`,
     );
@@ -140,8 +142,10 @@ class EmailMemory {
       [userId, minSimilarity, limit],
     );
 
+    // eslint-disable-next-line no-console
     console.log(` Found ${rows.length} emails needing analysis:`);
     rows.forEach((row) => {
+      // eslint-disable-next-line no-console
       console.log(
         `  - "${row.subject}" (${row.selection_reason}, similarity: ${row.similarity_score?.toFixed(3)})`,
       );

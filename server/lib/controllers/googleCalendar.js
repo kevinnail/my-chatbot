@@ -79,6 +79,7 @@ router.get('/callback', async (req, res) => {
     // Store tokens in database
     await GoogleCalendar.storeTokens(userId, tokens);
 
+    // eslint-disable-next-line no-console
     console.log(`✅ Google Calendar connected for user: ${userId}`);
 
     // Redirect to OAuth success page

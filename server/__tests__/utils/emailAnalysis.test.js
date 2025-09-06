@@ -356,6 +356,7 @@ describe('emailAnalysis utilities', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
+      // eslint-disable-next-line no-unused-vars
       const result = await analyzeEmailWithLLM(
         appointmentEmail.subject,
         appointmentEmail.body,
@@ -403,6 +404,7 @@ describe('emailAnalysis utilities', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
+      // eslint-disable-next-line no-unused-vars
       const result = await analyzeEmailWithLLM(
         appointmentEmail.subject,
         appointmentEmail.body,
@@ -456,11 +458,12 @@ describe('emailAnalysis utilities', () => {
 
       mockFetch.mockImplementation(
         () =>
+          // eslint-disable-next-line no-unused-vars
           new Promise((resolve) => {
             // Never resolve to simulate timeout
           }),
       );
-
+      // eslint-disable-next-line no-unused-vars
       const analysisPromise = analyzeEmailWithLLM(
         mockEmailData.subject,
         mockEmailData.body,

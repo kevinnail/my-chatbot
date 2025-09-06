@@ -22,19 +22,23 @@ app.set('io', io);
 
 // Socket.IO connection handler
 io.on('connection', (socket) => {
+  // eslint-disable-next-line no-console
   console.log('Client connected for real-time updates');
 
   socket.on('join-sync-updates', (userId) => {
     socket.join(`sync-updates-${userId}`);
+    // eslint-disable-next-line no-console
     console.log(` Client joined sync updates for user ${userId}`);
   });
 
   socket.on('join-chat', (userId) => {
     socket.join(`chat-${userId}`);
+    // eslint-disable-next-line no-console
     console.log(`💬 Client joined chat for user ${userId}`);
   });
 
   socket.on('disconnect', () => {
+    // eslint-disable-next-line no-console
     console.log('Client disconnected');
   });
 });

@@ -5,7 +5,6 @@ import {
   addEmailCategory,
   getAvailableCategories,
 } from '../../lib/utils/vectorSimilarity.js';
-import { getEmbedding } from '../../lib/utils/ollamaEmbed.js';
 
 // Mock the embedding function
 const mockGetEmbedding = jest.fn();

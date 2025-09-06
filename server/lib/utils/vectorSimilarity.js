@@ -50,6 +50,7 @@ const EMAIL_CATEGORIES = {
 // Vector pre-filtering for categorized emails
 export async function preFilterWebDevEmails(emails) {
   try {
+    // eslint-disable-next-line no-console
     console.log('Pre-filtering emails using vector similarity...');
 
     // Generate embeddings for all categories
@@ -126,6 +127,7 @@ export async function preFilterWebDevEmails(emails) {
       (email) => !email.likelyWebDev && !email.isAppointmentRelated,
     );
 
+    // eslint-disable-next-line no-console
     console.log(`Vector pre-filtering results:
       - Total emails: ${emails.length}
       - Web-dev emails: ${webDevEmails.length}
@@ -142,6 +144,7 @@ export async function preFilterWebDevEmails(emails) {
   } catch (error) {
     console.error('Error in vector pre-filtering:', error);
     // Fallback to processing all emails if vector similarity fails
+    // eslint-disable-next-line no-console
     console.log('Falling back to processing all emails due to vector similarity error');
     return {
       likelyWebDevEmails: emails,

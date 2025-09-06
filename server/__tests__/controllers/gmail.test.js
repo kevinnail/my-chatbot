@@ -194,12 +194,10 @@ describe('gmail routes', () => {
         unlikelyEmails: [],
         reductionPercentage: 0,
       };
-      console.log('mockFilterResults', mockFilterResults);
 
       mockGetEmailsViaImap.mockResolvedValueOnce(mockEmails);
-      console.log('made it past mockGetEmailsVialmap--------------------');
+
       mockPreFilterWebDevEmails.mockResolvedValueOnce(mockFilterResults);
-      console.log('made it past mockPreFilterWebDevEmails-------------------------');
 
       // Mock the embedding function to return a valid 1024-dimensional embedding
       const mockEmbedding = Array(1024)
@@ -208,7 +206,7 @@ describe('gmail routes', () => {
       mockGetEmbedding.mockResolvedValue(`[${mockEmbedding.join(',')}]`);
 
       const response = await request(app).post('/api/gmail/sync').send({ userId });
-      console.log('response.body=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=', response.body);
+
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('emails');
       expect(response.body).toHaveProperty('performance');
@@ -355,7 +353,7 @@ describe('gmail routes', () => {
       expect(response.body).toHaveProperty('total');
       expect(response.body).toHaveProperty('source', 'database');
       expect(response.body.emails).toHaveLength(2);
-      console.log('response.body.emails', response.body.emails);
+
       expect(response.body.emails[0]).toEqual({
         id: 'test_email_2',
         subject: 'Vue Question',
