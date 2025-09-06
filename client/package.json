@@ -13,6 +13,8 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.6.3",
     "react-scripts": "^5.0.1",
+    "react-syntax-highlighter": "^15.6.1",
+    "remark-gfm": "^4.0.1",
     "socket.io-client": "^4.8.1",
     "web-vitals": "^2.1.4",
     "zustand": "^5.0.8"
