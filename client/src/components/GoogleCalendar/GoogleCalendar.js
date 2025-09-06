@@ -64,7 +64,19 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
   const checkCalendarConnection = async () => {
     try {
       const response = await fetch(`/api/calendar/status/${userId}`);
-      const data = await response.json();
+
+      // Check if response is actually JSON before parsing
+      const contentType = response.headers.get('content-type');
+
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // Get the actual response text to see the full error
+        const responseText = await response.text();
+        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}...`);
+      }
+
       setIsConnected(data.connected);
       setConnectionError(data.error || null);
 
@@ -73,7 +85,8 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
         onConnectionChange(data.connected);
       }
     } catch (err) {
-      console.error('Error checking Calendar connection:', err);
+      console.error(err.message || 'Error checking Calendar connection:');
+
       setConnectionError('Failed to check connection status');
       if (onConnectionChange) {
         onConnectionChange(false);
@@ -94,7 +107,17 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
         body: JSON.stringify({ userId }),
       });
 
-      const data = await response.json();
+      // Check if response is actually JSON before parsing
+      const contentType = response.headers.get('content-type');
+
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // Get the actual response text to see the full error
+        const responseText = await response.text();
+        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}...`);
+      }
 
       if (response.ok) {
         // Open OAuth URL in a new popup window
@@ -156,7 +179,20 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
 
       {!isConnected ? (
         <div className="connect-section">
-          <h3>Connect to Google Calendar</h3>
+          <button
+            onClick={connectCalendar}
+            disabled={loading}
+            className="connect-button"
+            style={{
+              height: '35px',
+              boxShadow: '4px 4px 15px 0 black',
+              borderTop: '1px solid rgb(255,255,255,0.75',
+              borderLeft: '1px solid rgb(255,255,255,0.75',
+            }}
+          >
+            {loading ? 'Connecting...' : 'Connect Google Calendar Now!'}
+          </button>
+          <h3>Link up with to Google Calendar</h3>
           <p>
             <strong>LLM Calendar Event Creation</strong> - Enable your chatbot to automatically
             create calendar events from emails!
@@ -178,9 +214,9 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
               <li>
                 <strong>Examples:</strong>
                 <br />
-                "Doctor appointment Tuesday 3PM" → Calendar event created
+                &quot;Doctor appointment Tuesday 3PM&quot; → Calendar event created
                 <br />
-                "Interview scheduled for Friday 10AM" → Calendar event created
+                &quot;Interview scheduled for Friday 10AM&quot; → Calendar event created
               </li>
             </ol>
           </div>
@@ -189,7 +225,7 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
             <div className="connection-error">
               <strong>Connection Issue:</strong> {connectionError}
               <br />
-              <small>Make sure you've completed the Google Cloud setup.</small>
+              <small>Make sure you&apos;ve completed the Google Cloud setup.</small>
             </div>
           )}
 
@@ -208,10 +244,6 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
               <li> No user interaction needed after setup</li>
             </ul>
           </div>
-
-          <button onClick={connectCalendar} disabled={loading} className="connect-button">
-            {loading ? 'Connecting...' : 'Connect Google Calendar'}
-          </button>
         </div>
       ) : (
         <div className="connected-section">
