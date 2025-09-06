@@ -1,0 +1,13 @@
+[build]
+  # Point to the client directory for the React app
+  base = "client/"
+  # Build command for React app
+  command = "npm run build"
+  # Publish directory (where the built files are)
+  publish = "build/"
+
+# Handle client-side routing for React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
