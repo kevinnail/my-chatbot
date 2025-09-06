@@ -1,36 +1,49 @@
 import ChatMemory from '../models/ChatMemory.js';
 
 export async function buildPromptWithMemory({ userId, userInput }) {
-  // Get both relevant and recent messages, sorted chronologically
-  const memories = await ChatMemory.getHybridMessages({ 
-    userId, 
-    inputText: userInput, 
-    relevantLimit: 3, 
-    recentLimit: 5 
+  // Get recent messages first (most important for context continuity)
+  const recentMessages = await ChatMemory.getRecentMessages({ userId, limit: 8 });
+
+  // Get only a few highly relevant messages to supplement context
+  const relevantMessages = await ChatMemory.getRelevantMessages({
+    userId,
+    inputText: userInput,
+    limit: 3,
   });
-  
-  // Remove timestamp for the LLM (unless you want to include it)
+
+  // Prioritize recent messages, then add relevant ones that aren't duplicates
+  const combined = [...recentMessages];
+  for (const msg of relevantMessages) {
+    if (!combined.some((existing) => existing.content === msg.content)) {
+      combined.push(msg);
+    }
+  }
+
+  // Sort chronologically to maintain conversation flow
+  const memories = combined.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+  // Remove timestamp for the LLM
   return memories.map(({ role, content }) => ({ role, content }));
 }
 
 // Alternative: Include timestamp context for the LLM
 export async function buildPromptWithMemoryAndTime({ userId, userInput }) {
-  const memories = await ChatMemory.getHybridMessages({ 
-    userId, 
-    inputText: userInput, 
-    relevantLimit: 3, 
-    recentLimit: 5 
+  const memories = await ChatMemory.getHybridMessages({
+    userId,
+    inputText: userInput,
+    relevantLimit: 10,
+    recentLimit: 10,
   });
-  
+
   // Include relative time context
   const now = new Date();
   return memories.map(({ role, content, timestamp }) => {
     const timeAgo = Math.floor((now - new Date(timestamp)) / (1000 * 60)); // minutes ago
     const timeContext = timeAgo < 60 ? `${timeAgo}m ago` : `${Math.floor(timeAgo / 60)}h ago`;
-    
-    return { 
-      role, 
-      content: `[${timeContext}] ${content}` 
+
+    return {
+      role,
+      content: `[${timeContext}] ${content}`,
     };
   });
 }

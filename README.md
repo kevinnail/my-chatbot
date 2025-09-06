@@ -332,8 +332,8 @@ npm test -- --testNamePattern="should send a message"
 The test suite covers:
 
 - **API Endpoints** (`__tests__/controllers/chat.test.js`)
-  - POST `/api/chat` - Message sending and bot responses
-  - DELETE `/api/chat/:userId` - Message deletion and user isolation
+  - POST `/api/chatbot` - Message sending and bot responses
+  - DELETE `/api/chatbot/:userId` - Message deletion and user isolation
   - Error handling and edge cases
 
 - **Database Models** (`__tests__/models/ChatMemory.test.js`)

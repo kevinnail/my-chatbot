@@ -15,7 +15,8 @@ const setupTestDb = async () => {
   });
 
   try {
-    console.log('🗄️  Setting up test database...');
+    // eslint-disable-next-line no-console
+    console.log('Setting up test database...');
 
     // Create test database if it doesn't exist
     await adminPool.query('CREATE DATABASE chatbot_test;');
@@ -24,9 +25,8 @@ const setupTestDb = async () => {
   } catch (error) {
     if (error.code === '42P04') {
       // eslint-disable-next-line no-console
-      console.log('📋 Test database already exists, continuing...');
+      console.log('Test database already exists, continuing...');
     } else {
-      // eslint-disable-next-line no-console
       console.error('❌ Failed to create test database:', error);
       throw error;
     }
@@ -52,7 +52,6 @@ const setupTestDb = async () => {
     // eslint-disable-next-line no-console
     console.log('✅ Test database setup complete!');
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('❌ Test database setup failed:', error);
     throw error;
   } finally {

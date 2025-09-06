@@ -38,6 +38,7 @@ npm run setup-test-db
 ```
 
 This command will:
+
 - Create the `chatbot_test` database (separate from your main database)
 - Install the vector extension
 - Run the `sql/setup.sql` file to create tables and sample data
@@ -109,7 +110,7 @@ server/
 
 ### Integration Tests
 
-- **Chat API endpoints** (`POST /api/chat`, `DELETE /api/chat/:userId`)
+- **Chat API endpoints** (`POST /api/chatbot`, `DELETE /api/chatbot/:userId`)
 - **Database operations** (message storage, retrieval, deletion)
 - **External API mocking** (Ollama API responses)
 - **Error handling** (database errors, API failures)
@@ -139,6 +140,7 @@ This testing setup provides:
 ## Test Data
 
 Tests use a completely separate database for full isolation:
+
 - **Separate Database**: `chatbot_test` (completely isolated from main app database)
 - **Fresh Data**: `sql/setup.sql` runs before each test, dropping and recreating all tables
 - **Sample Data**: Each test starts with the same clean sample data from `setup.sql`
@@ -160,13 +162,13 @@ fetch.mockResolvedValueOnce({
   ok: true,
   json: jest.fn().mockResolvedValueOnce({
     message: { content: 'Test response' },
-    prompt_eval_count: 150
-  })
+    prompt_eval_count: 150,
+  }),
 });
 
 // Mock vector embedding
 jest.mock('../../lib/utils/ollamaEmbed.js', () => ({
-  getEmbedding: jest.fn().mockResolvedValue(new Array(1536).fill(0.1))
+  getEmbedding: jest.fn().mockResolvedValue(new Array(1536).fill(0.1)),
 }));
 ```
 
@@ -191,14 +193,14 @@ afterAll(async () => {
 
 ```javascript
 const response = await request(app)
-  .post('/api/chat')
+  .post('/api/chatbot')
   .send({ msg: 'test message', userId: 'test_user' });
 
 expect(response.status).toBe(200);
 expect(response.body).toEqual({
   bot: expect.any(String),
   prompt_eval_count: expect.any(Number),
-  context_percent: expect.any(String)
+  context_percent: expect.any(String),
 });
 ```
 
@@ -224,6 +226,7 @@ npx jest --testNamePattern="should send a message" --verbose
 ## Continuous Integration
 
 For CI/CD pipelines, ensure:
+
 1. PostgreSQL service is available
 2. Test database is created
 3. Vector extension is installed
@@ -243,4 +246,4 @@ services:
       --health-interval 10s
       --health-timeout 5s
       --health-retries 5
-``` 
+```

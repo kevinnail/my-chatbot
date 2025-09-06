@@ -13,7 +13,7 @@ describe('chat routes', () => {
     fetch.mockClear();
 
     // Mock fetch for embedding API calls
-    // eslint-disable-next-line no-unused-vars
+
     fetch.mockImplementation((url, _options) => {
       if (url.includes('/api/embed')) {
         // Mock embedding API response
@@ -43,19 +43,26 @@ describe('chat routes', () => {
     await cleanup();
   });
 
-  describe('POST /api/chat', () => {
-    it('should send a message and receive a bot response', async () => {
-      // Mock Ollama API response
-      const mockOllamaResponse = {
-        message: {
-          content:
-            "Hello! I'm a senior software engineer. How can I help you with your React, Express, or Node.js questions?",
-        },
-        prompt_eval_count: 150,
-      };
+  describe('POST /api/chatbot', () => {
+    it('should send a message and receive a streaming response', async () => {
+      const mockResponseContent =
+        "Hello! I'm a senior software engineer. How can I help you with your React, Express, or Node.js questions?";
+
+      // Mock streaming response
+      const mockStreamData = [
+        JSON.stringify({ message: { content: 'Hello! ' }, done: false }),
+        JSON.stringify({ message: { content: "I'm a senior " }, done: false }),
+        JSON.stringify({ message: { content: 'software engineer. ' }, done: false }),
+        JSON.stringify({
+          message: {
+            content: 'How can I help you with your React, Express, or Node.js questions?',
+          },
+          done: false,
+        }),
+        JSON.stringify({ done: true }),
+      ];
 
       // Override the default fetch mock for this test
-      // eslint-disable-next-line no-unused-vars
       fetch.mockImplementation((url, _options) => {
         if (url.includes('/api/embed')) {
           return Promise.resolve({
@@ -68,9 +75,19 @@ describe('chat routes', () => {
         }
 
         if (url.includes('/api/chat')) {
+          // Mock streaming response
+          const mockStream = new ReadableStream({
+            start(controller) {
+              mockStreamData.forEach((data) => {
+                controller.enqueue(new TextEncoder().encode(data + '\n'));
+              });
+              controller.close();
+            },
+          });
+
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve(mockOllamaResponse),
+            body: mockStream,
           });
         }
 
@@ -82,20 +99,19 @@ describe('chat routes', () => {
         userId: 'test_user_1',
       };
 
-      const response = await request(app).post('/api/chat').send(testMessage);
+      const response = await request(app).post('/api/chatbot').send(testMessage);
 
+      // Should get immediate streaming confirmation response
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
-        bot: expect.any(String),
-        prompt_eval_count: expect.any(Number),
-        context_percent: expect.any(String),
+        streaming: true,
+        message: 'Streaming response via WebSocket',
       });
 
-      expect(response.body.bot).toBe(mockOllamaResponse.message.content);
-      expect(response.body.prompt_eval_count).toBe(150);
-      expect(parseFloat(response.body.context_percent)).toBeGreaterThanOrEqual(0);
+      // Wait a bit for the streaming to complete and message to be stored
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Verify the message was stored in the database
+      // Verify the messages were stored in the database
       const { rows } = await pool.query(
         'SELECT * FROM chat_memory WHERE user_id = $1 ORDER BY created_at',
         ['test_user_1'],
@@ -114,22 +130,18 @@ describe('chat routes', () => {
         id: expect.any(Number),
         user_id: 'test_user_1',
         role: 'bot',
-        content: mockOllamaResponse.message.content,
+        content: mockResponseContent,
         embedding: expect.any(String),
         created_at: expect.any(Date),
       });
     });
 
     it('should handle empty bot response gracefully', async () => {
-      // Mock Ollama API response with empty content
-      const mockOllamaResponse = {
-        message: {
-          content: '',
-        },
-        prompt_eval_count: 50,
-      };
+      // Mock streaming response with empty content
+      const mockStreamData = [
+        JSON.stringify({ done: true }), // No content, just done
+      ];
 
-      // eslint-disable-next-line no-unused-vars
       fetch.mockImplementation((url, _options) => {
         if (url.includes('/api/embed')) {
           return Promise.resolve({
@@ -142,9 +154,19 @@ describe('chat routes', () => {
         }
 
         if (url.includes('/api/chat')) {
+          // Mock streaming response with no content
+          const mockStream = new ReadableStream({
+            start(controller) {
+              mockStreamData.forEach((data) => {
+                controller.enqueue(new TextEncoder().encode(data + '\n'));
+              });
+              controller.close();
+            },
+          });
+
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve(mockOllamaResponse),
+            body: mockStream,
           });
         }
 
@@ -156,20 +178,36 @@ describe('chat routes', () => {
         userId: 'test_user_2',
       };
 
-      const response = await request(app).post('/api/chat').send(testMessage);
+      const response = await request(app).post('/api/chatbot').send(testMessage);
 
+      // Should get immediate streaming confirmation response
       expect(response.status).toBe(200);
-      expect(response.body.bot).toBe('');
-      expect(response.body.prompt_eval_count).toBe(50);
+      expect(response.body).toEqual({
+        streaming: true,
+        message: 'Streaming response via WebSocket',
+      });
+
+      // Wait for streaming to complete and message to be stored
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify the bot response was stored as empty string
+      const { rows } = await pool.query(
+        'SELECT * FROM chat_memory WHERE user_id = $1 AND role = $2 ORDER BY created_at',
+        ['test_user_2', 'bot'],
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].content).toBe('');
     });
 
     it('should handle malformed Ollama response', async () => {
-      // Mock Ollama API response with missing message
-      const mockOllamaResponse = {
-        prompt_eval_count: 0,
-      };
+      // Mock streaming response with malformed data
+      const mockStreamData = [
+        'invalid json', // This should be ignored
+        JSON.stringify({ invalid: 'structure' }), // This should be ignored
+        JSON.stringify({ done: true }), // This should complete the stream
+      ];
 
-      // eslint-disable-next-line no-unused-vars
       fetch.mockImplementation((url, _options) => {
         if (url.includes('/api/embed')) {
           return Promise.resolve({
@@ -182,9 +220,19 @@ describe('chat routes', () => {
         }
 
         if (url.includes('/api/chat')) {
+          // Mock streaming response with malformed data
+          const mockStream = new ReadableStream({
+            start(controller) {
+              mockStreamData.forEach((data) => {
+                controller.enqueue(new TextEncoder().encode(data + '\n'));
+              });
+              controller.close();
+            },
+          });
+
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve(mockOllamaResponse),
+            body: mockStream,
           });
         }
 
@@ -196,23 +244,37 @@ describe('chat routes', () => {
         userId: 'test_user_3',
       };
 
-      const response = await request(app).post('/api/chat').send(testMessage);
+      const response = await request(app).post('/api/chatbot').send(testMessage);
 
+      // Should get immediate streaming confirmation response
       expect(response.status).toBe(200);
-      expect(response.body.bot).toBe('');
-      expect(response.body.prompt_eval_count).toBe(0);
+      expect(response.body).toEqual({
+        streaming: true,
+        message: 'Streaming response via WebSocket',
+      });
+
+      // Wait for streaming to complete and message to be stored
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify the bot response was stored as empty string (no valid content received)
+      const { rows } = await pool.query(
+        'SELECT * FROM chat_memory WHERE user_id = $1 AND role = $2 ORDER BY created_at',
+        ['test_user_3', 'bot'],
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].content).toBe('');
     });
 
     it('should calculate context percentage correctly with multiple messages', async () => {
-      // Mock Ollama API response
-      const mockOllamaResponse = {
-        message: {
-          content: 'This is a test response',
-        },
-        prompt_eval_count: 100,
-      };
+      const mockResponseContent = 'This is a test response';
 
-      // eslint-disable-next-line no-unused-vars
+      // Mock streaming response
+      const mockStreamData = [
+        JSON.stringify({ message: { content: mockResponseContent }, done: false }),
+        JSON.stringify({ done: true }),
+      ];
+
       fetch.mockImplementation((url, _options) => {
         if (url.includes('/api/embed')) {
           return Promise.resolve({
@@ -225,9 +287,19 @@ describe('chat routes', () => {
         }
 
         if (url.includes('/api/chat')) {
+          // Mock streaming response
+          const mockStream = new ReadableStream({
+            start(controller) {
+              mockStreamData.forEach((data) => {
+                controller.enqueue(new TextEncoder().encode(data + '\n'));
+              });
+              controller.close();
+            },
+          });
+
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve(mockOllamaResponse),
+            body: mockStream,
           });
         }
 
@@ -238,21 +310,37 @@ describe('chat routes', () => {
 
       // Send multiple messages to build up context
       for (let i = 0; i < 3; i++) {
-        await request(app)
-          .post('/api/chat')
+        const response = await request(app)
+          .post('/api/chatbot')
           .send({
             msg: `Test message ${i + 1}`,
             userId,
           });
+
+        // Should get streaming confirmation
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({
+          streaming: true,
+          message: 'Streaming response via WebSocket',
+        });
+
+        // Wait for processing to complete
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      const finalResponse = await request(app).post('/api/chat').send({
+      const finalResponse = await request(app).post('/api/chatbot').send({
         msg: 'Final test message',
         userId,
       });
 
       expect(finalResponse.status).toBe(200);
-      expect(parseFloat(finalResponse.body.context_percent)).toBeGreaterThan(0);
+      expect(finalResponse.body).toEqual({
+        streaming: true,
+        message: 'Streaming response via WebSocket',
+      });
+
+      // Wait for final processing to complete
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Verify we have accumulated messages
       const { rows } = await pool.query(
@@ -263,7 +351,7 @@ describe('chat routes', () => {
     });
 
     it('should handle missing required fields', async () => {
-      const response = await request(app).post('/api/chat').send({
+      const response = await request(app).post('/api/chatbot').send({
         msg: 'Test message',
         // Missing userId
       });
@@ -280,13 +368,13 @@ describe('chat routes', () => {
         userId: 'test_user_error',
       };
 
-      const response = await request(app).post('/api/chat').send(testMessage);
+      const response = await request(app).post('/api/chatbot').send(testMessage);
 
       expect(response.status).toBe(500);
     });
   });
 
-  describe('DELETE /api/chat/:userId', () => {
+  describe('DELETE /api/chatbot/:userId', () => {
     it('should delete all messages for a user', async () => {
       const userId = 'test_user_delete';
 
@@ -308,7 +396,7 @@ describe('chat routes', () => {
       expect(parseInt(beforeDelete[0].count)).toBe(2);
 
       // Delete messages
-      const response = await request(app).delete(`/api/chat/${userId}`);
+      const response = await request(app).delete(`/api/chatbot/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -324,7 +412,7 @@ describe('chat routes', () => {
     });
 
     it('should handle deletion of non-existent user', async () => {
-      const response = await request(app).delete('/api/chat/non_existent_user');
+      const response = await request(app).delete('/api/chatbot/non_existent_user');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -347,7 +435,7 @@ describe('chat routes', () => {
       );
 
       // Delete messages for userId2 only
-      const response = await request(app).delete(`/api/chat/${userId2}`);
+      const response = await request(app).delete(`/api/chatbot/${userId2}`);
 
       expect(response.status).toBe(200);
 

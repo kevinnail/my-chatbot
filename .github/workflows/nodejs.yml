@@ -22,11 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: npm ci
+      - run: npm ci
         working-directory: ./server
-      - run: npx eslint . --fix
-        working-directory: ./server
-      - run: npx eslint . --max-warnings 10
-        working-directory: ./server
+      - run: npx eslint ./server --fix
+      - run: npx eslint ./server --max-warnings 10
       - run: npm test -- -u
         working-directory: ./server
         env:

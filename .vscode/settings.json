@@ -16,7 +16,8 @@
     "titleBar.activeBackground": "#411add",
     "titleBar.activeForeground": "#e7e7e7",
     "titleBar.inactiveBackground": "#411add99",
-    "titleBar.inactiveForeground": "#e7e7e799"
+    "titleBar.inactiveForeground": "#e7e7e799",
+    "activityBar.activeBorder": "#eb7254"
   },
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -24,5 +25,12 @@
     "source.fixAll.eslint": "explicit"
   },
   "prettier.requireConfig": true,
-  "eslint.workingDirectories": ["server", "client"]
+  // "eslint.workingDirectories": ["server", "client"],
+  "peacock.color": "#411add",
+  "eslint.experimental.useFlatConfig": true,
+  "eslint.workingDirectories": ["./"],
+  "eslint.nodePath": "./node_modules",
+  "eslint.codeActionsOnSave.mode": "all",
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+  "eslint.debug": true
 }
