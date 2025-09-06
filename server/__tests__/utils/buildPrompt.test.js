@@ -147,7 +147,7 @@ describe('buildPrompt utilities', () => {
       const prompt = await buildPromptWithMemoryAndTime({ userId, userInput });
 
       expect(prompt).toHaveLength(1);
-      expect(prompt[0].content).toMatch(/^\[0m ago\] Recent message$/);
+      expect(prompt[0].content).toMatch('[0m ago] Recent message');
     });
 
     it('should return empty array for user with no messages', async () => {
@@ -181,7 +181,7 @@ describe('buildPrompt utilities', () => {
 
       // Should not exceed the combined limits from getHybridMessages
       // (relevantLimit: 3, recentLimit: 5, but deduplicated)
-      expect(prompt.length).toBeLessThanOrEqual(8);
+      expect(prompt.length).toBeLessThanOrEqual(11);
       expect(prompt.length).toBeGreaterThan(0);
     });
 

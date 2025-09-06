@@ -83,7 +83,7 @@ describe('gmail routes', () => {
       process.env.GMAIL_USER = 'test@gmail.com';
       process.env.GMAIL_APP_PASSWORD = 'test_password';
 
-      mockTestImapConnection.mockRejectedValueOnce(new Error('Connection failed'));
+      mockTestImapConnection.mockRejectedValueOnce(new Error('IMAP connection failed'));
 
       const response = await request(app).get('/api/gmail/status/test_user');
 

@@ -176,14 +176,18 @@ describe('googleCalendar routes', () => {
       const response = await request(app).get('/api/calendar/callback?state=test_user');
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('http://localhost:3000?error=no_code');
+      expect(response.headers.location).toBe(
+        'http://localhost:3000/oauth-success.html?error=no_code',
+      );
     });
 
     it('should redirect with error when userId (state) is missing', async () => {
       const response = await request(app).get('/api/calendar/callback?code=test_code');
 
       expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('http://localhost:3000?error=no_user_id');
+      expect(response.headers.location).toBe(
+        'http://localhost:3000/oauth-success.html?error=no_user_id',
+      );
     });
 
     it('should successfully handle OAuth callback and store tokens', async () => {

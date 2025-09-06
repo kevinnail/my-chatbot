@@ -21,6 +21,7 @@ router.get('/status/:userId', async (req, res) => {
     try {
       await testImapConnection();
     } catch (err) {
+      console.error('Error checking Gmail status:', err);
       return res.json({ connected: false, error: err.message || 'IMAP connection failed' });
     }
 
