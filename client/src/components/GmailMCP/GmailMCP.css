@@ -188,7 +188,7 @@
   margin: 20px 0;
   background: #1a1a1a;
   border-radius: 10px;
-  border-left: 4px solid #639cff;
+  border: 2px solid #639cff;
 }
 
 .setup-header {
@@ -275,7 +275,8 @@
   background: #1a1a1a;
   padding: 15px;
   border-radius: 8px;
-  border-left: 3px solid #639cff;
+  border-top: 1px solid #639cff;
+  border-left: 1px solid #639cff;
   color: #ddd;
   font-size: 0.95rem;
 }
