@@ -5,6 +5,9 @@ A full-stack AI-powered chatbot application built with React, Express.js, Postgr
 ## Features
 
 - **AI-Powered Chat**: Integrated with Ollama for local LLM inference
+- **Dual Mode Operation**: Switch between coding assistant and career coach modes
+- **Gmail Integration**: IMAP-based email sync with intelligent job-search email analysis
+- **Google Calendar Integration**: OAuth-connected calendar with automatic appointment creation
 - **Smart Memory**: Vector-based semantic search for conversation history
 - **Persistent Storage**: PostgreSQL with pgvector extension for embeddings
 - **Hybrid Memory System**: Combines recent and semantically relevant messages
@@ -20,6 +23,59 @@ _Main chat interface showing conversation flow and AI responses_
 
 ![Chatbot Interface Example 2](<./client/public/screenshot-ex%20(2).png>)
 _Chatbot interface with code syntax highlighting and technical assistance_
+
+![Gmail Calendar Integration](<./client/public/screenshot-ex%20(4).png>)
+_Gmail sync and Google Calendar integration showing email analysis and automatic appointment creation_
+
+## Gmail & Calendar Integration
+
+The application includes powerful Gmail sync and Google Calendar integration features that work seamlessly with your local LLM to provide intelligent email analysis and automatic appointment scheduling.
+
+### Gmail Integration Features
+
+- **IMAP-Based Sync**: Secure, local email access using Gmail IMAP (no Google Cloud APIs required)
+- **Intelligent Email Filtering**: AI-powered detection of job-related emails using vector similarity
+- **Real-time Analysis**: LLM-powered categorization of emails (job applications, interviews, offers, rejections)
+- **Priority Classification**: Automatic priority assignment (high/medium/low) based on email content
+- **Action Item Generation**: AI suggests specific next steps for each email
+- **Draft Response Creation**: Contextual response suggestions for appropriate emails
+- **Category Filtering**: Filter emails by type (job_application, job_interview, job_offer, etc.)
+
+### Google Calendar Integration Features
+
+- **OAuth Authentication**: Secure connection to your Google Calendar account
+- **Automatic Event Creation**: LLM analyzes emails and creates calendar appointments when it detects scheduling information
+- **Conflict Detection**: Checks for existing calendar conflicts before creating events
+- **Smart Parsing**: Extracts date, time, and location information from email content
+- **Tool Call Integration**: Uses Ollama's function calling capabilities to trigger calendar actions
+
+### How It Works
+
+1. **Email Sync**: The system connects to Gmail via IMAP and fetches recent unread emails
+2. **Vector Filtering**: Uses embeddings to identify potentially job-related emails before LLM analysis
+3. **LLM Analysis**: Each relevant email is analyzed by your local Ollama model for:
+   - Job relevance and category
+   - Priority level and sentiment
+   - Action items and suggested responses
+   - Potential calendar events (meetings, interviews, appointments)
+4. **Calendar Integration**: When the LLM detects scheduling information, it automatically creates Google Calendar events
+5. **Real-time Updates**: WebSocket connections provide live updates during the analysis process
+
+### Privacy & Security
+
+- **100% Local Analysis**: All email content analysis happens on your machine using Ollama
+- **Secure Authentication**: OAuth 2.0 for Google services, IMAP app passwords for Gmail
+- **No External APIs**: Email analysis doesn't send data to external services
+- **Encrypted Connections**: All communications use SSL/TLS encryption
+
+### Setup Requirements
+
+- **Gmail IMAP Access**: Enable IMAP in Gmail settings and create an app password
+- **Google Calendar OAuth**: Set up Google Cloud project with Calendar API access
+- **Local LLM**: Requires Ollama with a capable model for email analysis
+- **Database**: PostgreSQL tables for storing email metadata and OAuth tokens
+
+For detailed setup instructions, see `server/GMAIL_IMAP_SETUP.md` and `server/GMAIL_MCP_SETUP.md`.
 
 ## System Requirements
 
@@ -89,50 +145,9 @@ cd pgvector
 make
 sudo make install
 
-# Connect to PostgreSQL and enable extension
-sudo -u postgres psql my_chatbot_db
-```
-
-```sql
--- Run these commands in the PostgreSQL console
-CREATE EXTENSION IF NOT EXISTS vector;
-
--- Create the chat_memory table
-CREATE TABLE chat_memory (
-    id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL,
-    content TEXT NOT NULL,
-    embedding vector(1024),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create index for faster vector similarity search
-CREATE INDEX chat_memory_embedding_idx ON chat_memory USING ivfflat (embedding vector_cosine_ops);
-
--- Exit PostgreSQL
-\q
-```
-
-#### Option B: Docker Installation (Alternative)
-
-```bash
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
-
-# Start PostgreSQL with pgvector
-docker run -d \
-  --name postgres-pgvector \
-  -e POSTGRES_DB=my_chatbot_db \
-  -e POSTGRES_USER=chatbot_user \
-  -e POSTGRES_PASSWORD=your_password \
-  -p 5432:5432 \
-  pgvector/pgvector:pg16
-
-# Connect and create table
-docker exec -it postgres-pgvector psql -U chatbot_user -d my_chatbot_db
+# Run the setup script to create tables
+cd server
+npm run setup-db
 ```
 
 ### 4. Install Ollama
@@ -141,18 +156,15 @@ docker exec -it postgres-pgvector psql -U chatbot_user -d my_chatbot_db
 # Install Ollama
 curl -fsSL https://ollama.com/install.sh | sh
 
-# Start Ollama service
-ollama serve
-
-# In a new terminal, pull required models
-ollama run llama3.1:8b              # Main chat model (adjust size as needed)
-ollama run mxbai-embed-large        # Embedding model (required)
+# Pull required models
+ollama pull llama3.1:8b              # Main chat model (adjust size as needed)
+ollama pull mxbai-embed-large        # Embedding model (required)
 
 # Verify installation
 ollama list
 ```
 
-**Note**: The embedding model `mxbai-embed-large` is required for the vector search functionality. The chat model can be adjusted based on your hardware capabilities.
+**Note**: The embedding model `mxbai-embed-large` is required for the vector search functionality. The chat model can be adjusted based on your hardware capabilities. Ollama must be running locally on port 11434 (this happens automatically when you pull models).
 
 ## Application Setup
 
@@ -222,29 +234,12 @@ REACT_APP_BASE_URL='http://localhost:3000'
 
 ### 3. Database Schema Setup
 
-If you haven't already created the database table, run:
+Run the database setup script:
 
 ```bash
-# Connect to your PostgreSQL database
-psql -U your_username -d my_chatbot_db
-
-# Or if using Docker:
-# docker exec -it postgres-pgvector psql -U chatbot_user -d my_chatbot_db
-```
-
-```sql
--- Create the chat_memory table
-CREATE TABLE IF NOT EXISTS chat_memory (
-    id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL,
-    role VARCHAR(50) NOT NULL,
-    content TEXT NOT NULL,
-    embedding vector(1024),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create index for faster vector similarity search
-CREATE INDEX IF NOT EXISTS chat_memory_embedding_idx ON chat_memory USING ivfflat (embedding vector_cosine_ops);
+# From the server directory
+cd server
+npm run setup-db
 ```
 
 ## Running the Application
@@ -252,14 +247,8 @@ CREATE INDEX IF NOT EXISTS chat_memory_embedding_idx ON chat_memory USING ivffla
 ### 1. Start Required Services
 
 ```bash
-# Start PostgreSQL (if not using Docker)
+# Start PostgreSQL (if not already running)
 sudo systemctl start postgresql
-
-# Start Ollama (in a separate terminal)
-ollama serve
-
-# If using Docker PostgreSQL
-docker start postgres-pgvector
 ```
 
 ### 2. Start the Application
@@ -268,7 +257,7 @@ docker start postgres-pgvector
 # From the /client directory, start client
 npm run start
 # From the /server directory, start server
-npm run start --watch
+npm run start:watch
 ```
 
 This will start:
@@ -289,9 +278,6 @@ The application includes a comprehensive test suite using Jest and Supertest for
 ```bash
 # Create a separate database for testing
 sudo -u postgres createdb chatbot_test
-
-# Or if using Docker:
-docker exec -it postgres-pgvector createdb -U chatbot_user chatbot_test
 ```
 
 2. **Set up Test Database Schema**:
@@ -299,10 +285,7 @@ docker exec -it postgres-pgvector createdb -U chatbot_user chatbot_test
 ```bash
 # From the server directory
 cd server
-psql -U your_username -d chatbot_test -f scripts/test-db-setup.sql
-
-# Or if using Docker:
-docker exec -i postgres-pgvector psql -U chatbot_user -d chatbot_test < scripts/test-db-setup.sql
+npm run setup-test-db
 ```
 
 ### Running Tests
@@ -367,10 +350,24 @@ For detailed test setup instructions, see `server/TEST_README.md`.
 
 ## Usage
 
-1. **Start Chatting**: Type your message in the input field and press Enter
-2. **Context Awareness**: The bot remembers your conversation using semantic search
-3. **Delete History**: Click the "Delete Messages" button to clear conversation history
-4. **Code Support**: The bot can help with React, Express, Node.js, and PostgreSQL questions
+### Core Chat Features
+
+1. **Choose Your Mode**: Toggle between "chat" (coding assistant) and "coach" (career coaching) modes using the mode button
+2. **Start Chatting**: Type your message in the input field and press Enter
+3. **Context Awareness**: The bot remembers your conversation using semantic search
+4. **Delete History**: Click the "Delete Messages" button to clear conversation history
+5. **Coding Mode**: Get help with React, Express, Node.js, and PostgreSQL questions
+6. **Career Coach Mode**: Receive job search guidance, LinkedIn strategy, resume advice, and interview preparation
+
+### Gmail & Calendar Integration
+
+1. **Access Gmail Integration**: Navigate to the Gmail MCP section of the application
+2. **Connect Gmail**: Set up IMAP connection using your Gmail credentials and app password
+3. **Connect Google Calendar**: Authenticate with OAuth to enable calendar event creation
+4. **Sync Emails**: Click "Sync Emails" to analyze recent job-related emails with AI
+5. **Review Analysis**: View categorized emails with priority levels, summaries, and action items
+6. **Filter Results**: Use category and priority filters to focus on specific types of emails
+7. **Automatic Scheduling**: Calendar events are created automatically when the AI detects appointment information in emails
 
 ## Troubleshooting
 
@@ -380,12 +377,11 @@ For detailed test setup instructions, see `server/TEST_README.md`.
 
 - Ensure PostgreSQL is running: `sudo systemctl status postgresql`
 - Check Ollama is running: `curl http://localhost:11434/api/tags`
-- Verify server is running on port 7890
+- Verify server is running on port 4000
 
 **2. "Embedding model not found" error**
 
 - Install the required embedding model: `ollama pull mxbai-embed-large`
-- Ensure Ollama service is running
 
 **3. Database connection issues**
 
@@ -395,7 +391,7 @@ For detailed test setup instructions, see `server/TEST_README.md`.
 **4. Port conflicts**
 
 - Change ports in environment files if needed
-- Default ports: Frontend (3000), Backend (7890), PostgreSQL (5432), Ollama (11434)
+- Default ports: Frontend (3000), Backend (4000), PostgreSQL (5432), Ollama (11434)
 
 ### Performance Optimization
 
@@ -437,8 +433,10 @@ my-chatbot/
 - **Frontend**: React, React Markdown, Syntax Highlighting
 - **Backend**: Express.js, Node.js, CORS
 - **Database**: PostgreSQL with pgvector extension
-- **AI**: Ollama (Local LLM inference)
+- **AI**: Ollama (Local LLM inference with function calling)
 - **Vector Search**: Cosine similarity with hybrid memory
+- **Email Integration**: IMAP (Gmail), Vector-based email filtering
+- **Calendar Integration**: Google Calendar API, OAuth 2.0 authentication
 
 ## License
 
