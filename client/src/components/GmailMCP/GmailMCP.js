@@ -313,7 +313,7 @@ const GmailMCP = ({ userId }) => {
             className="setup-header"
             onClick={() => setShowGmailInstructions(!showGmailInstructions)}
           >
-            <h3>📧 Gmail Setup</h3>
+            <h3> Gmail Setup</h3>
             <span className="toggle-icon">{showGmailInstructions ? '▼' : '▶'}</span>
           </div>
           {showGmailInstructions && (
@@ -338,7 +338,9 @@ const GmailMCP = ({ userId }) => {
                     <strong>Add to server/.env:</strong>
                     <pre>
                       GMAIL_USER=your.email@gmail.com{'\n'}
-                      GMAIL_APP_PASSWORD=your_16_character_app_password
+                      GMAIL_APP_PASSWORD=your_16_character_app_password{'\n'}
+                      GMAIL_IMAP_HOST=imap.gmail.com {'\n'}
+                      GMAIL_IMAP_PORT=993
                     </pre>
                   </li>
                   <li>
@@ -364,7 +366,7 @@ const GmailMCP = ({ userId }) => {
             className="setup-header"
             onClick={() => setShowCalendarInstructions(!showCalendarInstructions)}
           >
-            <h3>📅 Calendar Setup</h3>
+            <h3> Calendar Setup</h3>
             <span className="toggle-icon">{showCalendarInstructions ? '▼' : '▶'}</span>
           </div>
           {showCalendarInstructions && (
@@ -601,7 +603,7 @@ const GmailMCP = ({ userId }) => {
                           )}
                         {email.analysis?.draftResponse && (
                           <div className="draft-response">
-                            <h5>📝 Draft Response:</h5>
+                            <h5>Draft Response:</h5>
                             <div className="draft-text">{email.analysis.draftResponse}</div>
                           </div>
                         )}
@@ -642,16 +644,16 @@ const GmailMCP = ({ userId }) => {
       {/* Features List - Only show when not connected */}
       {(!isConnected || !calendarConnected) && (
         <div className="features-section">
-          <h3>🚀 Features</h3>
+          <h3> Features</h3>
           <div className="features-grid">
-            <div className="feature-item">📧 Automatically sync and analyze emails</div>
-            <div className="feature-item">🤖 AI-powered email categorization</div>
-            <div className="feature-item">⚡ Priority detection (High/Medium/Low)</div>
-            <div className="feature-item">✍️ Draft response generation</div>
-            <div className="feature-item">💻 Web development focus</div>
-            <div className="feature-item">🔄 Real-time sync updates</div>
-            <div className="feature-item">🔒 100% local processing</div>
-            <div className="feature-item">📅 Automatic calendar event creation</div>
+            <div className="feature-item"> Automatically sync and analyze emails</div>
+            <div className="feature-item"> AI-powered email categorization</div>
+            <div className="feature-item"> Priority detection (High/Medium/Low)</div>
+            <div className="feature-item"> Draft response generation</div>
+            <div className="feature-item"> Web development focus</div>
+            <div className="feature-item"> Real-time sync updates</div>
+            <div className="feature-item"> 100% local processing</div>
+            <div className="feature-item"> Automatic calendar event creation</div>
           </div>
         </div>
       )}
