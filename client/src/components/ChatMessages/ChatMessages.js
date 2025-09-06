@@ -66,13 +66,13 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
-                    ul: ({ node, ...props }) => (
+                    ul: ({ node: _node, ...props }) => (
                       <ul style={{ margin: '1em 0', paddingLeft: '1.5em' }} {...props} />
                     ),
-                    ol: ({ node, ...props }) => (
+                    ol: ({ node: _node, ...props }) => (
                       <ol style={{ margin: '1em 0', paddingLeft: '1.5em' }} {...props} />
                     ),
-                    li: ({ node, ...props }) => (
+                    li: ({ node: _node, ...props }) => (
                       <li
                         style={{
                           marginBottom: '0.5em',
@@ -82,7 +82,7 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                         {...props}
                       />
                     ),
-                    p: ({ node, ...props }) => {
+                    p: ({ node: _node, ...props }) => {
                       let children = props.children;
                       if (Array.isArray(children) && children.length > 1) {
                         children = children.filter((child, idx, arr) => {
@@ -100,12 +100,12 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                       }
                       return <p style={{ margin: '1em 0' }}>{children}</p>;
                     },
-                    a: ({ node, ...props }) => (
+                    a: ({ node: _node, ...props }) => (
                       <a style={{ color: '#4af', textDecoration: 'underline' }} {...props}>
                         {props.children}
                       </a>
                     ),
-                    pre: ({ node, ...props }) => <>{props.children}</>,
+                    pre: ({ node: _node, ...props }) => <>{props.children}</>,
                     code: ({ node, inline, className, children, ...props }) => {
                       const codeString = Array.isArray(children)
                         ? children.join('')
@@ -194,10 +194,10 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
-                    p: ({ node, ...props }) => (
+                    p: ({ node: _node, ...props }) => (
                       <p style={{ margin: '1em 0', color: '#ff6b6b' }}>{props.children}</p>
                     ),
-                    strong: ({ node, ...props }) => (
+                    strong: ({ node: _node, ...props }) => (
                       <strong style={{ color: '#ff8a8a' }} {...props} />
                     ),
                   }}
