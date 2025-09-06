@@ -220,6 +220,22 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
               >
                 ● Streaming...
               </div>
+            )}{' '}
+            {isBot && callLLMStartTime && (
+              <div
+                // className="time-info"
+                style={{
+                  color: '#00ff00',
+                  textAlign: 'center',
+                  borderRadius: '5px',
+                }}
+              >
+                <span style={{ fontSize: '.8rem' }}>
+                  {calculateTimeSinceStart()
+                    ? `Running for: ${calculateTimeSinceStart()}`
+                    : 'Starting...'}
+                </span>
+              </div>
             )}
             {(isBot || isError) && m.responseTime && (
               <div
@@ -243,22 +259,7 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
           </div>
         );
       })}
-      {callLLMStartTime && (
-        <div
-          // className="time-info"
-          style={{
-            color: '#00ff00',
-            textAlign: 'center',
-            borderRadius: '5px',
-          }}
-        >
-          <span style={{ fontSize: '.8rem' }}>
-            {calculateTimeSinceStart()
-              ? `Running for: ${calculateTimeSinceStart()}`
-              : 'Starting...'}
-          </span>
-        </div>
-      )}
+
       {loading && (
         <p className="loading-button" style={{ fontSize: '1rem' }}>
           Loading your response...
