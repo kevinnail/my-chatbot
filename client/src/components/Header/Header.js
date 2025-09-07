@@ -24,6 +24,7 @@ const Header = ({ userId }) => {
       return;
     }
     setIsChat(false);
+    console.log('closing');
     setMobileMenuOpen(false);
   };
 
@@ -141,7 +142,11 @@ const Header = ({ userId }) => {
           </Link>
           {isChat && (
             <div className="mobile-delete-section">
-              <DeleteMessagesButton userId={userId} loading={isAnyLoading} />
+              <DeleteMessagesButton
+                userId={userId}
+                loading={isAnyLoading}
+                setMobileMenuOpen={setMobileMenuOpen}
+              />
             </div>
           )}
         </div>
