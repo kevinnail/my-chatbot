@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import DeleteMessagesButton from '../DeleteButton/DeleteButton.js';
 import { useLoading } from '../../contexts/LoadingContext';
+import './Header.css';
 
 const Header = ({ userId }) => {
   const location = useLocation();
   const [isChat, setIsChat] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAnyLoading } = useLoading();
 
   const handleChat = (e) => {
@@ -22,6 +24,16 @@ const Header = ({ userId }) => {
       return;
     }
     setIsChat(false);
+    setMobileMenuOpen(false);
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const handleChatMobile = (e) => {
+    handleChat(e);
+    setMobileMenuOpen(false);
   };
   return (
     <header
@@ -34,8 +46,7 @@ const Header = ({ userId }) => {
         padding: '.5rem 1rem',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-start',
-        // position: 'relative',
+        justifyContent: 'space-between',
         borderTopLeftRadius: '0',
         borderTopRightRadius: '0',
         boxShadow: '0 2px 8px #0008',
@@ -49,27 +60,19 @@ const Header = ({ userId }) => {
           display: 'flex',
           alignItems: 'center',
           gap: '1rem',
-          flex: '0 0 auto', // Don't grow or shrink
+          flex: '0 0 auto',
         }}
       >
         <span style={{ fontSize: '1.05rem', userSelect: 'none' }}>
           <img width="28px" style={{ borderRadius: '25%' }} alt="logo" src="./logo.png" />
         </span>
-        <span
-          style={{ fontSize: '1.05rem', userSelect: 'none' }}
-        >{`${isChat ? 'My Code & Job Search Assistant' : 'Gmail and Google Calendar Assistant'}`}</span>
+        <span className="header-title-text">
+          {`${isChat ? 'My Code & Job Search Assistant' : 'Gmail and Google Calendar Assistant'}`}
+        </span>
       </div>
 
-      <nav
-        style={{
-          display: 'flex',
-          gap: '2rem',
-          alignItems: 'center',
-          position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
-        }}
-      >
+      {/* Desktop Navigation */}
+      <nav className="desktop-nav">
         <Link
           to="/"
           style={{
@@ -108,9 +111,41 @@ const Header = ({ userId }) => {
           Gmail MCP
         </Link>
       </nav>
-      <div style={{ visibility: isChat ? 'visible' : 'hidden', marginLeft: 'auto' }}>
+
+      {/* Desktop Delete Button */}
+      <div className={`desktop-delete-button ${!isChat ? 'hidden' : ''}`}>
         <DeleteMessagesButton userId={userId} loading={isAnyLoading} />
       </div>
+
+      {/* Mobile Menu Button */}
+      <button className="mobile-menu-button" onClick={toggleMobileMenu}>
+        ☰
+      </button>
+
+      {/* Mobile Dropdown Menu */}
+      {mobileMenuOpen && (
+        <div className="mobile-dropdown">
+          <Link
+            to="/"
+            className={`mobile-nav-link ${location.pathname === '/' ? 'active' : ''} ${isAnyLoading ? 'disabled' : ''}`}
+            onClick={handleChatMobile}
+          >
+            Chat
+          </Link>
+          <Link
+            to="/gmail-mcp"
+            className={`mobile-nav-link ${location.pathname === '/gmail-mcp' ? 'active' : ''} ${isAnyLoading ? 'disabled' : ''}`}
+            onClick={handleGmailMCP}
+          >
+            Gmail MCP
+          </Link>
+          {isChat && (
+            <div className="mobile-delete-section">
+              <DeleteMessagesButton userId={userId} loading={isAnyLoading} />
+            </div>
+          )}
+        </div>
+      )}
     </header>
   );
 };

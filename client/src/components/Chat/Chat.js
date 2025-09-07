@@ -20,6 +20,7 @@ const Chat = ({ userId }) => {
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [callLLMStartTime, setCallLLMStartTime] = useState(null);
+  const [coachOrChat, setCoachOrChat] = useState('chat');
 
   const calculateTimeSinceStart = () => {
     if (!callLLMStartTime) return null;
@@ -49,7 +50,7 @@ const Chat = ({ userId }) => {
   return (
     <main
       style={{
-        margin: '1.4rem auto',
+        margin: '0 auto ',
         fontFamily: 'sans-serif',
         fontSize: '1.2rem',
         letterSpacing: '.07rem',
@@ -65,6 +66,9 @@ const Chat = ({ userId }) => {
         width: '90%',
       }}
     >
+      <h3 style={{ margin: '0 auto', width: '70%', textAlign: 'start' }}>
+        {coachOrChat === 'chat' ? 'Code Assistant' : 'Career Coach'}
+      </h3>
       <ChatMessages
         log={log}
         loading={loading}
@@ -84,6 +88,8 @@ const Chat = ({ userId }) => {
         tokenCount={tokenCount}
         onInputChange={handleInputChange}
         setCallLLMStartTime={setCallLLMStartTime}
+        coachOrChat={coachOrChat}
+        setCoachOrChat={setCoachOrChat}
       />
       <ContextProgressBar contextPercent={contextPercent} />
     </main>

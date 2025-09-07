@@ -6,8 +6,8 @@ const ContextProgressBar = ({ contextPercent = 0 }) => {
   return (
     <div
       style={{
-        width: '90%',
-        margin: '1.5rem auto 0 auto',
+        // width: '70%',
+        margin: '.5rem auto',
         display: 'flex',
         alignItems: 'center',
         gap: '1rem',
@@ -25,6 +25,7 @@ const ContextProgressBar = ({ contextPercent = 0 }) => {
           border: '2px solid #444',
           position: 'relative',
           boxShadow: '0 1px 6px #0006',
+          minWidth: '180px',
         }}
       >
         <div
@@ -73,6 +74,7 @@ const ContextProgressBar = ({ contextPercent = 0 }) => {
           fontWeight: 'bold',
           fontSize: '0.85rem',
           textShadow: '0 1px 4px #000a',
+          minWidth: '180px',
           pointerEvents: 'none',
         }}
       >
