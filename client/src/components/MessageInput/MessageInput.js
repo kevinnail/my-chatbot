@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { sendPrompt } from '../../services/fetch-chat';
+import './MessageInput.css';
 
 const MessageInput = ({
   userId,
@@ -46,26 +47,15 @@ const MessageInput = ({
       }}
     >
       <textarea
+        className="message-input"
         style={{
-          width: '70%',
-          fontSize: '1.05rem',
-          height: '70px',
           display: loading ? 'none' : 'block',
-          color: 'white',
-          backgroundColor: 'black',
-          padding: '10px',
-          borderRadius: '10px',
-          border: '1px solid #4f62cb',
         }}
         value={input}
         placeholder={
           coachOrChat === 'chat'
-            ? `
-          Let's code!  What can I help build for you?
-          `
-            : `
-          What can I do to help with your job search? 
-            `
+            ? "Let's code!  What can I help build for you?"
+            : 'What can I do to help with your job search?'
         }
         disabled={loading}
         onChange={onInputChange}
@@ -78,46 +68,30 @@ const MessageInput = ({
         }}
       />
       {!loading && (
-        <div
-          style={{
-            width: '70%',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: '0.5rem',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '1rem',
-              color: '#888',
-              fontFamily: 'monospace',
-              letterSpacing: '0.05em',
-            }}
-          >
-            ~{tokenCount} tokens in prompt
+        <div className="token-mode-send">
+          <div className="token-mode-wrapper">
+            <button
+              onClick={handleChatOption}
+              style={{
+                fontSize: '0.77rem',
+                borderRadius: '15px',
+                padding: '.28rem ',
+                background: 'none',
+                color: 'rgb(99, 156, 255)',
+                border: 'none',
+                fontWeight: 'bold',
+                letterSpacing: '.08em',
+                cursor: 'pointer',
+                transition: 'background 0.3s, transform 0.15s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.7em',
+              }}
+            >
+              Set to {coachOrChat === 'chat' ? 'coach' : 'chat'} mode
+            </button>
+            <div className="tokens-in-prompt-display">~{tokenCount} tokens in prompt</div>
           </div>
-          <button
-            onClick={handleChatOption}
-            style={{
-              fontSize: '0.77rem',
-              borderRadius: '15px',
-              padding: '.28rem 1.05rem',
-              background: 'black',
-              color: 'rgb(99, 156, 255)',
-              border: 'none',
-              boxShadow: '0 2px 12px #0af4',
-              fontWeight: 'bold',
-              letterSpacing: '.08em',
-              cursor: 'pointer',
-              transition: 'background 0.3s, transform 0.15s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.7em',
-            }}
-          >
-            Set to {coachOrChat === 'chat' ? 'coach' : 'chat'} mode
-          </button>
           <button
             style={{
               fontSize: '0.77rem',

@@ -50,7 +50,7 @@ const Chat = ({ userId }) => {
   return (
     <main
       style={{
-        margin: '1.4rem auto',
+        margin: '0 auto ',
         fontFamily: 'sans-serif',
         fontSize: '1.2rem',
         letterSpacing: '.07rem',
