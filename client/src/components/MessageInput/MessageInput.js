@@ -14,7 +14,6 @@ const MessageInput = ({
   onInputChange,
   setCallLLMStartTime,
   coachOrChat,
-  setCoachOrChat,
 }) => {
   const handleSend = () => {
     setCallLLMStartTime(new Date());
@@ -30,10 +29,6 @@ const MessageInput = ({
     };
 
     sendPrompt(prompt);
-  };
-
-  const handleChatOption = () => {
-    setCoachOrChat(coachOrChat === 'chat' ? 'coach' : 'chat');
   };
 
   return (
@@ -70,26 +65,6 @@ const MessageInput = ({
       {!loading && (
         <div className="token-mode-send">
           <div className="token-mode-wrapper">
-            <button
-              onClick={handleChatOption}
-              style={{
-                fontSize: '0.77rem',
-                borderRadius: '15px',
-                padding: '.28rem ',
-                background: 'none',
-                color: 'rgb(99, 156, 255)',
-                border: 'none',
-                fontWeight: 'bold',
-                letterSpacing: '.08em',
-                cursor: 'pointer',
-                transition: 'background 0.3s, transform 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.7em',
-              }}
-            >
-              Set to {coachOrChat === 'chat' ? 'coach' : 'chat'} mode
-            </button>
             <div className="tokens-in-prompt-display">~{tokenCount} tokens in prompt</div>
           </div>
           <button
