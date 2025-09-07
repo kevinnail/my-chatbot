@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { deleteMessages } from '../../services/fetch-chat.js';
 import { useChatContext } from '../../contexts/ChatContext';
 
-export default function DeleteMessagesButton({ userId, loading }) {
+export default function DeleteMessagesButton({ userId, loading, setMobileMenuOpen }) {
   const [hover, setHover] = useState(false);
   const [mouseDown, setMouseDown] = useState(false);
   const { setContextPercent, setLog } = useChatContext();
 
   const handleDelete = async () => {
+    setMobileMenuOpen(false);
+
     try {
       setLog([]);
       setContextPercent(0);
@@ -22,7 +24,6 @@ export default function DeleteMessagesButton({ userId, loading }) {
     <button
       disabled={loading}
       style={{
-        marginRight: '1.5rem',
         fontSize: '.7em',
         padding: '0.14em 0.49em',
         borderRadius: '6px',
@@ -32,6 +33,7 @@ export default function DeleteMessagesButton({ userId, loading }) {
         cursor: 'pointer',
         zIndex: 2,
         transition: 'background 0.1s',
+        border: '2px solid red',
       }}
       onClick={handleDelete}
       onMouseEnter={() => setHover(true)}
