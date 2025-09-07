@@ -7,14 +7,34 @@ const ContextProgressBar = ({ contextPercent = 0 }) => {
     <div
       style={{
         // width: '70%',
-        margin: '.5rem auto',
-        display: 'flex',
+        margin: '.5rem 0',
+        display: 'grid',
         alignItems: 'center',
         gap: '1rem',
         flexDirection: 'row',
         justifyContent: 'flex-start',
       }}
     >
+      {' '}
+      <span
+        style={{
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          fontWeight: 'bold',
+          fontSize: '0.85rem',
+          textShadow: '0 1px 4px #000a',
+          minWidth: '180px',
+          pointerEvents: 'none',
+        }}
+      >
+        ~{(128000 * (1 - safeContextPercent / 100)).toFixed(0)} tokens left{' '}
+      </span>
       <div
         style={{
           width: '154px',
@@ -61,25 +81,6 @@ const ContextProgressBar = ({ contextPercent = 0 }) => {
           {safeContextPercent.toFixed(1)}% context used{' '}
         </span>
       </div>
-      <span
-        style={{
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontWeight: 'bold',
-          fontSize: '0.85rem',
-          textShadow: '0 1px 4px #000a',
-          minWidth: '180px',
-          pointerEvents: 'none',
-        }}
-      >
-        ~{(128000 * (1 - safeContextPercent / 100)).toFixed(0)} tokens left{' '}
-      </span>
     </div>
   );
 };
