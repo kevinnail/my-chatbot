@@ -5,7 +5,7 @@
   letter-spacing: 0.07rem;
   background: black;
   color: white;
-  padding: 80px 0.7rem 120px 0.7rem;
+  padding: 0px 0.7rem 120px 0.7rem;
   border-radius: 10.5px;
   flex: 1 0 auto;
   box-shadow: 0 2px 16px #000a;
@@ -57,6 +57,39 @@
   z-index: 999;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
+
+.coding-button {
+  font-size: 9;
+  border-radius: 8px;
+  padding: 5px;
+  background: none;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition:
+    background 0.3s,
+    transform 0.15s;
+  display: inline;
+  align-items: center;
+  gap: 0.7em;
+}
+
+.job-search-button {
+  font-size: 9;
+  border-radius: 8px;
+  padding: 5px;
+  background: none;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition:
+    background 0.3s,
+    transform 0.15s;
+  display: inline;
+  align-items: center;
+  gap: 0.7em;
+}
+
 @media (max-width: 1001px) {
   .scroll-to-bottom-button {
     bottom: 120px;
@@ -67,21 +100,33 @@
   .chat-header-container {
     top: 60px;
   }
+  .chat-main-container {
+    /* padding-top: 0px;
+    top: 0px; */
+  }
 }
 
 @media (max-width: 750px) {
   .scroll-to-bottom-button {
     bottom: 150px;
   }
-  .chat-header-container {
-    /* top: 80px; */
-  }
 }
 @media (max-width: 480px) {
   .scroll-to-bottom-button {
     bottom: 90px;
   }
-  .chat-header-container {
+  /* .chat-header-container {
     top: 20px;
+
+  } */
+  .chat-header-container {
+    /* position: fixed; */
+    /* top: 45px; */
+    /* left: 0; */
+    /* right: 0; */
+    /* z-index: 800; */
+    /* background: black; */
+    /* border-bottom: 1px solid #444; */
+    /* padding-top: 40px; */
   }
 }

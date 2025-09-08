@@ -94,7 +94,8 @@ const Chat = ({ userId }) => {
           style={{
             margin: '8px auto',
             display: 'flex',
-            gap: '50px',
+            gap: '15px',
+            justifyContent: 'space-around',
           }}
         >
           <span className="chat-header-title">
@@ -102,41 +103,20 @@ const Chat = ({ userId }) => {
           </span>
           <button
             onClick={coachOrChat === 'coach' ? handleChatOption : null}
+            className="coding-button"
             style={{
-              fontSize: '.9rem',
-              borderRadius: '8px',
-              padding: '5px',
-              background: 'none',
               color: coachOrChat === 'coach' ? 'white' : 'rgb(99, 156, 255)',
               border: coachOrChat === 'chat' ? '1px solid rgb(99, 156, 255' : 'none',
-              fontWeight: 'bold',
-              letterSpacing: '.08em',
-              cursor: coachOrChat === 'coach' ? 'pointer' : '',
-              transition: 'background 0.3s, transform 0.15s',
-              display: 'inline',
-              alignItems: 'center',
-              gap: '0.7em',
             }}
           >
-            {/* Set to {coachOrChat === 'chat' ? 'coach' : 'chat'} mode */}Coding
+            Coding
           </button>
           <button
             onClick={coachOrChat === 'chat' ? handleChatOption : null}
+            className="job-search-button"
             style={{
-              fontSize: '.9rem',
-              borderRadius: '8px',
-              padding: '5px',
-              background: 'none',
               color: coachOrChat === 'coach' ? 'rgb(99, 156, 255)' : 'white',
               border: coachOrChat === 'coach' ? '1px solid rgb(99, 156, 255' : 'none',
-              minWidth: '110px',
-              fontWeight: 'bold',
-              letterSpacing: '.08em',
-              cursor: coachOrChat === 'chat' ? 'pointer' : '',
-              transition: 'background 0.3s, transform 0.15s',
-              display: 'inline',
-              alignItems: 'center',
-              gap: '0.7em',
             }}
           >
             Job Search
