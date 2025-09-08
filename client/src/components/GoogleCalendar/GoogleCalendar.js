@@ -184,7 +184,7 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
         if (onConnectionChange) {
           onConnectionChange(true);
         }
-      }, 3000);
+      }, 5000);
 
       return;
     }
