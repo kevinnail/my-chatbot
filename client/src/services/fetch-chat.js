@@ -6,7 +6,17 @@ const BASE_URL = process.env.REACT_APP_BASE_URL;
 let socket = null;
 const getSocket = () => {
   if (!socket) {
-    socket = io('http://localhost:4000');
+    // Only connect to socket when running locally
+    if (window.isLocal) {
+      socket = io('http://localhost:4000');
+    } else {
+      // Return a mock socket for demo
+      socket = {
+        on: () => {},
+        emit: () => {},
+        disconnect: () => {},
+      };
+    }
   }
   return socket;
 };

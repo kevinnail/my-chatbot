@@ -111,7 +111,17 @@ const GmailMCP = ({ userId }) => {
 
   // Initialize Socket.IO connection
   useEffect(() => {
-    const socket = io('http://localhost:4000');
+    let socket;
+    if (window.isLocal) {
+      socket = io('http://localhost:4000');
+    } else {
+      // Mock socket for demo
+      socket = {
+        on: () => {},
+        emit: () => {},
+        disconnect: () => {},
+      };
+    }
     socketRef.current = socket;
 
     socket.on('connect', () => {
