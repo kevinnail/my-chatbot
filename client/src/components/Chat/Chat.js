@@ -79,7 +79,7 @@ const Chat = ({ userId }) => {
       >
         {coachOrChat === 'chat' ? 'Code Assistant' : 'Career Coach'}
       </h3>
-      <div style={{ width: '71.5%', margin: '8px auto 0 auto', display: 'flex', gap: '50px' }}>
+      <div style={{ width: '71.5%', margin: '8px auto', display: 'flex', gap: '50px' }}>
         <button
           onClick={coachOrChat === 'coach' ? handleChatOption : null}
           style={{
