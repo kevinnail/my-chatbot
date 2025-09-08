@@ -34,17 +34,36 @@ export async function sendPrompt({
     const botMessageId = Date.now();
     setLog((l) => [...l, { text: '', role: 'bot', timestamp: botMessageId, isStreaming: true }]);
 
-    // Simulate typing delay
-    setTimeout(
-      () => {
-        const fakeResponses = [
-          "I'm a demo version of the chatbot! In the local version, I can help you with coding questions, provide detailed explanations, and assist with your development projects.",
-          'This is a demonstration of the chat interface. When running locally, I connect to a full backend with AI capabilities to help with programming tasks.',
-          "Hello! I'm currently in demo mode. The full version runs locally with complete AI integration for coding assistance and project guidance.",
-          'This is a preview of the chatbot functionality. The actual application includes real-time AI responses for coding help and technical discussions.',
-        ];
+    // Simulate streaming response
+    const fakeResponses = [
+      "I'm a demo version of the chatbot! In the local version, I can help you with coding questions, provide detailed explanations, and assist with your development projects.",
+      'This is a demonstration of the chat interface. When running locally, I connect to a full backend with AI capabilities to help with programming tasks.',
+      "Hello! I'm currently in demo mode. The full version runs locally with complete AI integration for coding assistance and project guidance.",
+      'This is a preview of the chatbot functionality. The actual application includes real-time AI responses for coding help and technical discussions.',
+    ];
 
-        const randomResponse = fakeResponses[Math.floor(Math.random() * fakeResponses.length)];
+    const randomResponse = fakeResponses[Math.floor(Math.random() * fakeResponses.length)];
+    const words = randomResponse.split(' ');
+    let currentText = '';
+    let wordIndex = 0;
+
+    const streamWords = () => {
+      if (wordIndex < words.length) {
+        currentText += (wordIndex > 0 ? ' ' : '') + words[wordIndex];
+        wordIndex++;
+
+        setLog((l) =>
+          l.map((msg) =>
+            msg.timestamp === botMessageId && msg.role === 'bot'
+              ? { ...msg, text: currentText, isStreaming: true }
+              : msg,
+          ),
+        );
+
+        // Random delay between words (50-150ms) for realistic typing
+        setTimeout(streamWords, 50 + Math.random() * 100);
+      } else {
+        // Streaming complete
         const endTime = Date.now();
         const responseTime = endTime - startTime;
 
@@ -67,9 +86,11 @@ export async function sendPrompt({
         if (setCallLLMStartTime) {
           setCallLLMStartTime(null);
         }
-      },
-      1500 + Math.random() * 1000,
-    ); // Random delay between 1.5-2.5 seconds
+      }
+    };
+
+    // Start streaming after a brief delay
+    setTimeout(streamWords, 500 + Math.random() * 500);
 
     return;
   }
