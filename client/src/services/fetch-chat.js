@@ -42,7 +42,10 @@ export async function sendPrompt({
   if (!window.isLocal) {
     // Fake response for netlify deploy
     const botMessageId = Date.now();
-    setLog((l) => [...l, { text: '', role: 'bot', timestamp: botMessageId, isStreaming: true }]);
+    setLog((l) => [
+      ...l,
+      { text: '', role: 'bot', timestamp: botMessageId, isStreaming: true, isProcessing: true },
+    ]);
     let fakeResponse = '';
     // Simulate streaming response
     if (coachOrChat === 'chat') {
@@ -65,7 +68,7 @@ export async function sendPrompt({
         setLog((l) =>
           l.map((msg) =>
             msg.timestamp === botMessageId && msg.role === 'bot'
-              ? { ...msg, text: currentText, isStreaming: true }
+              ? { ...msg, text: currentText, isStreaming: true, isProcessing: false }
               : msg,
           ),
         );
@@ -86,6 +89,7 @@ export async function sendPrompt({
                 responseTime,
                 timestamp: endTime,
                 isStreaming: false,
+                isProcessing: false,
               };
             }
             return msg;
@@ -109,7 +113,10 @@ export async function sendPrompt({
   // Original local functionality
   // Add placeholder for streaming response
   const botMessageId = Date.now();
-  setLog((l) => [...l, { text: '', role: 'bot', timestamp: botMessageId, isStreaming: true }]);
+  setLog((l) => [
+    ...l,
+    { text: '', role: 'bot', timestamp: botMessageId, isStreaming: true, isProcessing: true },
+  ]);
 
   const socket = getSocket();
 
@@ -122,7 +129,7 @@ export async function sendPrompt({
     setLog((l) =>
       l.map((msg) =>
         msg.timestamp === botMessageId && msg.role === 'bot'
-          ? { ...msg, text: data.fullResponse, isStreaming: true }
+          ? { ...msg, text: data.fullResponse, isStreaming: true, isProcessing: false }
           : msg,
       ),
     );
@@ -139,6 +146,7 @@ export async function sendPrompt({
             ...msg,
             text: data.fullResponse,
             isStreaming: false,
+            isProcessing: false,
             responseTime,
             timestamp: endTime,
           };
@@ -215,11 +223,19 @@ export async function sendPrompt({
       const responseTime = endTime - startTime;
 
       setLog((l) =>
-        l.map((msg) =>
-          msg.timestamp === botMessageId && msg.role === 'bot'
-            ? { text: bot, role: 'bot', responseTime, timestamp: endTime, isStreaming: false }
-            : msg,
-        ),
+        l.map((msg) => {
+          if (msg.timestamp === botMessageId && msg.role === 'bot') {
+            return {
+              text: bot,
+              role: 'bot',
+              responseTime,
+              timestamp: endTime,
+              isStreaming: false,
+              isProcessing: false,
+            };
+          }
+          return msg;
+        }),
       );
 
       if (context_percent !== undefined && context_percent !== null) {
