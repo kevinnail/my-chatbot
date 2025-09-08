@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
@@ -22,6 +22,8 @@ const Chat = ({ userId }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [callLLMStartTime, setCallLLMStartTime] = useState(null);
   const [coachOrChat, setCoachOrChat] = useState('chat');
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const bottomSentinelRef = useRef(null);
 
   const calculateTimeSinceStart = () => {
     if (!callLLMStartTime) return null;
@@ -48,6 +50,32 @@ const Chat = ({ userId }) => {
     }
   }, [callLLMStartTime]);
 
+  useEffect(() => {
+    const hasMessages = log && log.length > 0;
+
+    if (!hasMessages) {
+      setShowScrollButton(false);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Show button when bottom sentinel is NOT visible
+        setShowScrollButton(!entry.isIntersecting);
+      },
+      {
+        threshold: 0,
+        rootMargin: '0px 0px -100px 0px', // Trigger 100px before bottom
+      },
+    );
+
+    if (bottomSentinelRef.current) {
+      observer.observe(bottomSentinelRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [log]);
+
   const handleChatOption = () => {
     setCoachOrChat(coachOrChat === 'chat' ? 'coach' : 'chat');
   };
@@ -64,22 +92,14 @@ const Chat = ({ userId }) => {
       <div className="chat-header-container">
         <div
           style={{
-            padding: '0 1rem',
             margin: '8px auto',
             display: 'flex',
             gap: '50px',
           }}
         >
-          <h3
-            style={{
-              margin: '0 auto',
-              width: '71.5%',
-              textAlign: 'start',
-              padding: '8px 0',
-            }}
-          >
+          <span className="chat-header-title">
             {coachOrChat === 'chat' ? 'Code Assistant' : 'Career Coach'}
-          </h3>
+          </span>
           <button
             onClick={coachOrChat === 'coach' ? handleChatOption : null}
             style={{
@@ -148,40 +168,45 @@ const Chat = ({ userId }) => {
 
       <ContextProgressBar contextPercent={contextPercent} />
 
+      {/* Bottom sentinel for intersection observer */}
+      <div ref={bottomSentinelRef} style={{ height: '1px' }} />
+
       {/* Scroll to Bottom Button */}
-      <button
-        onClick={scrollToBottom}
-        className="scroll-to-bottom-button"
-        onMouseEnter={(e) => {
-          e.target.style.background = 'rgba(255, 255, 255, 0.15)';
-          e.target.style.color = '#fff';
-          e.target.style.borderColor = '#666';
-          e.target.style.transform = 'translateX(-50%) translateY(-2px)';
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.background = 'rgba(0, 0, 0, 0.8)';
-          e.target.style.color = '#ccc';
-          e.target.style.borderColor = '#444';
-          e.target.style.transform = 'translateX(-50%) translateY(0px)';
-        }}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className="scroll-to-bottom-button"
+          onMouseEnter={(e) => {
+            e.target.style.background = 'rgba(255, 255, 255, 0.15)';
+            e.target.style.color = '#fff';
+            e.target.style.borderColor = '#666';
+            e.target.style.transform = 'translateX(-50%) translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = 'rgba(0, 0, 0, 0.8)';
+            e.target.style.color = '#ccc';
+            e.target.style.borderColor = '#444';
+            e.target.style.transform = 'translateX(-50%) translateY(0px)';
+          }}
         >
-          <path
-            d="M7 14L12 19L17 14M12 5V18"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        Scroll to Bottom
-      </button>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M7 14L12 19L17 14M12 5V18"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Scroll to Bottom
+        </button>
+      )}
     </main>
   );
 };
