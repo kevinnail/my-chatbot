@@ -115,7 +115,11 @@ const Header = ({ userId }) => {
 
       {/* Desktop Delete Button */}
       <div className={`desktop-delete-button ${!isChat ? 'hidden' : ''}`}>
-        <DeleteMessagesButton userId={userId} loading={isAnyLoading} />
+        <DeleteMessagesButton
+          userId={userId}
+          loading={isAnyLoading}
+          setMobileMenuOpen={setMobileMenuOpen}
+        />
       </div>
 
       {/* Mobile Menu Button */}
