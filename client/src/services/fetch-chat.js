@@ -29,20 +29,20 @@ export async function sendPrompt({
   setLoading(true);
 
   // Check if running locally or on netlify
-  if (!window.isLocal) {
+  if (window.isLocal) {
     // Fake response for netlify deploy
     const botMessageId = Date.now();
     setLog((l) => [...l, { text: '', role: 'bot', timestamp: botMessageId, isStreaming: true }]);
-
+    let fakeResponse = '';
     // Simulate streaming response
-    const fakeResponses = [
-      "I'm a demo version of the chatbot! In the local version, I can help you with coding questions, provide detailed explanations, and assist with your development projects.\n\nHere's an example of how to make an AI API call with tools:\n\n```javascript\nconst response = await fetch('/api/chat', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    messages: [{ role: 'user', content: 'Help me debug this code' }],\n    tools: [{\n      type: 'function',\n      function: {\n        name: 'analyze_code',\n        description: 'Analyze code for bugs and improvements'\n      }\n    }]\n  })\n});\n```",
-      "This is a demonstration of the chat interface. When running locally, I connect to a full backend with AI capabilities to help with programming tasks.\n\nFor example, here's how you might set up WebSocket streaming:\n\n```javascript\nconst socket = io('http://localhost:4000');\n\nsocket.on('chat-chunk', (data) => {\n  updateChatMessage(data.chunk);\n});\n\nsocket.on('chat-complete', (data) => {\n  finalizeChatMessage(data.fullResponse);\n});\n```",
-      "Hello! I'm currently in demo mode. The full version runs locally with complete AI integration for coding assistance and project guidance.\n\nHere's a sample React hook for managing chat state:\n\n```jsx\nconst useChat = () => {\n  const [messages, setMessages] = useState([]);\n  const [loading, setLoading] = useState(false);\n  \n  const sendMessage = async (text) => {\n    setLoading(true);\n    try {\n      const response = await chatAPI.send(text);\n      setMessages(prev => [...prev, response]);\n    } finally {\n      setLoading(false);\n    }\n  };\n  \n  return { messages, loading, sendMessage };\n};\n```",
-      "This is a preview of the chatbot functionality. The actual application includes real-time AI responses for coding help and technical discussions.\n\nExample of error handling in async functions:\n\n```javascript\ntry {\n  const result = await processUserInput(input);\n  return {\n    success: true,\n    data: result,\n    timestamp: Date.now()\n  };\n} catch (error) {\n  console.error('Processing failed:', error);\n  return {\n    success: false,\n    error: error.message,\n    timestamp: Date.now()\n  };\n}\n```",
-    ];
-
-    const randomResponse = fakeResponses[Math.floor(Math.random() * fakeResponses.length)];
+    if (coachOrChat === 'chat') {
+      fakeResponse =
+        "Hey Dude, I'm your senior software engineer assistant - demo version running right now. In the local version, I can tackle your React, Express, and Node.js challenges with production-ready solutions.\n\n**What I do:**\n\n• Debug complex issues and optimize performance\n\n• Write maintainable, secure code following best practices\n\n• Handle authentication, APIs, database integration\n\n• Provide testing strategies and deployment guidance\n\n\n**Current setup** - here's the Ollama API call from our Express route:\n\n```javascript\nconst response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    model: process.env.OLLAMA_MODEL,\n    messages,\n    keep_alive: '60m',\n    options: {\n      min_p: 0.05,\n      temperature: 0.2,\n      top_p: 0.9,\n      mirostat: 0,\n      repeat_penalty: 1.05,\n      top_k: 40,\n     },\n    stream: true,\n  }),\n  signal: controller.signal,\n  headersTimeout: 12000000, \n  bodyTimeout: 12000000,\n});\n```\n\n**Remember:** I'll be direct and technical- no hand-holding. If I don't know something, I'll tell you straight up. What coding problem can I help you solve?";
+    } else {
+      fakeResponse =
+        'Hey Dude, I\'m JobCoachDude - your career coach for landing that next web dev role! This is the demo version, but in the local version, I can help you nail your job search strategy.\n\n**Top Move:** Optimize your LinkedIn profile - it\'s your digital storefront and the first thing recruiters see.\n\n**Why it matters:**\n• 87% of recruiters use LinkedIn to find candidates\n• A strong profile gets you 5x more connection requests\n• Your headline alone determines if they click or scroll past\n\n**Steps to dominate LinkedIn:**\n1. Write a headline that screams your value (not just "Software Developer")\n2. Craft an About section that tells your story in 3-4 short paragraphs\n3. Add 3-5 recent projects with impact metrics\n4. Post weekly about your coding journey or industry insights\n5. Connect with 10 people in your target companies each week\n\n**Next Step:** Update your LinkedIn headline right now with your main tech stack + the value you bring (e.g., "React Developer | Building scalable web apps that boost user engagement by 40%")\n\nRemember Dude - the job search is a numbers game mixed with strategy. I can help you with resume bullets, cover letter templates, interview prep, salary negotiation, and weekly action plans. What\'s your biggest job search challenge right now?';
+    }
+    const randomResponse = fakeResponse;
     const words = randomResponse.split(' ');
     let currentText = '';
     let wordIndex = 0;
@@ -91,7 +91,7 @@ export async function sendPrompt({
     };
 
     // Start streaming after a brief delay
-    setTimeout(streamWords, 1500 + Math.random() * 500);
+    setTimeout(streamWords, 3000 + Math.random() * 500);
 
     return;
   }
