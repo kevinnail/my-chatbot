@@ -33,7 +33,6 @@ export default function DeleteMessagesButton({ userId, loading, setMobileMenuOpe
         cursor: 'pointer',
         zIndex: 2,
         transition: 'background 0.1s',
-        border: '2px solid red',
       }}
       onClick={handleDelete}
       onMouseEnter={() => setHover(true)}
