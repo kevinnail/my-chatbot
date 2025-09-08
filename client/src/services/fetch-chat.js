@@ -81,7 +81,7 @@ export async function sendPrompt({
           ),
         );
 
-        setContextPercent(75); // Fake context percentage
+        setContextPercent(43.7); // Fake context percentage
         setLoading(false);
         if (setCallLLMStartTime) {
           setCallLLMStartTime(null);
