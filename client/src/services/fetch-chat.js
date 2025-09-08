@@ -68,17 +68,18 @@ export async function sendPrompt({
         const responseTime = endTime - startTime;
 
         setLog((l) =>
-          l.map((msg) =>
-            msg.timestamp === botMessageId && msg.role === 'bot'
-              ? {
-                  text: randomResponse,
-                  role: 'bot',
-                  responseTime,
-                  timestamp: endTime,
-                  isStreaming: false,
-                }
-              : msg,
-          ),
+          l.map((msg) => {
+            if (msg.timestamp === botMessageId && msg.role === 'bot') {
+              return {
+                text: randomResponse,
+                role: 'bot',
+                responseTime,
+                timestamp: endTime,
+                isStreaming: false,
+              };
+            }
+            return msg;
+          }),
         );
 
         setContextPercent(43.7); // Fake context percentage
@@ -90,7 +91,7 @@ export async function sendPrompt({
     };
 
     // Start streaming after a brief delay
-    setTimeout(streamWords, 500 + Math.random() * 500);
+    setTimeout(streamWords, 1500 + Math.random() * 500);
 
     return;
   }
@@ -122,17 +123,18 @@ export async function sendPrompt({
     const responseTime = endTime - startTime;
 
     setLog((l) =>
-      l.map((msg) =>
-        msg.timestamp === botMessageId && msg.role === 'bot'
-          ? {
-              ...msg,
-              text: data.fullResponse,
-              isStreaming: false,
-              responseTime,
-              timestamp: endTime,
-            }
-          : msg,
-      ),
+      l.map((msg) => {
+        if (msg.timestamp === botMessageId && msg.role === 'bot') {
+          return {
+            ...msg,
+            text: data.fullResponse,
+            isStreaming: false,
+            responseTime,
+            timestamp: endTime,
+          };
+        }
+        return msg;
+      }),
     );
 
     if (data.contextPercent !== undefined) {
