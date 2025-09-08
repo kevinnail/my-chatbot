@@ -25,6 +25,72 @@ const GmailMCP = ({ userId }) => {
   const [showCalendarInstructions, setShowCalendarInstructions] = useState(false);
   const socketRef = useRef(null);
 
+  // Fake emails data
+  const fakeEmails = [
+    {
+      id: '1',
+      subject: 'Demo: Frontend Developer Position',
+      from: 'hr@techcompany.com',
+      date: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+      snippet: 'Thank you for your application. We would like to schedule an interview...',
+      analysis: {
+        priority: 'high',
+        category: 'job_application',
+        hasInterview: true,
+        hasDeadline: true,
+        actionItems: [
+          'Confirm interview availability',
+          "Research TechCorp's recent projects",
+          'Prepare technical questions',
+          'Review job description details',
+        ],
+        sentiment: 'positive',
+        draftResponse:
+          "Thank you for the interview opportunity. I'm excited to discuss the Software Engineer position. I'm available Tuesday at the proposed time. Looking forward to learning more about TechCorp's innovative projects.",
+        calendarEvents: [
+          {
+            summary: 'Interview - Frontend Developer Position',
+            startTime: new Date(Date.now() + 86400000 + 10 * 3600000).toISOString(), // Tomorrow at 10 AM
+            endTime: new Date(Date.now() + 86400000 + 11 * 3600000).toISOString(), // Tomorrow at 11 AM
+            location: 'TechCorp Office, 456 Tech St, Conference Room A',
+          },
+        ],
+      },
+      analyzed: true,
+      summary: 'Thank you for your application. We would like to schedule an interview...',
+    },
+    {
+      id: '2',
+      subject: 'Demo: Project Proposal - Web Development',
+      from: 'client@startup.io',
+      date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+      snippet: 'We have reviewed your portfolio and would like to discuss a potential project...',
+      analysis: {
+        priority: 'medium',
+        category: 'client_inquiry',
+        hasInterview: false,
+        hasDeadline: true,
+        actionItems: [
+          'Review project proposal',
+          'Discuss timeline and deliverables',
+          'Confirm project scope',
+        ],
+        sentiment: 'neutral',
+        draftResponse:
+          "Thank you for the project proposal. I'm excited to discuss the potential project. I'm available next week at the proposed time. Looking forward to discussing the details of the project.",
+      },
+      analyzed: true,
+      summary: 'We have reviewed your portfolio and would like to discuss a potential project...',
+    },
+    {
+      id: '3',
+      subject: 'Demo: React Newsletter - Latest Updates',
+      from: 'newsletter@react.dev',
+      date: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+      snippet: 'Check out the latest React features and community updates...',
+    },
+  ];
+
   // Function to check calendar connection status
   const checkCalendarConnection = async () => {
     if (!window.isLocal) {
@@ -32,7 +98,7 @@ const GmailMCP = ({ userId }) => {
       setCalendarConnected(true);
       return;
     }
-
+    console.log('still running checkCalendarConnection');
     try {
       const response = await fetch(`/api/calendar/status/${userId}`);
       const data = await response.json();
@@ -175,53 +241,6 @@ const GmailMCP = ({ userId }) => {
         setConnectionError(null);
         setError(null);
 
-        // Add fake emails
-        const fakeEmails = [
-          {
-            id: '1',
-            subject: 'Demo: Frontend Developer Position',
-            from: 'hr@techcompany.com',
-            date: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-            snippet: 'Thank you for your application. We would like to schedule an interview...',
-            analysis: {
-              priority: 'high',
-              category: 'job_application',
-              hasInterview: true,
-              hasDeadline: true,
-            },
-            analyzed: true,
-          },
-          {
-            id: '2',
-            subject: 'Demo: Project Proposal - Web Development',
-            from: 'client@startup.io',
-            date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-            snippet:
-              'We have reviewed your portfolio and would like to discuss a potential project...',
-            analysis: {
-              priority: 'medium',
-              category: 'client_inquiry',
-              hasInterview: false,
-              hasDeadline: true,
-            },
-            analyzed: true,
-          },
-          {
-            id: '3',
-            subject: 'Demo: React Newsletter - Latest Updates',
-            from: 'newsletter@react.dev',
-            date: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
-            snippet: 'Check out the latest React features and community updates...',
-            analysis: {
-              priority: 'low',
-              category: 'newsletter',
-              hasInterview: false,
-              hasDeadline: false,
-            },
-            analyzed: true,
-          },
-        ];
-
         setEmails(fakeEmails);
         setLastSync(new Date().toISOString());
         setLoading(false);
@@ -262,6 +281,10 @@ const GmailMCP = ({ userId }) => {
   }, []);
 
   const syncEmails = async () => {
+    if (!window.isLocal) {
+      setEmails(fakeEmails);
+      return;
+    }
     // Check if both Gmail and Calendar are connected before syncing
     if (!isConnected) {
       setError('Gmail must be connected before syncing emails');
@@ -686,7 +709,6 @@ const GmailMCP = ({ userId }) => {
                               <h5>Calendar Events Created:</h5>
                               {email.analysis.calendarEvents.map((event, idx) => (
                                 <div key={idx} className="calendar-event">
-                                  {console.log('email that should have .summary', email)}
                                   <strong>{email.summary}</strong>
                                   <br />
                                   {new Date(event.startTime).toLocaleDateString()}{' '}
@@ -725,7 +747,7 @@ const GmailMCP = ({ userId }) => {
                             <button
                               onClick={() => {
                                 const mailtoLink = `mailto:${email.from}?subject=Re: ${email.subject}&body=${encodeURIComponent(email.analysis.draftResponse)}`;
-                                window.open(mailtoLink);
+                                window.isLocal && window.open(mailtoLink);
                               }}
                               className="draft-response-button"
                             >
