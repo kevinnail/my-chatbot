@@ -9,7 +9,6 @@ export default function DeleteMessagesButton({ userId, loading, setMobileMenuOpe
 
   const handleDelete = async () => {
     setMobileMenuOpen(false);
-
     try {
       setLog([]);
       setContextPercent(0);
