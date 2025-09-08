@@ -1,0 +1,21 @@
+.chat-header-container {
+  position: fixed;
+  top: 45px;
+  left: 0;
+  right: 0;
+  z-index: 800;
+  background: black;
+  border-bottom: 1px solid #444;
+}
+
+@media (max-width: 1001px) {
+  .chat-header-container {
+    top: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-header-container {
+    top: 20px;
+  }
+}

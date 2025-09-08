@@ -3,6 +3,7 @@ import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
 import { useChatContext } from '../../contexts/ChatContext';
+import './Chat.css';
 
 const Chat = ({ userId }) => {
   const {
@@ -60,7 +61,7 @@ const Chat = ({ userId }) => {
         letterSpacing: '.07rem',
         background: 'black',
         color: 'white',
-        padding: '0.7rem',
+        padding: '50px 0.7rem',
         borderRadius: '10.5px',
         flex: '1 0 auto',
         boxShadow: '0 2px 16px #000a',
@@ -70,59 +71,69 @@ const Chat = ({ userId }) => {
         width: '90%',
       }}
     >
-      <h3
-        style={{
-          margin: '0 auto',
-          width: '71.5%',
-          textAlign: 'start',
-        }}
-      >
-        {coachOrChat === 'chat' ? 'Code Assistant' : 'Career Coach'}
-      </h3>
-      <div style={{ width: '71.5%', margin: '8px auto', display: 'flex', gap: '50px' }}>
-        <button
-          onClick={coachOrChat === 'coach' ? handleChatOption : null}
+      <div className="chat-header-container">
+        <div
           style={{
-            fontSize: '.9rem',
-            borderRadius: '8px',
-            padding: '5px',
-            background: 'none',
-            color: coachOrChat === 'coach' ? 'white' : 'rgb(99, 156, 255)',
-            border: coachOrChat === 'chat' ? '1px solid rgb(99, 156, 255' : 'none',
-            fontWeight: 'bold',
-            letterSpacing: '.08em',
-            cursor: coachOrChat === 'coach' ? 'pointer' : '',
-            transition: 'background 0.3s, transform 0.15s',
-            display: 'inline',
-            alignItems: 'center',
-            gap: '0.7em',
+            // width: '71.5%',
+            padding: '0 1rem',
+            margin: '8px auto',
+            display: 'flex',
+            gap: '50px',
           }}
         >
-          {/* Set to {coachOrChat === 'chat' ? 'coach' : 'chat'} mode */}Coding
-        </button>
-        <button
-          onClick={coachOrChat === 'chat' ? handleChatOption : null}
-          style={{
-            fontSize: '.9rem',
-            borderRadius: '8px',
-            padding: '5px',
-            background: 'none',
-            color: coachOrChat === 'coach' ? 'rgb(99, 156, 255)' : 'white',
-            border: coachOrChat === 'coach' ? '1px solid rgb(99, 156, 255' : 'none',
-
-            fontWeight: 'bold',
-            letterSpacing: '.08em',
-            cursor: coachOrChat === 'chat' ? 'pointer' : '',
-            transition: 'background 0.3s, transform 0.15s',
-            display: 'inline',
-            alignItems: 'center',
-            gap: '0.7em',
-          }}
-        >
-          Job Search
-        </button>
+          <h3
+            style={{
+              margin: '0 auto',
+              width: '71.5%',
+              textAlign: 'start',
+              padding: '8px 0',
+            }}
+          >
+            {coachOrChat === 'chat' ? 'Code Assistant' : 'Career Coach'}
+          </h3>
+          <button
+            onClick={coachOrChat === 'coach' ? handleChatOption : null}
+            style={{
+              fontSize: '.9rem',
+              borderRadius: '8px',
+              padding: '5px',
+              background: 'none',
+              color: coachOrChat === 'coach' ? 'white' : 'rgb(99, 156, 255)',
+              border: coachOrChat === 'chat' ? '1px solid rgb(99, 156, 255' : 'none',
+              fontWeight: 'bold',
+              letterSpacing: '.08em',
+              cursor: coachOrChat === 'coach' ? 'pointer' : '',
+              transition: 'background 0.3s, transform 0.15s',
+              display: 'inline',
+              alignItems: 'center',
+              gap: '0.7em',
+            }}
+          >
+            {/* Set to {coachOrChat === 'chat' ? 'coach' : 'chat'} mode */}Coding
+          </button>
+          <button
+            onClick={coachOrChat === 'chat' ? handleChatOption : null}
+            style={{
+              fontSize: '.9rem',
+              borderRadius: '8px',
+              padding: '5px',
+              background: 'none',
+              color: coachOrChat === 'coach' ? 'rgb(99, 156, 255)' : 'white',
+              border: coachOrChat === 'coach' ? '1px solid rgb(99, 156, 255' : 'none',
+              minWidth: '110px',
+              fontWeight: 'bold',
+              letterSpacing: '.08em',
+              cursor: coachOrChat === 'chat' ? 'pointer' : '',
+              transition: 'background 0.3s, transform 0.15s',
+              display: 'inline',
+              alignItems: 'center',
+              gap: '0.7em',
+            }}
+          >
+            Job Search
+          </button>
+        </div>
       </div>
-
       <ChatMessages
         log={log}
         loading={loading}
