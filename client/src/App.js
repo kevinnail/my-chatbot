@@ -12,6 +12,8 @@ export default function App() {
   const googleId = process.env.REACT_APP_GOOGLE_USER_ID;
   const [userId, setUserId] = useState(googleId);
 
+  window.REACT_APP_BASE_URL = window.location.origin;
+
   return (
     <LoadingProvider>
       <ChatProvider>
