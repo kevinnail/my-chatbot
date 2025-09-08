@@ -207,36 +207,36 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
               ) : (
                 m.text
               )}
-            </div>
-            {/* Show processing/streaming indicator */}
-            {isBot && m.isStreaming && (
-              <div
-                style={{
-                  color: '#00ff00',
-                  fontSize: '0.8rem',
-                  marginTop: '5px',
-                  fontFamily: 'monospace',
-                }}
-              >
-                ● {m.isProcessing ? 'Processing...' : 'Streaming...'}
-              </div>
-            )}{' '}
-            {isBot && m.isStreaming && callLLMStartTime && (
-              <div
-                // className="time-info"
-                style={{
-                  color: '#00ff00',
-                  textAlign: 'center',
-                  borderRadius: '5px',
-                }}
-              >
-                <span style={{ fontSize: '.8rem' }}>
+              {/* Show processing/streaming indicator inside message */}
+              {isBot && m.isStreaming && (
+                <div
+                  style={{
+                    color: '#00ff00',
+                    fontSize: '0.8rem',
+                    marginTop: '8px',
+                    fontFamily: 'monospace',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                    paddingTop: '8px',
+                  }}
+                >
+                  ● {m.isProcessing ? 'Processing...' : 'Streaming...'}
+                </div>
+              )}
+              {isBot && m.isStreaming && callLLMStartTime && (
+                <div
+                  style={{
+                    color: '#00ff00',
+                    fontSize: '0.8rem',
+                    marginTop: '4px',
+                    fontFamily: 'monospace',
+                  }}
+                >
                   {calculateTimeSinceStart()
                     ? `Running for: ${calculateTimeSinceStart()}`
                     : 'Starting...'}
-                </span>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
             {(isBot || isError) && m.responseTime && (
               <div
                 style={{
