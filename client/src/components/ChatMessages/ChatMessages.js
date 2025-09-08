@@ -208,7 +208,7 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                 m.text
               )}
             </div>
-            {/* Show streaming indicator */}
+            {/* Show processing/streaming indicator */}
             {isBot && m.isStreaming && (
               <div
                 style={{
@@ -218,10 +218,10 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                   fontFamily: 'monospace',
                 }}
               >
-                ● Streaming...
+                ● {m.isProcessing ? 'Processing...' : 'Streaming...'}
               </div>
             )}{' '}
-            {isBot && callLLMStartTime && (
+            {isBot && m.isStreaming && callLLMStartTime && (
               <div
                 // className="time-info"
                 style={{
