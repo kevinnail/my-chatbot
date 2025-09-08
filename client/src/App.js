@@ -8,9 +8,12 @@ import GmailMCP from './components/GmailMCP/GmailMCP.js';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { ChatProvider } from './contexts/ChatContext';
 
+window.isLocal =
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
 export default function App() {
   const googleId = process.env.REACT_APP_GOOGLE_USER_ID;
-  const [userId, setUserId] = useState(googleId);
+  const [userId] = useState(googleId);
 
   return (
     <LoadingProvider>

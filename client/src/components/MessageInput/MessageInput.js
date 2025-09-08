@@ -39,6 +39,7 @@ const MessageInput = ({
         alignItems: 'center',
         gap: '0.35rem',
         width: '100%',
+        paddingTop: '40px',
       }}
     >
       <textarea
