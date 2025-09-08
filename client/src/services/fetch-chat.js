@@ -39,7 +39,7 @@ export async function sendPrompt({
   setLoading(true);
 
   // Check if running locally or on netlify
-  if (window.isLocal) {
+  if (!window.isLocal) {
     // Fake response for netlify deploy
     const botMessageId = Date.now();
     setLog((l) => [...l, { text: '', role: 'bot', timestamp: botMessageId, isStreaming: true }]);
