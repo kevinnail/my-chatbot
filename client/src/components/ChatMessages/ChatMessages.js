@@ -27,7 +27,7 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', margin: '70px 0 1rem 0' }}>
       {log.map((m, i) => {
         const isUser = m.role === 'user';
         const isError = m.role === 'error';
