@@ -162,7 +162,7 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
   return (
     <div className="google-calendar">
       <div className="google-calendar-header">
-        <h2>Google Calendar Integration</h2>
+        <h3>Google Calendar Integration</h3>
         <div className="connection-status">
           <span className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`}>
             {isConnected ? '●' : '●'}
@@ -192,8 +192,8 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
           >
             {loading ? 'Connecting...' : 'Connect Google Calendar Now!'}
           </button>
-          <h3>Link up with to Google Calendar</h3>
-          <p>
+          <h3>Create Appointments</h3>
+          <p style={{ textAlign: 'left' }}>
             <strong>LLM Calendar Event Creation</strong> - Enable your chatbot to automatically
             create calendar events from emails!
           </p>
@@ -212,9 +212,7 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
                 LLM detects appointments in emails → Creates calendar events automatically
               </li>
               <li>
-                <strong>Examples:</strong>
-                <br />
-                &quot;Doctor appointment Tuesday 3PM&quot; → Calendar event created
+                <strong>Example:</strong>
                 <br />
                 &quot;Interview scheduled for Friday 10AM&quot; → Calendar event created
               </li>
@@ -231,14 +229,11 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
 
           <div className="features-section">
             <p>
-              <strong>Smart Calendar Features:</strong>
+              <strong>Smart Calendar Tech:</strong>
             </p>
-            <ul style={{ width: '50%', textAlign: 'left', margin: 'auto' }}>
+            <ul style={{ width: '80%', textAlign: 'left', margin: 'auto' }}>
               <li> LLM-powered appointment detection</li>
               <li> Automatic email-to-calendar conversion</li>
-              <li> Doctor appointments</li>
-              <li> Job interviews</li>
-              <li> Phone calls and meetings</li>
               <li> Secure OAuth2 authentication</li>
               <li> Automatic token refresh</li>
               <li> No user interaction needed after setup</li>

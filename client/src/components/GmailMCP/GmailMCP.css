@@ -1,10 +1,10 @@
 .gmail-mcp {
-  flex: 1;
-  padding: 20px;
+  /* flex: 1; */
+  /* padding: 20px; */
   color: white;
-  max-width: 1200px;
+  /* max-width: 1200px; */
   margin: 0 auto;
-  width: 100%;
+  width: 90%;
 }
 
 .gmail-mcp-header {
@@ -101,7 +101,7 @@
 /* Connect Section */
 .connect-section {
   text-align: center;
-  padding: 40px 20px;
+  /* padding: 40px 20px; */
   background: #1a1a1a;
   border-radius: 10px;
   margin-bottom: 20px;
@@ -129,7 +129,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   font-weight: bold;
-  margin-top: 20px;
+  /* margin-top: 20px; */
 }
 
 .connect-button:hover:not(:disabled) {
@@ -149,7 +149,6 @@
   padding: 20px;
   background: #222;
   border-radius: 10px;
-  border-left: 4px solid #639cff;
 }
 
 .setup-instructions h4 {
@@ -273,12 +272,12 @@
 
 .feature-item {
   background: #1a1a1a;
-  padding: 15px;
+  padding: 5px;
   border-radius: 8px;
   border-top: 1px solid #639cff;
   border-left: 1px solid #639cff;
   color: #ddd;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 /* Main Content */
@@ -857,10 +856,17 @@
   background: #ff9922;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .gmail-mcp {
-    padding: 15px;
+    /* width: 90%; */
+  }
+}
+
+@media (max-width: 1284px) {
+  /* Responsive Design */
+  .gmail-mcp {
+    /* padding: 15px; */
+    width: 100%;
   }
 
   .gmail-mcp-header {
