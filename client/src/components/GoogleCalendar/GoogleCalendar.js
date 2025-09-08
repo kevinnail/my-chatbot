@@ -62,6 +62,16 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
   }, [oauthPopup]);
 
   const checkCalendarConnection = async () => {
+    if (!window.isLocal) {
+      // Fake calendar connection for netlify deploy
+      setIsConnected(true);
+      setConnectionError(null);
+      if (onConnectionChange) {
+        onConnectionChange(true);
+      }
+      return;
+    }
+
     try {
       const response = await fetch(`/api/calendar/status/${userId}`);
 
@@ -95,6 +105,90 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
   };
 
   const connectCalendar = async () => {
+    if (!window.isLocal) {
+      // Fake OAuth popup for netlify deploy
+      setLoading(true);
+      setError(null);
+
+      // Create a fake popup window with demo content
+      const popup = window.open(
+        'about:blank',
+        'google-oauth-demo',
+        'width=500,height=600,scrollbars=yes,resizable=yes',
+      );
+
+      if (!popup || popup.closed) {
+        setError('Popup was blocked. Please allow popups for this site.');
+        setLoading(false);
+        return;
+      }
+
+      // Add demo content to the popup
+      popup.document.write(`
+        <html>
+          <head>
+            <title>Google OAuth Demo</title>
+            <style>
+              body { 
+                font-family: Arial, sans-serif; 
+                padding: 20px; 
+                text-align: center;
+                background: #f5f5f5;
+              }
+              .demo-box {
+                background: white;
+                padding: 30px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                max-width: 400px;
+                margin: 50px auto;
+              }
+              button {
+                background: #4285f4;
+                color: white;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+                margin-top: 20px;
+              }
+              button:hover {
+                background: #3367d6;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="demo-box">
+              <h2>Google OAuth Demo</h2>
+              <p>This is a demonstration of the Google Calendar OAuth flow.</p>
+              <p>In the actual application running locally, this would redirect to Google's OAuth page.</p>
+              <button onclick="window.close()">Connect Calendar (Demo)</button>
+            </div>
+          </body>
+        </html>
+      `);
+
+      setOauthPopup(popup);
+
+      // Simulate successful connection after a delay
+      setTimeout(() => {
+        if (!popup.closed) {
+          popup.close();
+        }
+        setIsConnected(true);
+        setConnectionError(null);
+        setError(null);
+        setLoading(false);
+        setOauthPopup(null);
+        if (onConnectionChange) {
+          onConnectionChange(true);
+        }
+      }, 3000);
+
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
