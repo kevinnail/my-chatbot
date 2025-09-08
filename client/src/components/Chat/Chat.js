@@ -152,41 +152,43 @@ const Chat = ({ userId }) => {
       <div ref={bottomSentinelRef} style={{ height: '1px' }} />
 
       {/* Scroll to Bottom Button */}
-      {showScrollButton && (
-        <button
-          onClick={scrollToBottom}
-          className="scroll-to-bottom-button"
-          onMouseEnter={(e) => {
+      <button
+        onClick={scrollToBottom}
+        className={`scroll-to-bottom-button ${showScrollButton ? 'visible' : 'hidden'}`}
+        onMouseEnter={(e) => {
+          if (showScrollButton) {
             e.target.style.background = 'rgba(255, 255, 255, 0.15)';
             e.target.style.color = '#fff';
             e.target.style.borderColor = '#666';
             e.target.style.transform = 'translateX(-50%) translateY(-2px)';
-          }}
-          onMouseLeave={(e) => {
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (showScrollButton) {
             e.target.style.background = 'rgba(0, 0, 0, 0.8)';
             e.target.style.color = '#ccc';
             e.target.style.borderColor = '#444';
             e.target.style.transform = 'translateX(-50%) translateY(0px)';
-          }}
+          }
+        }}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M7 14L12 19L17 14M12 5V18"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          Scroll to Bottom
-        </button>
-      )}
+          <path
+            d="M7 14L12 19L17 14M12 5V18"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        Scroll to Bottom
+      </button>
     </main>
   );
 };
