@@ -27,6 +27,12 @@ const GmailMCP = ({ userId }) => {
 
   // Function to check calendar connection status
   const checkCalendarConnection = async () => {
+    if (!window.isLocal) {
+      // Fake calendar connection for netlify deploy
+      setCalendarConnected(true);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/calendar/status/${userId}`);
       const data = await response.json();
@@ -161,6 +167,68 @@ const GmailMCP = ({ userId }) => {
   }, [syncStartTime]);
 
   const checkConnection = async () => {
+    if (!window.isLocal) {
+      // Fake Gmail connection for netlify deploy
+      setLoading(true);
+      setTimeout(() => {
+        setIsConnected(true);
+        setConnectionError(null);
+        setError(null);
+
+        // Add fake emails
+        const fakeEmails = [
+          {
+            id: '1',
+            subject: 'Demo: Frontend Developer Position',
+            from: 'hr@techcompany.com',
+            date: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+            snippet: 'Thank you for your application. We would like to schedule an interview...',
+            analysis: {
+              priority: 'high',
+              category: 'job_application',
+              hasInterview: true,
+              hasDeadline: true,
+            },
+            analyzed: true,
+          },
+          {
+            id: '2',
+            subject: 'Demo: Project Proposal - Web Development',
+            from: 'client@startup.io',
+            date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+            snippet:
+              'We have reviewed your portfolio and would like to discuss a potential project...',
+            analysis: {
+              priority: 'medium',
+              category: 'client_inquiry',
+              hasInterview: false,
+              hasDeadline: true,
+            },
+            analyzed: true,
+          },
+          {
+            id: '3',
+            subject: 'Demo: React Newsletter - Latest Updates',
+            from: 'newsletter@react.dev',
+            date: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+            snippet: 'Check out the latest React features and community updates...',
+            analysis: {
+              priority: 'low',
+              category: 'newsletter',
+              hasInterview: false,
+              hasDeadline: false,
+            },
+            analyzed: true,
+          },
+        ];
+
+        setEmails(fakeEmails);
+        setLastSync(new Date().toISOString());
+        setLoading(false);
+      }, 1000);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await fetch(`/api/gmail/status/${userId}`);
@@ -207,6 +275,41 @@ const GmailMCP = ({ userId }) => {
       return;
     }
 
+    if (!window.isLocal) {
+      // Fake sync for netlify deploy
+      setLoading(true);
+      setError(null);
+      setSyncStartTime(new Date());
+      setAnalysisInProgress(true);
+      setAnalysisProgress({ analyzed: 0, total: 3 });
+
+      // Simulate sync progress
+      setTimeout(() => {
+        setAnalysisProgress({ analyzed: 1, total: 3 });
+        setCurrentlyAnalyzing('Demo: Frontend Developer Position');
+      }, 500);
+
+      setTimeout(() => {
+        setAnalysisProgress({ analyzed: 2, total: 3 });
+        setCurrentlyAnalyzing('Demo: Project Proposal - Web Development');
+      }, 1500);
+
+      setTimeout(() => {
+        setAnalysisProgress({ analyzed: 3, total: 3 });
+        setCurrentlyAnalyzing('Demo: React Newsletter - Latest Updates');
+      }, 2500);
+
+      setTimeout(() => {
+        setAnalysisInProgress(false);
+        setCurrentlyAnalyzing(null);
+        setLoading(false);
+        setSyncStartTime(null);
+        setLastSync(new Date().toISOString());
+      }, 3500);
+
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -227,7 +330,6 @@ const GmailMCP = ({ userId }) => {
       }
 
       const data = await response.json();
-      console.log('🔄 Sync initiated:', data);
 
       // Set preliminary emails immediately
       if (data.emails) {
