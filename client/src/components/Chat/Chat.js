@@ -52,29 +52,18 @@ const Chat = ({ userId }) => {
     setCoachOrChat(coachOrChat === 'chat' ? 'coach' : 'chat');
   };
 
+  const scrollToBottom = () => {
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: 'smooth',
+    });
+  };
+
   return (
-    <main
-      style={{
-        margin: '0 auto ',
-        fontFamily: 'sans-serif',
-        fontSize: '1.2rem',
-        letterSpacing: '.07rem',
-        background: 'black',
-        color: 'white',
-        padding: '50px 0.7rem',
-        borderRadius: '10.5px',
-        flex: '1 0 auto',
-        boxShadow: '0 2px 16px #000a',
-        minHeight: '60vh',
-        display: 'flex',
-        flexDirection: 'column',
-        width: '90%',
-      }}
-    >
+    <main className="chat-main-container">
       <div className="chat-header-container">
         <div
           style={{
-            // width: '71.5%',
             padding: '0 1rem',
             margin: '8px auto',
             display: 'flex',
@@ -158,6 +147,41 @@ const Chat = ({ userId }) => {
       />
 
       <ContextProgressBar contextPercent={contextPercent} />
+
+      {/* Scroll to Bottom Button */}
+      <button
+        onClick={scrollToBottom}
+        className="scroll-to-bottom-button"
+        onMouseEnter={(e) => {
+          e.target.style.background = 'rgba(255, 255, 255, 0.15)';
+          e.target.style.color = '#fff';
+          e.target.style.borderColor = '#666';
+          e.target.style.transform = 'translateX(-50%) translateY(-2px)';
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.background = 'rgba(0, 0, 0, 0.8)';
+          e.target.style.color = '#ccc';
+          e.target.style.borderColor = '#444';
+          e.target.style.transform = 'translateX(-50%) translateY(0px)';
+        }}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M7 14L12 19L17 14M12 5V18"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        Scroll to Bottom
+      </button>
     </main>
   );
 };
