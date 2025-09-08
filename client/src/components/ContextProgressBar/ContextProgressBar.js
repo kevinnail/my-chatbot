@@ -6,7 +6,6 @@ const ContextProgressBar = ({ contextPercent = 0 }) => {
   return (
     <div
       style={{
-        // width: '70%',
         margin: '.5rem 0',
         display: 'grid',
         alignItems: 'center',
@@ -40,7 +39,7 @@ const ContextProgressBar = ({ contextPercent = 0 }) => {
           width: '154px',
           height: '20px',
           background: '#222',
-          borderRadius: '16px',
+          borderRadius: '0px 16px 16px 0px ',
           overflow: 'hidden',
           border: '2px solid #444',
           position: 'relative',
