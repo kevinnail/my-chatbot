@@ -14,6 +14,33 @@ app.post('/mcp', async (req, res) => {
       version: '1.0.0',
     });
 
+    // Add a simple hello world tool
+    server.registerTool(
+      'hello-world',
+      {
+        title: 'Hello World Tool',
+        description: 'A simple greeting tool',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'Name to greet',
+            },
+          },
+          required: ['name'],
+        },
+      },
+      async ({ name }) => ({
+        content: [
+          {
+            type: 'text',
+            text: `Hello, ${name}! This is your MCP server speaking.`,
+          },
+        ],
+      }),
+    );
+
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // Stateless mode
     });
