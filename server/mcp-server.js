@@ -15,7 +15,7 @@ function createServer() {
     version: '1.0.0',
   });
 
-  // Add a simple hello world tool
+  // Add tools to the MCP server
   server.registerTool(
     'hello-world',
     {
@@ -37,6 +37,33 @@ function createServer() {
         {
           type: 'text',
           text: `Hello, ${name}! This is your MCP server speaking.`,
+        },
+      ],
+    }),
+  );
+
+  server.registerTool(
+    'create-calendar-event',
+    {
+      title: 'Create Calendar Event',
+      description: 'A tool to help the user create a calendar event',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          calendarEvent: {
+            type: 'string',
+            description: 'The calendar event to create',
+          },
+        },
+        required: ['calendarEvent'],
+      },
+    },
+    async ({ calendarEvent }) => ({
+      content: [
+        {
+          type: 'text',
+          text: `Create the calendar event: ${calendarEvent}!.`,
+          calendarEvent,
         },
       ],
     }),
@@ -119,6 +146,7 @@ app.post('/mcp', async (req, res) => {
 
       // Access the registered tool handler from the MCP server
       const tool = sessionServer._registeredTools[name];
+
       if (!tool || !tool.enabled) {
         res.json({
           jsonrpc: '2.0',
@@ -129,7 +157,7 @@ app.post('/mcp', async (req, res) => {
       }
 
       try {
-        // Call the actual registered tool handler
+        // Call the registered tool handler
         const result = await tool.callback(args);
         res.json({
           jsonrpc: '2.0',
