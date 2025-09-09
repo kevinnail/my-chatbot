@@ -95,24 +95,19 @@ app.post('/mcp', async (req, res) => {
 
     // Handle tools/list
     if (req.body.method === 'tools/list') {
-      // Manually return the tools since we know what we registered
+      // Use the actual MCP server's registered tools
+      const tools = Object.entries(sessionServer._registeredTools)
+        .filter(([, tool]) => tool.enabled)
+        .map(([name, tool]) => ({
+          name,
+          title: tool.title,
+          description: tool.description,
+          inputSchema: tool.inputSchema,
+        }));
+
       res.json({
         jsonrpc: '2.0',
-        result: {
-          tools: [
-            {
-              name: 'hello-world',
-              description: 'A simple greeting tool',
-              inputSchema: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string', description: 'Name to greet' },
-                },
-                required: ['name'],
-              },
-            },
-          ],
-        },
+        result: { tools },
         id: req.body.id,
       });
       return;
