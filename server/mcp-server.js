@@ -1,6 +1,7 @@
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { createCalendarEvent } from './lib/utils/emailAnalysis.js';
 
 const app = express();
 app.use(express.json());
@@ -11,62 +12,63 @@ const transports = {};
 // Create and configure MCP server
 function createServer() {
   const server = new McpServer({
-    name: 'hello-world-server',
+    name: 'mcp-server',
     version: '1.0.0',
   });
 
-  // Add tools to the MCP server
-  server.registerTool(
-    'hello-world',
-    {
-      title: 'Hello World Tool',
-      description: 'A simple greeting tool',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          name: {
-            type: 'string',
-            description: 'Name to greet',
-          },
-        },
-        required: ['name'],
-      },
-    },
-    async ({ name }) => ({
-      content: [
-        {
-          type: 'text',
-          text: `Hello, ${name}! This is your MCP server speaking.`,
-        },
-      ],
-    }),
-  );
-
+  // Update the tool registration:
   server.registerTool(
     'create-calendar-event',
     {
       title: 'Create Calendar Event',
-      description: 'A tool to help the user create a calendar event',
+      description: 'Create a calendar event for appointments, meetings, interviews',
       inputSchema: {
         type: 'object',
         properties: {
-          calendarEvent: {
-            type: 'string',
-            description: 'The calendar event to create',
-          },
+          title: { type: 'string', description: 'Event title' },
+          startDateTime: { type: 'string', description: 'Start time in ISO format' },
+          endDateTime: { type: 'string', description: 'End time in ISO format' },
+          description: { type: 'string', description: 'Event description' },
+          location: { type: 'string', description: 'Event location' },
+          attendees: { type: 'array', items: { type: 'string' }, description: 'Attendee emails' },
         },
-        required: ['calendarEvent'],
+        required: ['title', 'startDateTime', 'endDateTime'],
       },
     },
-    async ({ calendarEvent }) => ({
-      content: [
-        {
-          type: 'text',
-          text: `Create the calendar event: ${calendarEvent}!.`,
-          calendarEvent,
-        },
-      ],
-    }),
+    async (args) => {
+      try {
+        // Extract userId from somewhere (you'll need to pass this through)
+        const userId = args.userId; // You'll need to add this to the args
+
+        const result = await createCalendarEvent(
+          userId,
+          args,
+          args.title, // subject
+          'MCP Server', // from
+        );
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Calendar event created: ${result?.htmlLink || 'Success'}`,
+              calendarEvent: args.title,
+              eventLink: result?.htmlLink,
+            },
+          ],
+        };
+      } catch (error) {
+        console.error('Calendar creation failed:', error);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Failed to create calendar event: ${error.message}`,
+            },
+          ],
+        };
+      }
+    },
   );
 
   return server;
@@ -74,7 +76,7 @@ function createServer() {
 
 // Working MCP server using the actual MCP server but with manual response handling
 app.post('/mcp', async (req, res) => {
-  console.log('📨 MCP Request received:', JSON.stringify(req.body, null, 2));
+  // console.log('📨 MCP Request received:', JSON.stringify(req.body, null, 2));
 
   try {
     const server = createServer();
@@ -192,87 +194,9 @@ app.post('/mcp', async (req, res) => {
   }
 });
 
-// Simple MCP-compatible JSON-RPC handler
-app.post('/mcp-simple', async (req, res) => {
-  console.log('🧪 Simple MCP request:', JSON.stringify(req.body, null, 2));
-
-  const { jsonrpc, method, params, id } = req.body;
-
-  if (jsonrpc !== '2.0') {
-    return res.json({
-      jsonrpc: '2.0',
-      error: { code: -32600, message: 'Invalid Request' },
-      id,
-    });
-  }
-
-  try {
-    if (method === 'initialize') {
-      res.json({
-        jsonrpc: '2.0',
-        result: {
-          protocolVersion: '2024-11-05',
-          capabilities: { tools: {} },
-          serverInfo: {
-            name: 'hello-world-server',
-            version: '1.0.0',
-          },
-        },
-        id,
-      });
-    } else if (method === 'tools/list') {
-      res.json({
-        jsonrpc: '2.0',
-        result: {
-          tools: [
-            {
-              name: 'hello-world',
-              description: 'A simple greeting tool',
-              inputSchema: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string', description: 'Name to greet' },
-                },
-                required: ['name'],
-              },
-            },
-          ],
-        },
-        id,
-      });
-    } else if (method === 'tools/call' && params.name === 'hello-world') {
-      const { name } = params.arguments;
-      res.json({
-        jsonrpc: '2.0',
-        result: {
-          content: [
-            {
-              type: 'text',
-              text: `Hello, ${name}! This is your MCP server speaking.`,
-            },
-          ],
-        },
-        id,
-      });
-    } else {
-      res.json({
-        jsonrpc: '2.0',
-        error: { code: -32601, message: 'Method not found' },
-        id,
-      });
-    }
-  } catch (error) {
-    res.json({
-      jsonrpc: '2.0',
-      error: { code: -32603, message: error.message || 'Internal error' },
-      id,
-    });
-  }
-});
-
 // SSE notifications not supported in stateless mode
 app.get('/mcp', async (req, res) => {
-  console.log('Received GET MCP request');
+  // console.log('Received GET MCP request');
   res.writeHead(405).end(
     JSON.stringify({
       jsonrpc: '2.0',
