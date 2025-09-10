@@ -216,19 +216,57 @@ async function getToolsFromMcpServer() {
     });
 
     const data = await response.json();
+    console.log('Raw MCP tools response:', JSON.stringify(data, null, 2));
 
     // Convert MCP tools to Ollama format
-    return data.result.tools.map((tool) => ({
+    const ollamaTools = data.result.tools.map((tool) => ({
       type: 'function',
       function: {
         name: tool.name,
         description: tool.description,
-        parameters: tool.inputSchema,
+        parameters: tool.inputSchema, // This should already be the correct format
       },
     }));
+
+    console.log('Converted Ollama tools:', JSON.stringify(ollamaTools, null, 2));
+    return ollamaTools;
   } catch (error) {
     console.error('Failed to get tools from MCP server:', error);
     return [];
+  }
+}
+
+async function executeToolViaMcp(toolCall, userId) {
+  try {
+    const sessionId = await getMcpSessionId();
+
+    // Add userId to the arguments
+    const args =
+      typeof toolCall.function.arguments === 'string'
+        ? JSON.parse(toolCall.function.arguments)
+        : toolCall.function.arguments;
+
+    args.userId = userId; // Add this line
+
+    const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Mcp-Session-Id': sessionId },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: {
+          name: toolCall.function.name,
+          arguments: args,
+        },
+        id: 2,
+      }),
+    });
+
+    const data = await response.json();
+    return data.result;
+  } catch (error) {
+    console.error('MCP tool execution failed:', error);
+    return null;
   }
 }
 
@@ -264,6 +302,28 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
 
   const tools = await getToolsFromMcpServer();
 
+  // Temporarily replace getToolsFromMcpServer() with:
+  // const tools = [
+  //   {
+  //     type: 'function',
+  //     function: {
+  //       name: 'create_calendar_event', // Exact same name as MCP
+  //       description: 'Create a calendar event for appointments, meetings, interviews',
+  //       parameters: {
+  //         type: 'object',
+  //         properties: {
+  //           title: { type: 'string', description: 'Event title' },
+  //           startDateTime: { type: 'string', description: 'Start time in ISO format' },
+  //           endDateTime: { type: 'string', description: 'End time in ISO format' },
+  //           description: { type: 'string', description: 'Event description' },
+  //           location: { type: 'string', description: 'Event location' },
+  //           attendees: { type: 'array', items: { type: 'string' }, description: 'Attendee emails' },
+  //         },
+  //         required: ['title', 'startDateTime', 'endDateTime'],
+  //       },
+  //     },
+  //   },
+  // ];
   // Client-side timeout
   const controller = new AbortController();
   const clientTimeout = setTimeout(() => controller.abort(), 20 * 60 * 1000); // 20m
@@ -303,6 +363,7 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
       data.message && typeof data.message.content === 'string'
         ? data.message.content.trim()
         : JSON.stringify(data);
+
     const toolsCalled = data.message?.tool_calls || [];
 
     // console.log('🔍 Tool calls found:', toolsCalled);
@@ -394,6 +455,7 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
           console.log('🔍 Individual tool call:', JSON.stringify(call, null, 2));
           try {
             if (call.function && call.function.name === 'create_calendar_event') {
+              console.log('call=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=', call);
               let args = call.function.arguments;
 
               // Parse arguments if they're a string
@@ -409,7 +471,13 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
               //^==============================================================
               // eslint-disable-next-line no-console
               console.log('🗓️ Creating calendar event with args:', args);
-              // const eventResult = await createCalendarEvent(userId, args, subject, from);
+
+              //!!!!!!!!!!! CHATGPT THIS IS THE OLD WAY NOT YET REMOVED TO AVOID ERRORS
+              const eventResult = await createCalendarEvent(userId, args, subject, from);
+              // console.log('eventResult', eventResult);
+              // const mcpResult = await executeToolViaMcp(call);
+              const mcpResult = await executeToolViaMcp(call, userId);
+              console.log('mcpResult', mcpResult);
 
               // Capture calendar event data if creation was successful
               if (eventResult && eventResult.htmlLink) {
