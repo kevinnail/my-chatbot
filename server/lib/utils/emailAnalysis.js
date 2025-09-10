@@ -1,8 +1,10 @@
 import { google } from 'googleapis';
 import GoogleCalendar from '../models/GoogleCalendar.js';
 
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
+
 // Helper function to create calendar event
-async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
+export async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
   // eslint-disable-next-line no-console
   console.log('🗓️ Raw event args received:', eventArgs);
 
@@ -173,6 +175,63 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
   }
 }
 
+async function getMcpSessionId() {
+  try {
+    const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-03-26',
+          capabilities: {},
+          clientInfo: {
+            name: 'thunderclient-test',
+            version: '1.0.0',
+          },
+        },
+        id: 1,
+      }),
+    });
+
+    return response.headers.get('mcp-session-id');
+  } catch (error) {
+    console.error('Failed to get MCP session ID:', error);
+    return null;
+  }
+}
+
+async function getToolsFromMcpServer() {
+  try {
+    const sessionId = await getMcpSessionId();
+    const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Mcp-Session-Id': sessionId },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 1,
+      }),
+    });
+
+    const data = await response.json();
+
+    // Convert MCP tools to Ollama format
+    return data.result.tools.map((tool) => ({
+      type: 'function',
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.inputSchema,
+      },
+    }));
+  } catch (error) {
+    console.error('Failed to get tools from MCP server:', error);
+    return [];
+  }
+}
+
 // Email analysis with Ollama
 export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   const currentYear = new Date().getFullYear();
@@ -193,7 +252,7 @@ CALENDAR EVENTS: Only create calendar events for emails with:
 2. Specific date AND time mentioned (not copyright dates)
 3. Actual scheduling context (not newsletters/job listings)
 
-NEVER create events for: job newsletters, marketing emails, general announcements.
+NEVER create events for: job newsletters, marketing emails, general announcements, or notifications.
 
 When creating calendar events, use current year ${currentYear}. If a date appears to be in the past, assume next year.
 
@@ -203,47 +262,7 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
 
   const userPrompt = `Analyze this email:\nSubject: ${subject}\nBody: ${body}\nFrom: ${from}`;
 
-  const tools = [
-    {
-      type: 'function',
-      function: {
-        name: 'create_calendar_event',
-        description:
-          'Create a calendar event for appointments, meetings, interviews, or other scheduled events',
-        parameters: {
-          type: 'object',
-          properties: {
-            title: {
-              type: 'string',
-              description: 'The title/summary of the event',
-            },
-            description: {
-              type: 'string',
-              description: 'Detailed description of the event',
-            },
-            startDateTime: {
-              type: 'string',
-              description: 'Start date and time in ISO format (e.g., 2024-01-15T10:00:00)',
-            },
-            endDateTime: {
-              type: 'string',
-              description: 'End date and time in ISO format (e.g., 2024-01-15T11:00:00)',
-            },
-            location: {
-              type: 'string',
-              description: 'Location of the event (optional)',
-            },
-            attendees: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'List of attendee email addresses',
-            },
-          },
-          required: ['title', 'startDateTime', 'endDateTime'],
-        },
-      },
-    },
-  ];
+  const tools = await getToolsFromMcpServer();
 
   // Client-side timeout
   const controller = new AbortController();
@@ -278,19 +297,15 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
 
     const data = await response.json();
 
-    // eslint-disable-next-line no-console
-    console.log('🔍 Raw Ollama response:', JSON.stringify(data, null, 2));
+    // console.log('🔍 Raw Ollama response:', JSON.stringify(data, null, 2));
 
     let raw =
       data.message && typeof data.message.content === 'string'
         ? data.message.content.trim()
         : JSON.stringify(data);
     const toolsCalled = data.message?.tool_calls || [];
-    // console.log('🔍 Extracted content:', raw);
-    // eslint-disable-next-line no-console
-    console.log('🔍 Tool calls found:', toolsCalled);
-    // eslint-disable-next-line no-console
-    console.log('userId', userId);
+
+    // console.log('🔍 Tool calls found:', toolsCalled);
 
     // Track calendar events created
     const calendarEvents = [];
@@ -390,10 +405,11 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
                   continue;
                 }
               }
-
+              //!==============================================================
+              //^==============================================================
               // eslint-disable-next-line no-console
               console.log('🗓️ Creating calendar event with args:', args);
-              const eventResult = await createCalendarEvent(userId, args, subject, from);
+              // const eventResult = await createCalendarEvent(userId, args, subject, from);
 
               // Capture calendar event data if creation was successful
               if (eventResult && eventResult.htmlLink) {
