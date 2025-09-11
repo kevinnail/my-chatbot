@@ -203,6 +203,17 @@ router.get('/list/:userId', async (req, res) => {
   }
 });
 
+router.get('/messages/:userId/:chatId', async (req, res) => {
+  try {
+    const { userId, chatId } = req.params;
+    const messages = await ChatMemory.getAllMessages({ chatId, userId });
+    res.json(messages);
+  } catch (error) {
+    console.error('Error in get chat messages controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
