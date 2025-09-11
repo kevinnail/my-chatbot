@@ -33,7 +33,7 @@ const ChatList = ({ userId }) => {
   };
 
   const handleNewChat = () => {
-    navigate('/');
+    navigate('/chat');
   };
 
   const handleDeleteChat = async (chatId, e) => {
