@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
@@ -6,6 +7,8 @@ import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
 
 const Chat = ({ userId }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     input,
     setInput,
@@ -96,8 +99,35 @@ const Chat = ({ userId }) => {
             display: 'flex',
             gap: '15px',
             justifyContent: 'space-around',
+            alignItems: 'center',
           }}
         >
+          {location.pathname !== '/chat' && (
+            <button
+              onClick={() => navigate('/')}
+              className="back-to-chats-button"
+              style={{
+                background: 'transparent',
+                border: '1px solid #639cff',
+                color: '#639cff',
+                padding: '8px 16px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#639cff';
+                e.target.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'transparent';
+                e.target.style.color = '#639cff';
+              }}
+            >
+              ← Back to Chats
+            </button>
+          )}
           <span className="chat-header-title">
             {coachOrChat === 'chat' ? 'Code Assistant' : 'Career Coach'}
           </span>
