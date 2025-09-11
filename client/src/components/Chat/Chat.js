@@ -53,6 +53,37 @@ const Chat = ({ userId }) => {
       if (urlChatId && currentChatId && !loading && !isNewChat) {
         try {
           setInitialChatLoad(true);
+
+          // Check if running locally or on netlify
+          if (!window.isLocal) {
+            // Fake messages for netlify deploy
+            const fakeMessages = [
+              {
+                text: 'How do I implement authentication in React?',
+                role: 'user',
+                timestamp: Date.now() - 10000,
+              },
+              {
+                text: "For React authentication, I recommend using JWT tokens with these key steps:\n\n1. **Token Storage**: Use httpOnly cookies for security\n2. **Context Provider**: Create an AuthContext for state management\n3. **Route Protection**: Implement protected routes with React Router\n4. **API Integration**: Add Authorization headers to requests\n\nHere's a basic implementation:\n\n```javascript\n// AuthContext.js\nconst AuthContext = createContext();\n\nexport const AuthProvider = ({ children }) => {\n  const [user, setUser] = useState(null);\n  const [loading, setLoading] = useState(true);\n\n  useEffect(() => {\n    checkAuthStatus();\n  }, []);\n\n  const checkAuthStatus = async () => {\n    try {\n      const response = await fetch('/api/auth/verify');\n      if (response.ok) {\n        const userData = await response.json();\n        setUser(userData);\n      }\n    } catch (error) {\n      console.error('Auth check failed:', error);\n    } finally {\n      setLoading(false);\n    }\n  };\n\n  return (\n    <AuthContext.Provider value={{ user, setUser, loading }}>\n      {children}\n    </AuthContext.Provider>\n  );\n};\n```\n\nThis approach provides secure, scalable authentication for your React app.",
+                role: 'bot',
+                timestamp: Date.now() - 8000,
+              },
+              {
+                text: 'What about handling token expiration?',
+                role: 'user',
+                timestamp: Date.now() - 5000,
+              },
+              {
+                text: "Token expiration handling is crucial for security. Here's how to implement it:\n\n**Automatic Refresh Strategy:**\n\n```javascript\n// Token refresh interceptor\nconst refreshToken = async () => {\n  try {\n    const response = await fetch('/api/auth/refresh', {\n      method: 'POST',\n      credentials: 'include'\n    });\n    \n    if (response.ok) {\n      return true; // Token refreshed\n    } else {\n      // Refresh failed, redirect to login\n      window.location.href = '/login';\n      return false;\n    }\n  } catch (error) {\n    console.error('Token refresh failed:', error);\n    return false;\n  }\n};\n\n// Axios interceptor for automatic retry\naxios.interceptors.response.use(\n  (response) => response,\n  async (error) => {\n    if (error.response?.status === 401) {\n      const refreshed = await refreshToken();\n      if (refreshed) {\n        // Retry original request\n        return axios.request(error.config);\n      }\n    }\n    return Promise.reject(error);\n  }\n);\n```\n\n**Key Points:**\n- Set reasonable expiration times (15-30 minutes)\n- Use refresh tokens with longer expiration\n- Implement automatic retry logic\n- Handle network failures gracefully\n- Clear sensitive data on logout",
+                role: 'bot',
+                timestamp: Date.now() - 2000,
+              },
+            ];
+            setLog(fakeMessages);
+            setInitialChatLoad(false);
+            return;
+          }
+
           const response = await fetch(`/api/chatbot/messages/${userId}/${currentChatId}`);
           if (response.ok) {
             const messages = await response.json();
