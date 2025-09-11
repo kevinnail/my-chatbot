@@ -487,4 +487,221 @@ describe('chat routes', () => {
       expect(parseInt(user2Messages[0].count)).toBe(0);
     });
   });
+
+  describe('GET /api/chatbot/list/:userId', () => {
+    it('should return empty list for user with no chats', async () => {
+      const response = await request(app).get('/api/chatbot/list/test_user_empty');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual([]);
+    });
+
+    it('should return chat list for user with chats', async () => {
+      const userId = 'test_user_list';
+      const chatId = 'test_chat_list';
+
+      // Add some messages to create a chat
+      await pool.query(
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          chatId,
+          userId,
+          'user',
+          'Hello, this is a test message',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
+      );
+      await pool.query(
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          chatId,
+          userId,
+          'bot',
+          'This is a test response',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
+      );
+
+      const response = await request(app).get(`/api/chatbot/list/${userId}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveLength(1);
+      expect(response.body[0]).toEqual({
+        id: chatId,
+        chatId,
+        messageCount: 2,
+        firstMessage: expect.any(String),
+        lastMessage: expect.any(String),
+        preview: 'Hello, this is a test message...',
+      });
+    });
+
+    it('should return multiple chats ordered by last message', async () => {
+      const userId = 'test_user_multiple';
+      const chatId1 = 'test_chat_1';
+      const chatId2 = 'test_chat_2';
+
+      // Add messages to first chat
+      await pool.query(
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [chatId1, userId, 'user', 'First chat message', `[${new Array(1024).fill(0.1).join(',')}]`],
+      );
+
+      // Wait a moment to ensure different timestamps
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Add messages to second chat
+      await pool.query(
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          chatId2,
+          userId,
+          'user',
+          'Second chat message',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
+      );
+
+      const response = await request(app).get(`/api/chatbot/list/${userId}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveLength(2);
+      // Should be ordered by last message (most recent first)
+      expect(response.body[0].chatId).toBe(chatId2);
+      expect(response.body[1].chatId).toBe(chatId1);
+    });
+
+    it('should handle database error gracefully', async () => {
+      // Mock the database module to throw an error
+      const dbModule = await import('../../lib/utils/db.js');
+      const originalQuery = dbModule.pool.query;
+      dbModule.pool.query = jest.fn().mockRejectedValue(new Error('Database connection failed'));
+
+      const response = await request(app).get('/api/chatbot/list/test_user_error');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('error');
+
+      // Restore original query method
+      dbModule.pool.query = originalQuery;
+    });
+  });
+
+  describe('DELETE /api/chatbot/:userId/:chatId', () => {
+    it('should delete specific chat messages', async () => {
+      const userId = 'test_user_delete_chat';
+      const chatId = 'test_chat_delete_specific';
+
+      // Add messages to the chat
+      await pool.query(
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          chatId,
+          userId,
+          'user',
+          'Test message to delete',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
+      );
+      await pool.query(
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          chatId,
+          userId,
+          'bot',
+          'Test response to delete',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
+      );
+
+      // Verify messages exist
+      const { rows: beforeDelete } = await pool.query(
+        'SELECT COUNT(*) as count FROM chat_memory WHERE user_id = $1 AND chat_id = $2',
+        [userId, chatId],
+      );
+      expect(parseInt(beforeDelete[0].count)).toBe(2);
+
+      // Delete the chat
+      const response = await request(app).delete(`/api/chatbot/${userId}/${chatId}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        message: 'Chat deleted successfully',
+      });
+
+      // Verify messages are deleted
+      const { rows: afterDelete } = await pool.query(
+        'SELECT COUNT(*) as count FROM chat_memory WHERE user_id = $1 AND chat_id = $2',
+        [userId, chatId],
+      );
+      expect(parseInt(afterDelete[0].count)).toBe(0);
+    });
+
+    it('should handle deletion of non-existent chat', async () => {
+      const response = await request(app).delete(
+        '/api/chatbot/test_user_nonexistent/nonexistent_chat',
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        message: 'Chat deleted successfully',
+      });
+    });
+
+    it('should only delete messages for specific chat and user', async () => {
+      const userId = 'test_user_isolated';
+      const chatId1 = 'test_chat_keep';
+      const chatId2 = 'test_chat_delete_isolated';
+
+      // Add messages to both chats
+      await pool.query(
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [chatId1, userId, 'user', 'Keep this message', `[${new Array(1024).fill(0.1).join(',')}]`],
+      );
+      await pool.query(
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          chatId2,
+          userId,
+          'user',
+          'Delete this message',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
+      );
+
+      // Delete only chatId2
+      const response = await request(app).delete(`/api/chatbot/${userId}/${chatId2}`);
+
+      expect(response.status).toBe(200);
+
+      // Verify chatId1 messages still exist
+      const { rows: keptMessages } = await pool.query(
+        'SELECT COUNT(*) as count FROM chat_memory WHERE user_id = $1 AND chat_id = $2',
+        [userId, chatId1],
+      );
+      expect(parseInt(keptMessages[0].count)).toBe(1);
+
+      // Verify chatId2 messages are deleted
+      const { rows: deletedMessages } = await pool.query(
+        'SELECT COUNT(*) as count FROM chat_memory WHERE user_id = $1 AND chat_id = $2',
+        [userId, chatId2],
+      );
+      expect(parseInt(deletedMessages[0].count)).toBe(0);
+    });
+
+    it('should handle database error gracefully', async () => {
+      // Mock the database module to throw an error
+      const dbModule = await import('../../lib/utils/db.js');
+      const originalQuery = dbModule.pool.query;
+      dbModule.pool.query = jest.fn().mockRejectedValue(new Error('Database connection failed'));
+
+      const response = await request(app).delete('/api/chatbot/test_user_error/test_chat_error');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('error');
+
+      // Restore original query method
+      dbModule.pool.query = originalQuery;
+    });
+  });
 });

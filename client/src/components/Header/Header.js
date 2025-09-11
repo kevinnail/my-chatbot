@@ -82,6 +82,8 @@ const Header = ({ userId }) => {
           to="/"
           style={{
             color: isAnyLoading ? '#666' : isOnChatPage ? '#639cff' : 'white',
+            pointerEvents: isAnyLoading ? 'none' : 'auto',
+            opacity: isAnyLoading ? 0.5 : 1,
             textDecoration: 'none',
             fontSize: '1rem',
             fontWeight: 'normal',
@@ -89,8 +91,6 @@ const Header = ({ userId }) => {
             borderRadius: '20px',
             transition: 'all 0.3s ease',
             border: isOnChatPage ? '2px solid #639cff' : '2px solid transparent',
-            pointerEvents: isAnyLoading ? 'none' : 'auto',
-            opacity: isAnyLoading ? 0.5 : 1,
           }}
           onClick={handleChat}
         >

@@ -6,6 +6,7 @@ import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
 import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
+import { useLoading } from '../../contexts/LoadingContext.js';
 
 const Chat = ({ userId }) => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const Chat = ({ userId }) => {
     log,
     setLog,
   } = useChatContext();
+  const { isAnyLoading } = useLoading();
 
   const [currentChatId, setCurrentChatId] = useState(null);
   const [isNewChat, setIsNewChat] = useState(false);
@@ -187,6 +189,8 @@ const Chat = ({ userId }) => {
                 cursor: 'pointer',
                 fontSize: '14px',
                 transition: 'all 0.2s',
+                pointerEvents: isAnyLoading ? 'none' : 'auto',
+                opacity: isAnyLoading ? 0.5 : 1,
               }}
               onMouseEnter={(e) => {
                 e.target.style.background = '#639cff';
