@@ -1,6 +1,33 @@
-# My Coding Assistant Chatbot
+# DevFlow Assistant
 
-A full-stack AI-powered chatbot application built with React, Express.js, PostgreSQL, and Ollama. Features semantic search capabilities using vector embeddings for intelligent conversation memory and context-aware responses.
+A full-stack AI-powered chatbot application built with React, Express.js, PostgreSQL, WSL/ Linux, and Ollama. Features dual-mode operation (coding assistant and career coach), semantic search capabilities using vector embeddings for intelligent conversation memory, and AI agentic capabilities that automatically create Google Calendar events from analyzed emails via MCP server tool calls.
+
+## Quick Start
+
+**Prerequisites**: Node.js 18+, PostgreSQL with pgvector (via Ubuntu - WSL on Windows), Ollama with required models
+
+**Required Commands to Run the Application:**
+
+```bash
+# 1. Start Ubuntu/WSL (Windows users)
+# Launch Ubuntu terminal
+
+# 2. Start Frontend (Terminal 1) - Port 3000
+cd client
+npm run start
+
+# 3. Start Backend (Terminal 2) - Port 4000
+cd server
+npm run start:watch
+
+# 4. Start MCP Server (Terminal 3) - Port 4001
+cd server
+npm run start:mcp
+```
+
+**Access the application at:** `http://localhost:3000`
+
+_Note: You need all 4 services running (Ubuntu, Frontend, Backend, MCP Server) for full functionality including email analysis and calendar integration._
 
 ## Features
 
@@ -266,6 +293,29 @@ This will start:
 - **Frontend client** on `http://localhost:3000`
 
 The app will automatically open in your browser at `http://localhost:3000`.
+
+### 3. MCP Server (Required for Email/Calendar Features)
+
+The application includes a Model Context Protocol (MCP) server that is **required** for email analysis and Google Calendar integration. The MCP server handles tool execution for the LLM, including automatic calendar event creation from analyzed emails. To run the MCP server:
+
+```bash
+# From the /server directory
+cd server
+npm run start:mcp
+```
+
+This will start:
+
+- **MCP server** on `http://localhost:4001`
+
+#### MCP Server Features
+
+- **Email Analysis Integration**: Powers the AI-driven email analysis that categorizes job-related emails and extracts appointment information
+- **Automatic Calendar Creation**: Executes calendar event creation when the LLM detects scheduling information in emails
+- **HTTP Streaming Transport**: Uses streamable HTTP instead of stdio/stdout for better performance and reliability
+- **Session Management**: Maintains persistent sessions with unique session IDs for reliable tool execution
+- **LLM Tool Execution**: Handles function calling from Ollama models for real-world actions
+- **DNS Rebinding Protection**: Enhanced security for local development
 
 ## Testing
 

@@ -105,7 +105,7 @@ app.get('/mcp', async (req, res) => {
 });
 
 // Start the server
-const PORT = 3001;
+const PORT = 4001;
 app.listen(PORT, (error) => {
   if (error) {
     console.error('Failed to start MCP server:', error);
