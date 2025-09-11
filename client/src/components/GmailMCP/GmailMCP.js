@@ -529,7 +529,7 @@ const GmailMCP = ({ userId }) => {
               </button>
             </div>
 
-            {!analysisInProgress && (
+            {analysisInProgress && (
               <div className="analysis-progress">
                 <div className="progress-header">
                   <span>
