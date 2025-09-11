@@ -133,13 +133,14 @@ export async function preFilterWebDevEmails(emails) {
       - Web-dev emails: ${webDevEmails.length}
       - Appointment emails: ${appointmentEmails.length}
       - Low similarity: ${lowSimilarityEmails.length}
-      - LLM calls reduced by: ${Math.round((lowSimilarityEmails.length / emails.length) * 100)}%`);
+      - LLM calls reduced by: ${emails.length === 0 ? 0 : Math.round((lowSimilarityEmails.length / emails.length) * 100)}%`);
 
     return {
       likelyWebDevEmails,
       unlikelyEmails,
       totalEmails: emails.length,
-      reductionPercentage: Math.round((unlikelyEmails.length / emails.length) * 100),
+      reductionPercentage:
+        emails.length === 0 ? 0 : Math.round((unlikelyEmails.length / emails.length) * 100),
     };
   } catch (error) {
     console.error('Error in vector pre-filtering:', error);

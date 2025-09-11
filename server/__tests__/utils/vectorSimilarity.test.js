@@ -141,7 +141,7 @@ describe('vectorSimilarity utilities', () => {
     });
 
     // passes locally- needs Ollama to run integration
-    it.skip('should pre-filter emails and categorize them correctly', async () => {
+    it('should pre-filter emails and categorize them correctly', async () => {
       const result = await preFilterWebDevEmails(mockEmails);
 
       expect(result).toHaveProperty('likelyWebDevEmails');
@@ -181,7 +181,7 @@ describe('vectorSimilarity utilities', () => {
       expect(result.unlikelyEmails.length).toBe(0);
     }, 10000);
 
-    it.skip('should handle empty email list', async () => {
+    it('should handle empty email list', async () => {
       const result = await preFilterWebDevEmails([]);
 
       expect(result.likelyWebDevEmails).toHaveLength(0);
@@ -191,7 +191,7 @@ describe('vectorSimilarity utilities', () => {
     }, 10000);
 
     // passes locally- needs Ollama to run integration
-    it.skip('should sort emails by best similarity score', async () => {
+    it('should sort emails by best similarity score', async () => {
       // Mock different similarity scores
       mockGetEmbedding.mockImplementation((text) => {
         if (text.includes('Software Engineer Position')) {
@@ -213,10 +213,15 @@ describe('vectorSimilarity utilities', () => {
           result.likelyWebDevEmails[i].bestScore,
         );
       }
-    });
+    }, 10000);
 
     it.skip('should handle embedding errors gracefully', async () => {
-      mockGetEmbedding.mockRejectedValue(new Error('Embedding service unavailable'));
+      // Clear any existing mock implementation and set up rejection
+      mockGetEmbedding.mockClear();
+      mockGetEmbedding.mockImplementation(() => {
+        console.log('Mock embedding called - should reject');
+        return Promise.reject(new Error('Embedding service unavailable'));
+      });
 
       const result = await preFilterWebDevEmails(mockEmails);
 
@@ -224,11 +229,11 @@ describe('vectorSimilarity utilities', () => {
       expect(result.likelyWebDevEmails).toHaveLength(mockEmails.length);
       expect(result.unlikelyEmails).toHaveLength(0);
       expect(result.reductionPercentage).toBe(0);
-    });
+    }, 15000);
 
     // passes locally- needs Ollama to run integration
 
-    it.skip('should calculate reduction percentage correctly', async () => {
+    it('should calculate reduction percentage correctly', async () => {
       // Mock to make first two emails high similarity, others low
       mockGetEmbedding.mockImplementation((text) => {
         if (text.includes('Software Engineer') || text.includes('Frontend Developer')) {
@@ -243,11 +248,11 @@ describe('vectorSimilarity utilities', () => {
       // Should have some reduction
       expect(result.reductionPercentage).toBeGreaterThan(0);
       expect(result.reductionPercentage).toBeLessThanOrEqual(100);
-    });
+    }, 10000);
 
     // passes locally- needs Ollama to run integration
 
-    it.skip('should provide detailed logging information', async () => {
+    it('should provide detailed logging information', async () => {
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
       await preFilterWebDevEmails(mockEmails.slice(0, 2));
@@ -258,11 +263,11 @@ describe('vectorSimilarity utilities', () => {
       );
 
       consoleSpy.mockRestore();
-    });
+    }, 10000);
 
     // passes locally- needs Ollama to run integration
 
-    it.skip('should handle single email correctly', async () => {
+    it('should handle single email correctly', async () => {
       const singleEmail = [mockEmails[0]];
 
       const result = await preFilterWebDevEmails(singleEmail);
@@ -270,7 +275,7 @@ describe('vectorSimilarity utilities', () => {
       expect(result.likelyWebDevEmails).toHaveLength(1);
       expect(result.totalEmails).toBe(1);
       expect(result.likelyWebDevEmails[0]).toHaveProperty('categoryScores');
-    });
+    }, 10000);
   });
 
   describe('addEmailCategory', () => {
