@@ -182,6 +182,17 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.get('/list/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const chatList = await ChatMemory.getChatList(userId);
+    res.json(chatList);
+  } catch (error) {
+    console.error('Error in get chat list controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
