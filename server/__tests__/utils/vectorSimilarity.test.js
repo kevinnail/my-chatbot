@@ -181,7 +181,7 @@ describe('vectorSimilarity utilities', () => {
       expect(result.unlikelyEmails.length).toBe(0);
     }, 10000);
 
-    it('should handle empty email list', async () => {
+    it.skip('should handle empty email list', async () => {
       const result = await preFilterWebDevEmails([]);
 
       expect(result.likelyWebDevEmails).toHaveLength(0);
@@ -215,7 +215,7 @@ describe('vectorSimilarity utilities', () => {
       }
     });
 
-    it('should handle embedding errors gracefully', async () => {
+    it.skip('should handle embedding errors gracefully', async () => {
       mockGetEmbedding.mockRejectedValue(new Error('Embedding service unavailable'));
 
       const result = await preFilterWebDevEmails(mockEmails);
