@@ -23,7 +23,7 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
     if (cleanArgs.attendees) {
       // eslint-disable-next-line no-console
       console.log(
-        '🔧 Processing attendees:',
+        ' Processing attendees:',
         cleanArgs.attendees,
         'Type:',
         typeof cleanArgs.attendees,
@@ -34,7 +34,7 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
         try {
           const parsed = JSON.parse(cleanArgs.attendees);
           // eslint-disable-next-line no-console
-          console.log('🔧 Parsed attendees JSON:', parsed, 'Is array:', Array.isArray(parsed));
+          console.log(' Parsed attendees JSON:', parsed, 'Is array:', Array.isArray(parsed));
           if (Array.isArray(parsed)) {
             attendees = parsed;
           } else {
@@ -42,7 +42,7 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
           }
         } catch (parseError) {
           // eslint-disable-next-line no-console
-          console.log('🔧 Failed to parse attendees as JSON:', parseError.message);
+          console.log(' Failed to parse attendees as JSON:', parseError.message);
           // If not JSON, split by comma or treat as single email
           attendees = cleanArgs.attendees.includes(',')
             ? cleanArgs.attendees.split(',').map((email) => email.trim())
@@ -58,7 +58,7 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
         .map((email) => email.trim());
 
       // eslint-disable-next-line no-console
-      console.log('🔧 Final attendees array:', attendees);
+      console.log(' Final attendees array:', attendees);
     }
 
     // Validate and fix dates
@@ -75,7 +75,7 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
         startDate.setFullYear(currentYear + 1);
         startDateTime = startDate.toISOString();
         // eslint-disable-next-line no-console
-        console.log('🔧 Fixed start date to next year:', startDateTime);
+        console.log(' Fixed start date to next year:', startDateTime);
       }
     }
 
@@ -86,7 +86,7 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
         const end = new Date(start.getTime() + 60 * 60 * 1000); // Add 1 hour
         endDateTime = end.toISOString();
         // eslint-disable-next-line no-console
-        console.log('🔧 Generated end date (1 hour after start):', endDateTime);
+        console.log(' Generated end date (1 hour after start):', endDateTime);
       } else {
         console.error('❌ Cannot create event without valid start/end times');
         return;
@@ -288,7 +288,6 @@ async function getToolsFromMcpServer() {
 
 async function executeToolViaMcp(toolCall, userId) {
   try {
-    // console.log('toolCall=====-----------=========', toolCall);
     const sessionId = await getMcpSessionId();
 
     const args =
@@ -317,7 +316,6 @@ async function executeToolViaMcp(toolCall, userId) {
       }),
     });
 
-    // console.log('response', response);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -345,9 +343,7 @@ async function executeToolViaMcp(toolCall, userId) {
               return result;
             }
             try {
-              // console.log('SSE data:', jsonStr);
               const data = JSON.parse(jsonStr);
-              // console.log('Streaming data from MCP tool call:', data);
 
               if (data.result) {
                 result = data.result;
@@ -407,7 +403,6 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
       parameters: tool.inputSchema || {},
     },
   }));
-  // console.log('Mapped Ollama tools:', JSON.stringify(tools, null, 2));
 
   // Client-side timeout
   const controller = new AbortController();
@@ -441,8 +436,6 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
 
     const data = await response.json();
 
-    // console.log('🔍 Raw Ollama response:', JSON.stringify(data, null, 2));
-
     let raw =
       data.message && typeof data.message.content === 'string'
         ? data.message.content.trim()
@@ -457,7 +450,7 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
     if (toolsCalled.length > 0 && (!raw || raw === '')) {
       // ! THIS FIRES WHETHER OR NOT A CALENDAR EVENT WAS CREATED
       // eslint-disable-next-line no-console
-      console.log('🔧 Empty content with tool calls detected, generating contextual analysis');
+      console.log(' Empty content with tool calls detected, generating contextual analysis');
 
       // Determine category based on email content
       const emailContent = `${subject} ${body} ${from}`.toLowerCase();
@@ -529,16 +522,15 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
         // eslint-disable-next-line no-console
         console.log('🚫 BLOCKED: Preventing calendar event creation for job newsletter');
         // eslint-disable-next-line no-console
-        console.log('📧 Email subject:', subject);
+        console.log(' Email subject:', subject);
         // eslint-disable-next-line no-console
-        console.log('📧 Email from:', from);
+        console.log(' Email from:', from);
       } else {
         for (const call of toolsCalled) {
           // eslint-disable-next-line no-console
-          console.log('🔍 Individual tool call:', JSON.stringify(call, null, 2));
+          console.log(' Individual tool call:', JSON.stringify(call, null, 2));
           try {
             if (call.function && call.function.name === 'create_calendar_event') {
-              // console.log('call=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=', call);
               let args = call.function.arguments;
 
               // Parse arguments if they're a string
@@ -550,13 +542,8 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
                   continue;
                 }
               }
-              //!==============================================================
-              //^==============================================================
-              // eslint-disable-next-line no-console
-              console.log('🗓️ Creating calendar event with args:', args);
 
               const mcpResult = await executeToolViaMcp(call, userId);
-              // console.log('mcpResult: executeToolViaMcp ', mcpResult);
 
               // Capture calendar event data if creation was successful
               if (mcpResult && mcpResult.content) {
@@ -569,7 +556,7 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
                     endTime: args.endDateTime,
                     location: args.location,
                   });
-                  // console.log('✅ Calendar event captured via MCP:', content.eventLink);
+                  console.log('✅ Calendar event captured via MCP:', content.eventLink);
                 }
               }
             } else {
@@ -610,17 +597,16 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
         if (functionCallMatch) {
           const escapedJson = functionCallMatch[1];
           const unescapedJson = escapedJson.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-          // eslint-disable-next-line no-console
-          console.log('🔧 Extracted JSON from function call:', unescapedJson);
+
           return JSON.parse(unescapedJson);
         }
       } catch (parseError) {
-        console.error('🔧 Failed to parse embedded JSON:', parseError);
+        console.error(' Failed to parse embedded JSON:', parseError);
       }
 
       // If all JSON parsing fails, return fallback
       // eslint-disable-next-line no-console
-      console.warn('🔧 Falling back to default analysis structure');
+      console.warn(' Falling back to default analysis structure');
       const fallback = {
         summary: raw.slice(0, 150),
         actionItems: [],

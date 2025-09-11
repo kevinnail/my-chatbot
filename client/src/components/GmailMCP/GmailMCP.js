@@ -98,7 +98,6 @@ const GmailMCP = ({ userId }) => {
       setCalendarConnected(true);
       return;
     }
-    console.log('still running checkCalendarConnection');
     try {
       const response = await fetch(`/api/calendar/status/${userId}`);
       const data = await response.json();
@@ -130,28 +129,29 @@ const GmailMCP = ({ userId }) => {
     });
 
     socket.on('sync-progress', (data) => {
-      console.log('📊 Sync progress:', data);
+      console.log(' Sync progress:', data);
       setAnalysisProgress(data);
     });
 
     socket.on('email-analyzed', (data) => {
-      console.log('📧 Email analyzed:', data.emailId);
+      console.log(' Email analyzed:', data.emailId);
       setEmails((prevEmails) => {
-        const updatedEmails = prevEmails.map((email) =>
-          email.id === data.emailId
-            ? {
-                ...email,
-                analysis: data.analysis,
-                status: 'analyzed',
-                analyzed: true,
-                summary: data.analysis?.summary || 'Analysis complete',
-                category: data.analysis?.category,
-                priority: data.analysis?.priority,
-              }
-            : email,
-        );
+        const updatedEmails = prevEmails.map((email) => {
+          if (email.id === data.emailId) {
+            return {
+              ...email,
+              analysis: data.analysis,
+              status: 'analyzed',
+              analyzed: true,
+              summary: data.analysis?.summary || 'Analysis complete',
+              category: data.analysis?.category,
+              priority: data.analysis?.priority,
+            };
+          }
+          return email;
+        });
 
-        console.log('📧 Updated emails after mapping:');
+        console.log(' Updated emails after mapping:');
         updatedEmails.forEach((e, i) => {
           if (e.analysis) {
             console.log(
@@ -174,7 +174,7 @@ const GmailMCP = ({ userId }) => {
     });
 
     socket.on('email-analyzing', (data) => {
-      console.log('🔍 Email being analyzed:', data.emailId);
+      console.log('Email being analyzed:', data.emailId);
       setCurrentlyAnalyzing({
         emailId: data.emailId,
         subject: data.subject,
@@ -366,7 +366,7 @@ const GmailMCP = ({ userId }) => {
 
       // Set preliminary emails immediately
       if (data.emails) {
-        console.log(`📧 Setting ${data.emails.length} preliminary emails`);
+        console.log(`Setting ${data.emails.length} preliminary emails`);
         setEmails(data.emails);
         setAnalysisProgress({
           analyzed: data.emails.filter((e) => e.analyzed).length,

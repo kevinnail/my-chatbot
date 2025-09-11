@@ -62,8 +62,6 @@ router.get('/callback', async (req, res) => {
 router.post('/sync', async (req, res) => {
   try {
     const { userId } = req.body;
-    // eslint-disable-next-line no-console
-    console.log('Starting persistent vector-powered email sync...');
 
     // Get last sync time for tracking purposes
     const lastSync = await GmailSync.getLastSyncTime(userId);
@@ -242,7 +240,7 @@ router.post('/sync', async (req, res) => {
           try {
             // eslint-disable-next-line no-console
             console.log(
-              `🧠 Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.vectorSimilarity})`,
+              `Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.vectorSimilarity})`,
             );
 
             // Emit "currently analyzing" event
@@ -280,7 +278,7 @@ router.post('/sync', async (req, res) => {
             };
 
             // eslint-disable-next-line no-console
-            console.log('🔍 Emitting email-analyzed event:', {
+            console.log('Emitting email-analyzed event:', {
               emailId: email.id,
               analysisExists: !!analysis,
               analysisSummary: analysis?.summary?.substring(0, 50),
