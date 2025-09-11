@@ -97,6 +97,7 @@ describe('chat routes', () => {
       const testMessage = {
         msg: 'Hello, I need help with React hooks',
         userId: 'test_user_1',
+        chatId: 'test_chat_1',
       };
 
       const response = await request(app).post('/api/chatbot').send(testMessage);
@@ -113,13 +114,14 @@ describe('chat routes', () => {
 
       // Verify the messages were stored in the database
       const { rows } = await pool.query(
-        'SELECT * FROM chat_memory WHERE user_id = $1 ORDER BY created_at',
-        ['test_user_1'],
+        'SELECT * FROM chat_memory WHERE user_id = $1 AND chat_id = $2 ORDER BY created_at',
+        ['test_user_1', 'test_chat_1'],
       );
 
       expect(rows).toHaveLength(2); // user message + bot response
       expect(rows[0]).toEqual({
         id: expect.any(Number),
+        chat_id: 'test_chat_1',
         user_id: 'test_user_1',
         role: 'user',
         content: 'Hello, I need help with React hooks',
@@ -128,6 +130,7 @@ describe('chat routes', () => {
       });
       expect(rows[1]).toEqual({
         id: expect.any(Number),
+        chat_id: 'test_chat_1',
         user_id: 'test_user_1',
         role: 'bot',
         content: mockResponseContent,
@@ -176,6 +179,7 @@ describe('chat routes', () => {
       const testMessage = {
         msg: 'Test message',
         userId: 'test_user_2',
+        chatId: 'test_chat_2',
       };
 
       const response = await request(app).post('/api/chatbot').send(testMessage);
@@ -192,8 +196,8 @@ describe('chat routes', () => {
 
       // Verify the bot response was stored as empty string
       const { rows } = await pool.query(
-        'SELECT * FROM chat_memory WHERE user_id = $1 AND role = $2 ORDER BY created_at',
-        ['test_user_2', 'bot'],
+        'SELECT * FROM chat_memory WHERE user_id = $1 AND chat_id = $2 AND role = $3 ORDER BY created_at',
+        ['test_user_2', 'test_chat_2', 'bot'],
       );
 
       expect(rows).toHaveLength(1);
@@ -242,6 +246,7 @@ describe('chat routes', () => {
       const testMessage = {
         msg: 'Test message',
         userId: 'test_user_3',
+        chatId: 'test_chat_3',
       };
 
       const response = await request(app).post('/api/chatbot').send(testMessage);
@@ -258,8 +263,8 @@ describe('chat routes', () => {
 
       // Verify the bot response was stored as empty string (no valid content received)
       const { rows } = await pool.query(
-        'SELECT * FROM chat_memory WHERE user_id = $1 AND role = $2 ORDER BY created_at',
-        ['test_user_3', 'bot'],
+        'SELECT * FROM chat_memory WHERE user_id = $1 AND chat_id = $2 AND role = $3 ORDER BY created_at',
+        ['test_user_3', 'test_chat_3', 'bot'],
       );
 
       expect(rows).toHaveLength(1);
@@ -307,6 +312,7 @@ describe('chat routes', () => {
       });
 
       const userId = 'test_user_context';
+      const chatId = 'test_chat_context';
 
       // Send multiple messages to build up context
       for (let i = 0; i < 3; i++) {
@@ -315,6 +321,7 @@ describe('chat routes', () => {
           .send({
             msg: `Test message ${i + 1}`,
             userId,
+            chatId,
           });
 
         // Should get streaming confirmation
@@ -331,6 +338,7 @@ describe('chat routes', () => {
       const finalResponse = await request(app).post('/api/chatbot').send({
         msg: 'Final test message',
         userId,
+        chatId,
       });
 
       expect(finalResponse.status).toBe(200);
@@ -344,8 +352,8 @@ describe('chat routes', () => {
 
       // Verify we have accumulated messages
       const { rows } = await pool.query(
-        'SELECT COUNT(*) as count FROM chat_memory WHERE user_id = $1',
-        [userId],
+        'SELECT COUNT(*) as count FROM chat_memory WHERE user_id = $1 AND chat_id = $2',
+        [userId, chatId],
       );
       expect(parseInt(rows[0].count)).toBe(8); // 4 user messages + 4 bot responses
     });
@@ -366,6 +374,7 @@ describe('chat routes', () => {
       const testMessage = {
         msg: 'Test message',
         userId: 'test_user_error',
+        chatId: 'test_chat_error',
       };
 
       const response = await request(app).post('/api/chatbot').send(testMessage);
@@ -380,12 +389,24 @@ describe('chat routes', () => {
 
       // First, add some messages
       await pool.query(
-        'INSERT INTO chat_memory (user_id, role, content, embedding) VALUES ($1, $2, $3, $4)',
-        [userId, 'user', 'Test message 1', `[${new Array(1024).fill(0.1).join(',')}]`],
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          'test_chat_delete',
+          userId,
+          'user',
+          'Test message 1',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
       );
       await pool.query(
-        'INSERT INTO chat_memory (user_id, role, content, embedding) VALUES ($1, $2, $3, $4)',
-        [userId, 'bot', 'Test response 1', `[${new Array(1024).fill(0.1).join(',')}]`],
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          'test_chat_delete',
+          userId,
+          'bot',
+          'Test response 1',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
       );
 
       // Verify messages exist
@@ -426,12 +447,24 @@ describe('chat routes', () => {
 
       // Add messages for both users
       await pool.query(
-        'INSERT INTO chat_memory (user_id, role, content, embedding) VALUES ($1, $2, $3, $4)',
-        [userId1, 'user', 'Keep this message', `[${new Array(1024).fill(0.1).join(',')}]`],
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          'test_chat_keep',
+          userId1,
+          'user',
+          'Keep this message',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
       );
       await pool.query(
-        'INSERT INTO chat_memory (user_id, role, content, embedding) VALUES ($1, $2, $3, $4)',
-        [userId2, 'user', 'Delete this message', `[${new Array(1024).fill(0.1).join(',')}]`],
+        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        [
+          'test_chat_delete_specific',
+          userId2,
+          'user',
+          'Delete this message',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
       );
 
       // Delete messages for userId2 only

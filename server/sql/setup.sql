@@ -14,6 +14,7 @@ DROP TABLE IF EXISTS google_calendar_tokens CASCADE;
 -- Create chat_memory table
 CREATE TABLE chat_memory (
     id SERIAL PRIMARY KEY,
+    chat_id VARCHAR(255) NOT NULL,
     user_id VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL,
     content TEXT NOT NULL,
@@ -55,6 +56,7 @@ CREATE TABLE email_memory (
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_chat_memory_user_id ON chat_memory(user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_memory_chat_id ON chat_memory(chat_id);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_created_at ON chat_memory(created_at);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_embedding ON chat_memory USING ivfflat (embedding vector_cosine_ops);
 
@@ -87,8 +89,8 @@ CREATE TABLE google_calendar_tokens (
 CREATE INDEX IF NOT EXISTS idx_google_calendar_tokens_user_id ON google_calendar_tokens(user_id);
 
 -- Insert sample test data (for development/testing)
-INSERT INTO chat_memory (user_id, role, content, embedding) VALUES
-('sample_user', 'user', 'Hello, how can I learn React?', 
+INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES
+('sample_chat_1', 'sample_user', 'user', 'Hello, how can I learn React?', 
  ('[' || array_to_string(ARRAY(SELECT 0.1 FROM generate_series(1, 1024)), ',') || ']')::vector),
-('sample_user', 'bot', 'React is a JavaScript library for building user interfaces. You can start by learning components, props, and state.', 
+('sample_chat_1', 'sample_user', 'bot', 'React is a JavaScript library for building user interfaces. You can start by learning components, props, and state.', 
  ('[' || array_to_string(ARRAY(SELECT 0.2 FROM generate_series(1, 1024)), ',') || ']')::vector);

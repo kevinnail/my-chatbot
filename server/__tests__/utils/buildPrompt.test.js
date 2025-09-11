@@ -32,18 +32,21 @@ describe('buildPrompt utilities', () => {
   describe('buildPromptWithMemory', () => {
     it('should build prompt with memory messages', async () => {
       const userId = 'test_user_prompt';
+      const chatId = 'test_chat_prompt';
       const userInput = 'How do I use React hooks?';
 
       // Store some messages
       const messages = [
-        { userId, role: 'user', content: 'What is React?' },
+        { chatId, userId, role: 'user', content: 'What is React?' },
         {
+          chatId,
           userId,
           role: 'bot',
           content: 'React is a JavaScript library for building user interfaces',
         },
-        { userId, role: 'user', content: 'How do I create components?' },
+        { chatId, userId, role: 'user', content: 'How do I create components?' },
         {
+          chatId,
           userId,
           role: 'bot',
           content: 'You can create components using function or class syntax',
@@ -55,7 +58,7 @@ describe('buildPrompt utilities', () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
-      const prompt = await buildPromptWithMemory({ userId, userInput });
+      const prompt = await buildPromptWithMemory({ chatId, userId, userInput });
 
       expect(Array.isArray(prompt)).toBe(true);
       expect(prompt.length).toBeGreaterThan(0);
@@ -73,6 +76,7 @@ describe('buildPrompt utilities', () => {
 
     it('should return empty array for user with no messages', async () => {
       const prompt = await buildPromptWithMemory({
+        chatId: 'empty_chat',
         userId: 'empty_user',
         userInput: 'test input',
       });
@@ -82,16 +86,18 @@ describe('buildPrompt utilities', () => {
 
     it('should handle users with limited message history', async () => {
       const userId = 'test_user_limited';
+      const chatId = 'test_chat_limited';
       const userInput = 'test query';
 
       // Store only one message
       await ChatMemory.storeMessage({
+        chatId,
         userId,
         role: 'user',
         content: 'Single message',
       });
 
-      const prompt = await buildPromptWithMemory({ userId, userInput });
+      const prompt = await buildPromptWithMemory({ chatId, userId, userInput });
 
       expect(prompt).toHaveLength(1);
       expect(prompt[0]).toEqual({
@@ -104,12 +110,13 @@ describe('buildPrompt utilities', () => {
   describe('buildPromptWithMemoryAndTime', () => {
     it('should build prompt with memory messages and time context', async () => {
       const userId = 'test_user_time';
+      const chatId = 'test_chat_time';
       const userInput = 'How do I use React hooks?';
 
       // Store some messages
       const messages = [
-        { userId, role: 'user', content: 'What is React?' },
-        { userId, role: 'bot', content: 'React is a JavaScript library' },
+        { chatId, userId, role: 'user', content: 'What is React?' },
+        { chatId, userId, role: 'bot', content: 'React is a JavaScript library' },
       ];
 
       for (const message of messages) {
@@ -117,7 +124,7 @@ describe('buildPrompt utilities', () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
-      const prompt = await buildPromptWithMemoryAndTime({ userId, userInput });
+      const prompt = await buildPromptWithMemoryAndTime({ chatId, userId, userInput });
 
       expect(Array.isArray(prompt)).toBe(true);
       expect(prompt.length).toBeGreaterThan(0);
@@ -135,16 +142,18 @@ describe('buildPrompt utilities', () => {
 
     it('should format time context correctly for recent messages', async () => {
       const userId = 'test_user_recent_time';
+      const chatId = 'test_chat_recent_time';
       const userInput = 'test query';
 
       // Store a message
       await ChatMemory.storeMessage({
+        chatId,
         userId,
         role: 'user',
         content: 'Recent message',
       });
 
-      const prompt = await buildPromptWithMemoryAndTime({ userId, userInput });
+      const prompt = await buildPromptWithMemoryAndTime({ chatId, userId, userInput });
 
       expect(prompt).toHaveLength(1);
       expect(prompt[0].content).toMatch('[0m ago] Recent message');
@@ -152,6 +161,7 @@ describe('buildPrompt utilities', () => {
 
     it('should return empty array for user with no messages', async () => {
       const prompt = await buildPromptWithMemoryAndTime({
+        chatId: 'empty_chat',
         userId: 'empty_user',
         userInput: 'test input',
       });
@@ -163,13 +173,14 @@ describe('buildPrompt utilities', () => {
   describe('integration with ChatMemory', () => {
     it('should respect hybrid message limits', async () => {
       const userId = 'test_user_integration';
+      const chatId = 'test_chat_integration';
       const userInput = 'React hooks question';
 
       // Store many messages to test limits
       const messages = [];
       for (let i = 0; i < 10; i++) {
-        messages.push({ userId, role: 'user', content: `Message ${i}` });
-        messages.push({ userId, role: 'bot', content: `Response ${i}` });
+        messages.push({ chatId, userId, role: 'user', content: `Message ${i}` });
+        messages.push({ chatId, userId, role: 'bot', content: `Response ${i}` });
       }
 
       for (const message of messages) {
@@ -177,7 +188,7 @@ describe('buildPrompt utilities', () => {
         await new Promise((resolve) => setTimeout(resolve, 5));
       }
 
-      const prompt = await buildPromptWithMemory({ userId, userInput });
+      const prompt = await buildPromptWithMemory({ chatId, userId, userInput });
 
       // Should not exceed the combined limits from getHybridMessages
       // (relevantLimit: 3, recentLimit: 5, but deduplicated)
@@ -187,14 +198,15 @@ describe('buildPrompt utilities', () => {
 
     it('should maintain chronological order from ChatMemory', async () => {
       const userId = 'test_user_chronological';
+      const chatId = 'test_chat_chronological';
       const userInput = 'test query';
 
       // Store messages with known order
       const messages = [
-        { userId, role: 'user', content: 'First message' },
-        { userId, role: 'bot', content: 'First response' },
-        { userId, role: 'user', content: 'Second message' },
-        { userId, role: 'bot', content: 'Second response' },
+        { chatId, userId, role: 'user', content: 'First message' },
+        { chatId, userId, role: 'bot', content: 'First response' },
+        { chatId, userId, role: 'user', content: 'Second message' },
+        { chatId, userId, role: 'bot', content: 'Second response' },
       ];
 
       for (const message of messages) {
@@ -202,7 +214,7 @@ describe('buildPrompt utilities', () => {
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
 
-      const prompt = await buildPromptWithMemory({ userId, userInput });
+      const prompt = await buildPromptWithMemory({ chatId, userId, userInput });
 
       // Should maintain chronological order
       expect(prompt[0].content).toBe('First message');
