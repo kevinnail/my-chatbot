@@ -14,8 +14,47 @@ const ChatList = ({ userId }) => {
   }, [userId]);
 
   const fetchChatList = async () => {
+    setLoading(true);
+
+    // Check if running locally or on netlify FIRST - no API calls in demo mode
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+
+    // If not local, return demo data immediately - no API calls
+    if (!isLocal) {
+      console.log('DEMO MODE: Returning fake data, should NOT fetch');
+      // Fake chat list for netlify deploy
+      const fakeChats = [
+        {
+          id: 'demo_chat_1',
+          chatId: 'demo_chat_1',
+          preview: 'How do I implement authentication in React?',
+          lastMessage: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+          messageCount: 4,
+        },
+        {
+          id: 'demo_chat_2',
+          chatId: 'demo_chat_2',
+          preview: 'Best practices for API error handling',
+          lastMessage: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+          messageCount: 6,
+        },
+        {
+          id: 'demo_chat_3',
+          chatId: 'demo_chat_3',
+          preview: 'Database optimization strategies',
+          lastMessage: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
+          messageCount: 8,
+        },
+      ];
+      setChats(fakeChats);
+      setLoading(false);
+      return; // Exit early - no API calls in demo mode
+    }
+
+    // Only make API calls when running locally
+    console.log('LOCAL MODE: Making API call - this should NOT happen on Netlify');
     try {
-      setLoading(true);
       const response = await fetch(`/api/chatbot/list/${userId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch chat list');
@@ -41,6 +80,15 @@ const ChatList = ({ userId }) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this chat?')) {
       try {
+        // Check if running locally or on netlify
+        const isLocal =
+          window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (!isLocal) {
+          // Fake deletion for netlify deploy
+          setChats((prevChats) => prevChats.filter((chat) => chat.chatId !== chatId));
+          return;
+        }
+
         const response = await fetch(`/api/chatbot/${userId}/${chatId}`, {
           method: 'DELETE',
         });
