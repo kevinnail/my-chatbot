@@ -398,7 +398,6 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
   const userPrompt = `Analyze this email:\nSubject: ${subject}\nBody: ${body}\nFrom: ${from}`;
 
   const mcpTools = await getToolsFromMcpServer();
-  console.log('Raw MCP tools:', JSON.stringify(mcpTools, null, 2));
 
   const tools = mcpTools.map((tool) => ({
     type: 'function',
