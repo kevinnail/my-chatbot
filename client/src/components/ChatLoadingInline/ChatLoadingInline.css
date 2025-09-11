@@ -1,0 +1,206 @@
+.chat-loading-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.3) 0%,
+    rgba(30, 41, 59, 0.3) 50%,
+    rgba(15, 23, 42, 0.3) 100%
+  );
+  border-radius: 8px;
+  margin: 1rem 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  position: relative;
+}
+
+.chat-loading-spinner {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+.spinner-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 2s linear infinite;
+}
+
+.spinner-ring:nth-child(1) {
+  border-top-color: #639cff;
+  animation-delay: 0s;
+}
+
+.spinner-ring:nth-child(2) {
+  border-right-color: #4f62cb;
+  animation-delay: -0.5s;
+  width: 45px;
+  height: 45px;
+  top: 7.5px;
+  left: 7.5px;
+}
+
+.spinner-ring:nth-child(3) {
+  border-bottom-color: #1f64a7;
+  animation-delay: -1s;
+  width: 30px;
+  height: 30px;
+  top: 15px;
+  left: 15px;
+}
+
+.chat-loading-text {
+  color: #e2e8f0;
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.dot {
+  animation: dotPulse 1.5s ease-in-out infinite;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.dot:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+.chat-loading-particles {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #639cff;
+  border-radius: 50%;
+  animation: particleFloat 3s ease-in-out infinite;
+}
+
+.particle:nth-child(1) {
+  top: 20%;
+  left: 20%;
+  animation-delay: 0s;
+}
+
+.particle:nth-child(2) {
+  top: 30%;
+  right: 20%;
+  animation-delay: 0.5s;
+}
+
+.particle:nth-child(3) {
+  bottom: 30%;
+  left: 30%;
+  animation-delay: 1s;
+}
+
+.particle:nth-child(4) {
+  bottom: 20%;
+  right: 30%;
+  animation-delay: 1.5s;
+}
+
+.particle:nth-child(5) {
+  top: 50%;
+  left: 50%;
+  animation-delay: 2s;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dotPulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes particleFloat {
+  0%,
+  100% {
+    transform: translateY(0px) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(-15px) scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chat-loading-inline {
+    min-height: 200px;
+  }
+
+  .chat-loading-spinner {
+    width: 45px;
+    height: 45px;
+  }
+
+  .spinner-ring:nth-child(2) {
+    width: 35px;
+    height: 35px;
+    top: 5px;
+    left: 5px;
+  }
+
+  .spinner-ring:nth-child(3) {
+    width: 25px;
+    height: 25px;
+    top: 10px;
+    left: 10px;
+  }
+
+  .chat-loading-text {
+    font-size: 0.9rem;
+  }
+
+  .chat-loading-particles {
+    width: 120px;
+    height: 120px;
+  }
+}
