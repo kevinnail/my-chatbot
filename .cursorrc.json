@@ -23,6 +23,24 @@
           ]
         }
       ]
+    },
+    {
+      "id": "no-new-package-installs-without-asking",
+      "description": "Do not install new packages without asking",
+      "match": ".*",
+      "actions": [
+        {
+          "type": "filterPhrases",
+          "phrases": [
+            "install",
+            "new package",
+            "new dependency",
+            "new library",
+            "new tool",
+            "new framework"
+          ]
+        }
+      ]
     }
   ]
 }

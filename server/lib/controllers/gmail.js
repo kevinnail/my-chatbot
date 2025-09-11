@@ -62,8 +62,6 @@ router.get('/callback', async (req, res) => {
 router.post('/sync', async (req, res) => {
   try {
     const { userId } = req.body;
-    // eslint-disable-next-line no-console
-    console.log('Starting persistent vector-powered email sync...');
 
     // Get last sync time for tracking purposes
     const lastSync = await GmailSync.getLastSyncTime(userId);
@@ -86,7 +84,7 @@ router.post('/sync', async (req, res) => {
     // eslint-disable-next-line no-console
     console.log(`Found ${rawEmails.length} raw emails`);
 
-    // Step 1: Filter out emails already in database and calculate similarity for new ones
+    //^ Step 1: Filter out emails already in database and calculate similarity for new ones
     const newEmails = [];
     for (const email of rawEmails) {
       const exists = await EmailMemory.emailExists(userId, email.id);
@@ -148,7 +146,7 @@ router.post('/sync', async (req, res) => {
       }
     }
 
-    // Step 2: Get preliminary results - include emails that will be analyzed
+    //^ Step 2: Get preliminary results - include emails that will be analyzed
     const allStoredEmails = await EmailMemory.getWebDevEmails({
       userId,
       limit: 51,
@@ -209,7 +207,7 @@ router.post('/sync', async (req, res) => {
     // eslint-disable-next-line no-console
     console.log(`Returning ${preliminaryEmails.length} preliminary emails`);
 
-    // Step 3: Return preliminary results immediately
+    //^ Step 3: Return preliminary results immediately
     res.json({
       emails: preliminaryEmails,
       performance: {
@@ -225,7 +223,7 @@ router.post('/sync', async (req, res) => {
       analysisInProgress: true,
     });
 
-    // Step 4: Start background analysis (don't wait for it)
+    //^ Step 4: Start background analysis (don't wait for it)
     setImmediate(async () => {
       try {
         // Analyze all emails shown to user that need analysis
@@ -242,7 +240,7 @@ router.post('/sync', async (req, res) => {
           try {
             // eslint-disable-next-line no-console
             console.log(
-              `🧠 Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.vectorSimilarity})`,
+              `Analyzing: "${email.subject.substring(0, 50)}..." (similarity: ${email.vectorSimilarity})`,
             );
 
             // Emit "currently analyzing" event
@@ -280,7 +278,7 @@ router.post('/sync', async (req, res) => {
             };
 
             // eslint-disable-next-line no-console
-            console.log('🔍 Emitting email-analyzed event:', {
+            console.log('Emitting email-analyzed event:', {
               emailId: email.id,
               analysisExists: !!analysis,
               analysisSummary: analysis?.summary?.substring(0, 50),

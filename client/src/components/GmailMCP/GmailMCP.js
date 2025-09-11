@@ -98,7 +98,6 @@ const GmailMCP = ({ userId }) => {
       setCalendarConnected(true);
       return;
     }
-    console.log('still running checkCalendarConnection');
     try {
       const response = await fetch(`/api/calendar/status/${userId}`);
       const data = await response.json();
@@ -130,28 +129,29 @@ const GmailMCP = ({ userId }) => {
     });
 
     socket.on('sync-progress', (data) => {
-      console.log('📊 Sync progress:', data);
+      console.log(' Sync progress:', data);
       setAnalysisProgress(data);
     });
 
     socket.on('email-analyzed', (data) => {
-      console.log('📧 Email analyzed:', data.emailId);
+      console.log(' Email analyzed:', data.emailId);
       setEmails((prevEmails) => {
-        const updatedEmails = prevEmails.map((email) =>
-          email.id === data.emailId
-            ? {
-                ...email,
-                analysis: data.analysis,
-                status: 'analyzed',
-                analyzed: true,
-                summary: data.analysis?.summary || 'Analysis complete',
-                category: data.analysis?.category,
-                priority: data.analysis?.priority,
-              }
-            : email,
-        );
+        const updatedEmails = prevEmails.map((email) => {
+          if (email.id === data.emailId) {
+            return {
+              ...email,
+              analysis: data.analysis,
+              status: 'analyzed',
+              analyzed: true,
+              summary: data.analysis?.summary || 'Analysis complete',
+              category: data.analysis?.category,
+              priority: data.analysis?.priority,
+            };
+          }
+          return email;
+        });
 
-        console.log('📧 Updated emails after mapping:');
+        console.log(' Updated emails after mapping:');
         updatedEmails.forEach((e, i) => {
           if (e.analysis) {
             console.log(
@@ -174,7 +174,7 @@ const GmailMCP = ({ userId }) => {
     });
 
     socket.on('email-analyzing', (data) => {
-      console.log('🔍 Email being analyzed:', data.emailId);
+      console.log('Email being analyzed:', data.emailId);
       setCurrentlyAnalyzing({
         emailId: data.emailId,
         subject: data.subject,
@@ -277,6 +277,7 @@ const GmailMCP = ({ userId }) => {
         }
       }
     } catch (err) {
+      console.error('Error checking connection:', err);
       setError('Failed to check connection');
       setConnectionError('Network error - make sure server is running');
       setIsConnected(false);
@@ -366,7 +367,7 @@ const GmailMCP = ({ userId }) => {
 
       // Set preliminary emails immediately
       if (data.emails) {
-        console.log(`📧 Setting ${data.emails.length} preliminary emails`);
+        console.log(`Setting ${data.emails.length} preliminary emails`);
         setEmails(data.emails);
         setAnalysisProgress({
           analyzed: data.emails.filter((e) => e.analyzed).length,
@@ -487,7 +488,7 @@ const GmailMCP = ({ userId }) => {
                 <div className="connection-error">
                   <strong>Connection Issue:</strong> {connectionError}
                   <br />
-                  <small>Make sure you've completed the setup steps above.</small>
+                  <small>Make sure you&apos;ve completed the setup steps above.</small>
                 </div>
               )}
             </div>
@@ -531,9 +532,11 @@ const GmailMCP = ({ userId }) => {
             {analysisInProgress && (
               <div className="analysis-progress">
                 <div className="progress-header">
-                  <span>Analyzing emails...</span>
                   <span>
-                    {analysisProgress.analyzed}/{analysisProgress.total}
+                    Analyzing emails<span className="elipsis"></span>
+                  </span>
+                  <span style={{ fontWeight: '500', fontSize: '.8rem' }}>
+                    ( #{analysisProgress.analyzed} out of {analysisProgress.total} )
                   </span>
                 </div>
                 <div className="progress-bar">
@@ -550,7 +553,9 @@ const GmailMCP = ({ userId }) => {
                 </div>
                 {currentlyAnalyzing && (
                   <div className="currently-analyzing">
-                    <small>🔍 Analyzing: "{currentlyAnalyzing.subject?.substring(0, 50)}..."</small>
+                    <small>
+                      🔍 Analyzing: &quot;{currentlyAnalyzing.subject?.substring(0, 50)}...&quot;
+                    </small>
                   </div>
                 )}
                 {syncStartTime && (
@@ -628,7 +633,7 @@ const GmailMCP = ({ userId }) => {
                       <div style={{ flex: 1 }}>
                         <div className="email-header-compact">
                           <h4 style={{ margin: '0 0 5px 0', color: '#639cff' }}>
-                            subject: "{email.subject}"
+                            subject: &quot;{email.subject}&quot;
                           </h4>
                           <div
                             className="email-meta-compact"
@@ -713,8 +718,14 @@ const GmailMCP = ({ userId }) => {
                       </div>
                       <div>
                         {' '}
-                        {email.analysis?.calendarEvents &&
-                          email.analysis.calendarEvents.length > 0 && (
+                        {(() => {
+                          if (
+                            !email.analysis?.calendarEvents ||
+                            email.analysis.calendarEvents.length === 0
+                          ) {
+                            return null;
+                          }
+                          return (
                             <div className="calendar-events">
                               <h5>Calendar Events Created:</h5>
                               {email.analysis.calendarEvents.map((event, idx) => (
@@ -725,6 +736,17 @@ const GmailMCP = ({ userId }) => {
                                   {new Date(event.startTime).toLocaleTimeString()} -{' '}
                                   {new Date(event.endTime).toLocaleDateString()}{' '}
                                   {new Date(event.endTime).toLocaleTimeString()}
+                                  <br />
+                                  {/* <div class="event-link-wrapper"> */}
+                                  <a
+                                    className="event-link"
+                                    href={event.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    Event Link
+                                  </a>
+                                  {/* </div> */}
                                   {event.location && (
                                     <>
                                       <br />
@@ -734,7 +756,8 @@ const GmailMCP = ({ userId }) => {
                                 </div>
                               ))}
                             </div>
-                          )}
+                          );
+                        })()}
                         {email.analysis?.draftResponse && (
                           <div className="draft-response">
                             <h5>Draft Response:</h5>

@@ -1,11 +1,10 @@
 import { google } from 'googleapis';
 import GoogleCalendar from '../models/GoogleCalendar.js';
 
-// Helper function to create calendar event
-async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
-  // eslint-disable-next-line no-console
-  console.log('🗓️ Raw event args received:', eventArgs);
+const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
 
+// Helper function to create calendar event
+export async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
   // Clean and validate event arguments
   try {
     // Parse eventArgs if it's a string
@@ -24,7 +23,7 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
     if (cleanArgs.attendees) {
       // eslint-disable-next-line no-console
       console.log(
-        '🔧 Processing attendees:',
+        ' Processing attendees:',
         cleanArgs.attendees,
         'Type:',
         typeof cleanArgs.attendees,
@@ -35,7 +34,7 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
         try {
           const parsed = JSON.parse(cleanArgs.attendees);
           // eslint-disable-next-line no-console
-          console.log('🔧 Parsed attendees JSON:', parsed, 'Is array:', Array.isArray(parsed));
+          console.log(' Parsed attendees JSON:', parsed, 'Is array:', Array.isArray(parsed));
           if (Array.isArray(parsed)) {
             attendees = parsed;
           } else {
@@ -43,7 +42,7 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
           }
         } catch (parseError) {
           // eslint-disable-next-line no-console
-          console.log('🔧 Failed to parse attendees as JSON:', parseError.message);
+          console.log(' Failed to parse attendees as JSON:', parseError.message);
           // If not JSON, split by comma or treat as single email
           attendees = cleanArgs.attendees.includes(',')
             ? cleanArgs.attendees.split(',').map((email) => email.trim())
@@ -59,7 +58,7 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
         .map((email) => email.trim());
 
       // eslint-disable-next-line no-console
-      console.log('🔧 Final attendees array:', attendees);
+      console.log(' Final attendees array:', attendees);
     }
 
     // Validate and fix dates
@@ -76,7 +75,7 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
         startDate.setFullYear(currentYear + 1);
         startDateTime = startDate.toISOString();
         // eslint-disable-next-line no-console
-        console.log('🔧 Fixed start date to next year:', startDateTime);
+        console.log(' Fixed start date to next year:', startDateTime);
       }
     }
 
@@ -87,7 +86,7 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
         const end = new Date(start.getTime() + 60 * 60 * 1000); // Add 1 hour
         endDateTime = end.toISOString();
         // eslint-disable-next-line no-console
-        console.log('🔧 Generated end date (1 hour after start):', endDateTime);
+        console.log(' Generated end date (1 hour after start):', endDateTime);
       } else {
         console.error('❌ Cannot create event without valid start/end times');
         return;
@@ -173,6 +172,191 @@ async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
   }
 }
 
+async function getMcpSessionId() {
+  try {
+    const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-03-26',
+          capabilities: {},
+          clientInfo: {
+            name: 'thunderclient-test',
+            version: '1.0.0',
+          },
+        },
+        id: 1,
+      }),
+    });
+
+    return response.headers.get('mcp-session-id');
+  } catch (error) {
+    console.error('Failed to get MCP session ID:', error);
+    return null;
+  }
+}
+
+// Helper function to extract data from SSE chunks
+function extractFromSSEChunk(chunk, extractFn) {
+  const lines = chunk.split('\n');
+  for (const line of lines) {
+    if (line.startsWith('data:')) {
+      const jsonStr = line.slice(5).trim();
+      if (jsonStr === '[DONE]') {
+        return { done: true };
+      }
+      if (jsonStr) {
+        try {
+          const event = JSON.parse(jsonStr);
+          const result = extractFn(event);
+          if (result !== null) {
+            return { data: result };
+          }
+        } catch (err) {
+          console.error('Bad JSON in SSE chunk:', err, jsonStr);
+        }
+      }
+    }
+  }
+  return null;
+}
+
+async function getToolsFromMcpServer() {
+  try {
+    const sessionId = await getMcpSessionId();
+
+    const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        'Mcp-Session-Id': sessionId,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 1,
+      }),
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let tools = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+
+      for (const part of parts) {
+        const result = extractFromSSEChunk(part, (event) => {
+          if (event.result?.tools) {
+            return event.result.tools;
+          }
+          console.info('Other event:', event);
+          return null;
+        });
+
+        if (result?.done) {
+          return tools;
+        }
+        if (result?.data) {
+          tools = result.data;
+        }
+      }
+    }
+    return tools;
+  } catch (error) {
+    console.error('Failed to get tools from MCP server:', error);
+    return [];
+  }
+}
+
+async function executeToolViaMcp(toolCall, userId) {
+  try {
+    const sessionId = await getMcpSessionId();
+
+    const args =
+      typeof toolCall.function.arguments === 'string'
+        ? JSON.parse(toolCall.function.arguments)
+        : toolCall.function.arguments;
+
+    args.userId = userId;
+
+    const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+
+        'Mcp-Session-Id': sessionId,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: {
+          name: toolCall.function.name,
+          arguments: args,
+        },
+        id: 2,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // Handle streaming response
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+
+      for (const part of parts) {
+        const chunkResult = extractFromSSEChunk(part, (event) => {
+          if (event.result) {
+            return event.result;
+          }
+          return null;
+        });
+
+        if (chunkResult?.done) {
+          return result;
+        }
+        if (chunkResult?.data) {
+          result = chunkResult.data;
+        }
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('MCP tool execution failed:', error);
+    return null;
+  }
+}
+
 // Email analysis with Ollama
 export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   const currentYear = new Date().getFullYear();
@@ -193,7 +377,7 @@ CALENDAR EVENTS: Only create calendar events for emails with:
 2. Specific date AND time mentioned (not copyright dates)
 3. Actual scheduling context (not newsletters/job listings)
 
-NEVER create events for: job newsletters, marketing emails, general announcements.
+NEVER create events for: job newsletters, marketing emails, general announcements, or notifications.
 
 When creating calendar events, use current year ${currentYear}. If a date appears to be in the past, assume next year.
 
@@ -203,47 +387,16 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
 
   const userPrompt = `Analyze this email:\nSubject: ${subject}\nBody: ${body}\nFrom: ${from}`;
 
-  const tools = [
-    {
-      type: 'function',
-      function: {
-        name: 'create_calendar_event',
-        description:
-          'Create a calendar event for appointments, meetings, interviews, or other scheduled events',
-        parameters: {
-          type: 'object',
-          properties: {
-            title: {
-              type: 'string',
-              description: 'The title/summary of the event',
-            },
-            description: {
-              type: 'string',
-              description: 'Detailed description of the event',
-            },
-            startDateTime: {
-              type: 'string',
-              description: 'Start date and time in ISO format (e.g., 2024-01-15T10:00:00)',
-            },
-            endDateTime: {
-              type: 'string',
-              description: 'End date and time in ISO format (e.g., 2024-01-15T11:00:00)',
-            },
-            location: {
-              type: 'string',
-              description: 'Location of the event (optional)',
-            },
-            attendees: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'List of attendee email addresses',
-            },
-          },
-          required: ['title', 'startDateTime', 'endDateTime'],
-        },
-      },
+  const mcpTools = await getToolsFromMcpServer();
+
+  const tools = mcpTools.map((tool) => ({
+    type: 'function',
+    function: {
+      name: tool.name,
+      description: tool.description || tool.title || 'No description',
+      parameters: tool.inputSchema || {},
     },
-  ];
+  }));
 
   // Client-side timeout
   const controller = new AbortController();
@@ -268,7 +421,6 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-
     clearTimeout(clientTimeout);
 
     if (!response.ok) {
@@ -278,27 +430,21 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
 
     const data = await response.json();
 
-    // eslint-disable-next-line no-console
-    console.log('🔍 Raw Ollama response:', JSON.stringify(data, null, 2));
-
     let raw =
       data.message && typeof data.message.content === 'string'
         ? data.message.content.trim()
         : JSON.stringify(data);
+
     const toolsCalled = data.message?.tool_calls || [];
-    // console.log('🔍 Extracted content:', raw);
-    // eslint-disable-next-line no-console
-    console.log('🔍 Tool calls found:', toolsCalled);
-    // eslint-disable-next-line no-console
-    console.log('userId', userId);
 
     // Track calendar events created
     const calendarEvents = [];
 
     // If we have tool calls but empty content, generate a contextual analysis
     if (toolsCalled.length > 0 && (!raw || raw === '')) {
+      // ! THIS FIRES WHETHER OR NOT A CALENDAR EVENT WAS CREATED
       // eslint-disable-next-line no-console
-      console.log('🔧 Empty content with tool calls detected, generating contextual analysis');
+      console.log(' Empty content with tool calls detected, generating contextual analysis');
 
       // Determine category based on email content
       const emailContent = `${subject} ${body} ${from}`.toLowerCase();
@@ -370,13 +516,13 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
         // eslint-disable-next-line no-console
         console.log('🚫 BLOCKED: Preventing calendar event creation for job newsletter');
         // eslint-disable-next-line no-console
-        console.log('📧 Email subject:', subject);
+        console.log(' Email subject:', subject);
         // eslint-disable-next-line no-console
-        console.log('📧 Email from:', from);
+        console.log(' Email from:', from);
       } else {
         for (const call of toolsCalled) {
           // eslint-disable-next-line no-console
-          console.log('🔍 Individual tool call:', JSON.stringify(call, null, 2));
+          console.log(' Individual tool call:', JSON.stringify(call, null, 2));
           try {
             if (call.function && call.function.name === 'create_calendar_event') {
               let args = call.function.arguments;
@@ -391,21 +537,21 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
                 }
               }
 
-              // eslint-disable-next-line no-console
-              console.log('🗓️ Creating calendar event with args:', args);
-              const eventResult = await createCalendarEvent(userId, args, subject, from);
+              const mcpResult = await executeToolViaMcp(call, userId);
 
               // Capture calendar event data if creation was successful
-              if (eventResult && eventResult.htmlLink) {
-                calendarEvents.push({
-                  title: eventResult.summary || args.title,
-                  link: eventResult.htmlLink,
-                  startTime: eventResult.start?.dateTime || args.startDateTime,
-                  endTime: eventResult.end?.dateTime || args.endDateTime,
-                  location: eventResult.location || args.location,
-                });
-                // eslint-disable-next-line no-console
-                console.log('✅ Calendar event captured:', eventResult.htmlLink);
+              if (mcpResult && mcpResult.content) {
+                const content = mcpResult.content[0];
+                if (content.eventLink) {
+                  calendarEvents.push({
+                    title: content.calendarEvent,
+                    link: content.eventLink,
+                    startTime: args.startDateTime,
+                    endTime: args.endDateTime,
+                    location: args.location,
+                  });
+                  console.info('✅ Calendar event captured via MCP:', content.eventLink);
+                }
               }
             } else {
               // eslint-disable-next-line no-console
@@ -445,17 +591,16 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
         if (functionCallMatch) {
           const escapedJson = functionCallMatch[1];
           const unescapedJson = escapedJson.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-          // eslint-disable-next-line no-console
-          console.log('🔧 Extracted JSON from function call:', unescapedJson);
+
           return JSON.parse(unescapedJson);
         }
       } catch (parseError) {
-        console.error('🔧 Failed to parse embedded JSON:', parseError);
+        console.error(' Failed to parse embedded JSON:', parseError);
       }
 
       // If all JSON parsing fails, return fallback
       // eslint-disable-next-line no-console
-      console.warn('🔧 Falling back to default analysis structure');
+      console.warn(' Falling back to default analysis structure');
       const fallback = {
         summary: raw.slice(0, 150),
         actionItems: [],

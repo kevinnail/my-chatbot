@@ -383,7 +383,9 @@
 
 .progress-header {
   display: flex;
-  justify-content: space-between;
+  /* justify-content: space-between; */
+  justify-content: flex-start;
+  gap: 10px;
   align-items: center;
   margin-bottom: 10px;
   color: #ddd;
@@ -505,6 +507,7 @@
   display: flex;
   flex-direction: column;
   margin-top: 6px;
+  padding-bottom: 100px;
 }
 
 /* Email Cards */
@@ -856,6 +859,60 @@
 .draft-response-button:hover {
   background: #ff9922;
 }
+
+.event-link {
+  text-align: center;
+  padding: 6px 12px;
+  background: #4285f4;
+  color: #fff;
+  text-decoration: none;
+  display: block;
+  width: 75%;
+  margin: 0.5rem auto 0 auto;
+  border-radius: 15px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-align: center;
+  transition: all 0s ease;
+  font-weight: 100;
+}
+
+.event-link:hover {
+  background: #2f00ff;
+  color: #00ff88;
+  font-weight: bold;
+}
+
+.elipsis::after {
+  content: '.';
+  animation: ellipsis 4.5s infinite;
+  display: inline-block;
+  width: 15px;
+}
+
+@keyframes ellipsis {
+  0% {
+    content: ' ';
+  }
+  20% {
+    content: '.';
+  }
+  40% {
+    content: '..';
+  }
+  60% {
+    content: '...';
+  }
+  80% {
+    content: '....';
+  }
+  100% {
+    content: '.....';
+  }
+}
+
+/* ^  Responsive start ==================================================================== */
 
 @media (max-width: 768px) {
   .gmail-mcp {

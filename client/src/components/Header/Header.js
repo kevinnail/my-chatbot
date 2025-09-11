@@ -24,7 +24,6 @@ const Header = ({ userId }) => {
       return;
     }
     setIsChat(false);
-    console.log('closing');
     setMobileMenuOpen(false);
   };
 
