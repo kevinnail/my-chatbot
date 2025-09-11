@@ -1,7 +1,7 @@
 import React from 'react';
 import './ChatLoadingInline.css';
 
-const ChatLoadingInline = () => {
+const ChatLoadingInline = ({ props }) => {
   return (
     <div className="chat-loading-inline">
       <div className="chat-loading-content">
@@ -12,7 +12,7 @@ const ChatLoadingInline = () => {
         </div>
         <div className="chat-loading-text">
           <span className="loading-dots">
-            <span>Loading chats</span>
+            <span>Loading {props}</span>
             <span className="dot">.</span>
             <span className="dot">.</span>
             <span className="dot">.</span>
