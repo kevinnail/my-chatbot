@@ -277,6 +277,7 @@ const GmailMCP = ({ userId }) => {
         }
       }
     } catch (err) {
+      console.error('Error checking connection:', err);
       setError('Failed to check connection');
       setConnectionError('Network error - make sure server is running');
       setIsConnected(false);
@@ -487,7 +488,7 @@ const GmailMCP = ({ userId }) => {
                 <div className="connection-error">
                   <strong>Connection Issue:</strong> {connectionError}
                   <br />
-                  <small>Make sure you've completed the setup steps above.</small>
+                  <small>Make sure you&apos;ve completed the setup steps above.</small>
                 </div>
               )}
             </div>
@@ -550,7 +551,9 @@ const GmailMCP = ({ userId }) => {
                 </div>
                 {currentlyAnalyzing && (
                   <div className="currently-analyzing">
-                    <small>🔍 Analyzing: "{currentlyAnalyzing.subject?.substring(0, 50)}..."</small>
+                    <small>
+                      🔍 Analyzing: &quot;{currentlyAnalyzing.subject?.substring(0, 50)}...&quot;
+                    </small>
                   </div>
                 )}
                 {syncStartTime && (
@@ -628,7 +631,7 @@ const GmailMCP = ({ userId }) => {
                       <div style={{ flex: 1 }}>
                         <div className="email-header-compact">
                           <h4 style={{ margin: '0 0 5px 0', color: '#639cff' }}>
-                            subject: "{email.subject}"
+                            subject: &quot;{email.subject}&quot;
                           </h4>
                           <div
                             className="email-meta-compact"
