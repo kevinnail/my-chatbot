@@ -11,7 +11,6 @@ import { useLoading } from '../../contexts/LoadingContext.js';
 const Chat = ({ userId }) => {
   const navigate = useNavigate();
   const { chatId: urlChatId } = useParams();
-  const isExistingChat = useMatch('/chat/:chatId');
   const isNewChatPage = useMatch('/chat');
   const {
     input,
