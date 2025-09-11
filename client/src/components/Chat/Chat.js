@@ -176,7 +176,7 @@ const Chat = ({ userId }) => {
             alignItems: 'center',
           }}
         >
-          {isExistingChat && (
+          {
             <button
               onClick={() => navigate('/')}
               className="back-to-chats-button"
@@ -203,7 +203,7 @@ const Chat = ({ userId }) => {
             >
               ← Back to Chats
             </button>
-          )}
+          }
           <span className="chat-header-title">
             {coachOrChat === 'chat' ? 'Code Assistant' : 'Career Coach'}
           </span>
