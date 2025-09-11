@@ -54,6 +54,12 @@ const Chat = ({ userId }) => {
           setInitialChatLoad(true);
 
           // Check if running locally or on netlify
+          console.log(
+            'Chat.js - window.isLocal:',
+            window.isLocal,
+            'hostname:',
+            window.location.hostname,
+          );
           if (!window.isLocal) {
             // Fake messages for netlify deploy
             const fakeMessages = [
