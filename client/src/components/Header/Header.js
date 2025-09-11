@@ -18,6 +18,8 @@ const Header = ({ userId }) => {
     setIsChat(true);
   };
 
+  const isChatPage = location.pathname === '/' || location.pathname.startsWith('/chat');
+
   const handleGmailMCP = (e) => {
     if (isAnyLoading) {
       e.preventDefault();
@@ -67,7 +69,7 @@ const Header = ({ userId }) => {
           <img width="28px" style={{ borderRadius: '25%' }} alt="logo" src="./logo.png" />
         </span>
         <span className="header-title-text">
-          {`${isChat ? 'My Code & Job Search Assistant' : 'Gmail and Google Calendar Assistant'}`}
+          {`${isChatPage ? 'My Code & Job Search Assistant' : 'Gmail and Google Calendar Assistant'}`}
         </span>
       </div>
 
@@ -76,14 +78,14 @@ const Header = ({ userId }) => {
         <Link
           to="/"
           style={{
-            color: isAnyLoading ? '#666' : location.pathname === '/' ? '#639cff' : 'white',
+            color: isAnyLoading ? '#666' : isChatPage ? '#639cff' : 'white',
             textDecoration: 'none',
             fontSize: '1rem',
             fontWeight: 'normal',
             padding: '0.5rem 1rem',
             borderRadius: '20px',
             transition: 'all 0.3s ease',
-            border: location.pathname === '/' ? '2px solid #639cff' : '2px solid transparent',
+            border: isChatPage ? '2px solid #639cff' : '2px solid transparent',
             pointerEvents: isAnyLoading ? 'none' : 'auto',
             opacity: isAnyLoading ? 0.5 : 1,
           }}
@@ -113,7 +115,7 @@ const Header = ({ userId }) => {
       </nav>
 
       {/* Desktop Delete Button */}
-      <div className={`desktop-delete-button ${!isChat ? 'hidden' : ''}`}>
+      <div className={`desktop-delete-button ${!isChatPage ? 'hidden' : ''}`}>
         <DeleteMessagesButton
           userId={userId}
           loading={isAnyLoading}
@@ -131,7 +133,7 @@ const Header = ({ userId }) => {
         <div className="mobile-dropdown">
           <Link
             to="/"
-            className={`mobile-nav-link ${location.pathname === '/' ? 'active' : ''} ${isAnyLoading ? 'disabled' : ''}`}
+            className={`mobile-nav-link ${isChatPage ? 'active' : ''} ${isAnyLoading ? 'disabled' : ''}`}
             onClick={handleChatMobile}
           >
             Chat
@@ -143,7 +145,7 @@ const Header = ({ userId }) => {
           >
             Gmail MCP
           </Link>
-          {isChat && (
+          {isChatPage && (
             <div className="mobile-delete-section">
               <DeleteMessagesButton
                 userId={userId}
