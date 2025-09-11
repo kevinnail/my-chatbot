@@ -69,7 +69,12 @@ const Header = ({ userId }) => {
         }}
       >
         <span style={{ fontSize: '1.05rem', userSelect: 'none' }}>
-          <img width="28px" style={{ borderRadius: '25%' }} alt="logo" src="./logo.png" />
+          <img
+            width="28px"
+            style={{ borderRadius: '25%' }}
+            alt="logo"
+            src="http://localhost:3000/logo.png"
+          />
         </span>
         <span className="header-title-text">
           {`${isOnChatPage ? 'My Code & Job Search Assistant' : 'Gmail and Google Calendar Assistant'}`}
