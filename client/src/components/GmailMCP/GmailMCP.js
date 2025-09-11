@@ -713,8 +713,15 @@ const GmailMCP = ({ userId }) => {
                       </div>
                       <div>
                         {' '}
-                        {email.analysis?.calendarEvents &&
-                          email.analysis.calendarEvents.length > 0 && (
+                        {(() => {
+                          if (
+                            !email.analysis?.calendarEvents ||
+                            email.analysis.calendarEvents.length === 0
+                          ) {
+                            return null;
+                          }
+
+                          return (
                             <div className="calendar-events">
                               <h5>Calendar Events Created:</h5>
                               {email.analysis.calendarEvents.map((event, idx) => (
@@ -734,7 +741,8 @@ const GmailMCP = ({ userId }) => {
                                 </div>
                               ))}
                             </div>
-                          )}
+                          );
+                        })()}
                         {email.analysis?.draftResponse && (
                           <div className="draft-response">
                             <h5>Draft Response:</h5>
