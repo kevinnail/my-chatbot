@@ -14,7 +14,8 @@ window.isLocal =
 
 export default function App() {
   const googleId = process.env.REACT_APP_GOOGLE_USER_ID;
-  const [userId] = useState(googleId);
+  // Use a fallback userId for demo mode when the environment variable is not set
+  const [userId] = useState(googleId || 'demo-user');
 
   return (
     <LoadingProvider>
