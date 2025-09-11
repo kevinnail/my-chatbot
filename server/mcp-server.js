@@ -76,7 +76,7 @@ app.post('/mcp', async (req, res) => {
         transports[id] = transport;
       },
       enableDnsRebindingProtection: true,
-      allowedHosts: ['127.0.0.1', 'localhost:3001'],
+      allowedHosts: ['127.0.0.1', 'localhost:4001'],
     });
 
     const server = createServer();
@@ -105,7 +105,7 @@ app.get('/mcp', async (req, res) => {
 });
 
 // Start the server
-const PORT = 4001;
+const PORT = process.env.MCP_SERVER_PORT;
 app.listen(PORT, (error) => {
   if (error) {
     console.error('Failed to start MCP server:', error);
