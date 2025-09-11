@@ -63,7 +63,6 @@ const Chat = ({ userId }) => {
               }));
               setLog(formattedMessages);
               setInitialChatLoad(false);
-              console.log('hi!');
             } else {
               console.info('No messages found for this chat');
               setLog([]);
@@ -161,6 +160,8 @@ const Chat = ({ userId }) => {
     });
   };
 
+  const messageLabel = 'messages';
+
   return (
     <main className="chat-main-container">
       <div className="chat-header-container">
@@ -226,7 +227,7 @@ const Chat = ({ userId }) => {
       </div>
 
       {initialChatLoad ? (
-        <ChatLoadingInline />
+        <ChatLoadingInline props={messageLabel} />
       ) : (
         <ChatMessages
           log={log}
