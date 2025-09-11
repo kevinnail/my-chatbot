@@ -202,20 +202,24 @@ async function getMcpSessionId() {
   }
 }
 
-//^ still needs to be put in in place of stream loop just haven't done it
-function extractToolsFromSSEChunk(chunk) {
+// Helper function to extract data from SSE chunks
+function extractFromSSEChunk(chunk, extractFn) {
   const lines = chunk.split('\n');
   for (const line of lines) {
     if (line.startsWith('data:')) {
       const jsonStr = line.slice(5).trim();
-      if (jsonStr && jsonStr !== '[DONE]') {
+      if (jsonStr === '[DONE]') {
+        return { done: true };
+      }
+      if (jsonStr) {
         try {
           const event = JSON.parse(jsonStr);
-          if (event.result?.tools) {
-            return event.result.tools;
+          const result = extractFn(event);
+          if (result !== null) {
+            return { data: result };
           }
         } catch (err) {
-          console.error('Bad JSON in SSE chunk: ' + err, jsonStr);
+          console.error('Bad JSON in SSE chunk:', err, jsonStr);
         }
       }
     }
@@ -258,24 +262,19 @@ async function getToolsFromMcpServer() {
       buffer = parts.pop() || '';
 
       for (const part of parts) {
-        const lines = part.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data:')) {
-            const jsonStr = line.slice(5).trim();
-            if (jsonStr === '[DONE]') {
-              return tools;
-            }
-            try {
-              const event = JSON.parse(jsonStr);
-              if (event.result?.tools) {
-                tools = event.result.tools;
-              } else {
-                console.log('Other event:', event);
-              }
-            } catch (err) {
-              console.error('Bad JSON chunk:', jsonStr, err);
-            }
+        const result = extractFromSSEChunk(part, (event) => {
+          if (event.result?.tools) {
+            return event.result.tools;
           }
+          console.info('Other event:', event);
+          return null;
+        });
+
+        if (result?.done) {
+          return tools;
+        }
+        if (result?.data) {
+          tools = result.data;
         }
       }
     }
@@ -335,23 +334,18 @@ async function executeToolViaMcp(toolCall, userId) {
       buffer = parts.pop() || '';
 
       for (const part of parts) {
-        const lines = part.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data:')) {
-            const jsonStr = line.slice(5).trim();
-            if (jsonStr === '[DONE]') {
-              return result;
-            }
-            try {
-              const data = JSON.parse(jsonStr);
-
-              if (data.result) {
-                result = data.result;
-              }
-            } catch (parseError) {
-              console.error('Error parsing SSE JSON:', parseError, 'JSON:', jsonStr);
-            }
+        const chunkResult = extractFromSSEChunk(part, (event) => {
+          if (event.result) {
+            return event.result;
           }
+          return null;
+        });
+
+        if (chunkResult?.done) {
+          return result;
+        }
+        if (chunkResult?.data) {
+          result = chunkResult.data;
         }
       }
     }
@@ -556,7 +550,7 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
                     endTime: args.endDateTime,
                     location: args.location,
                   });
-                  console.log('✅ Calendar event captured via MCP:', content.eventLink);
+                  console.info('✅ Calendar event captured via MCP:', content.eventLink);
                 }
               }
             } else {
