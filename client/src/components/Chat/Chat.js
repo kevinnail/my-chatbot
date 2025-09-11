@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useMatch } from 'react-router-dom';
 import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
@@ -8,7 +8,9 @@ import './Chat.css';
 
 const Chat = ({ userId }) => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const { chatId: urlChatId } = useParams();
+  const isExistingChat = useMatch('/chat/:chatId');
+  const isNewChatPage = useMatch('/chat');
   const {
     input,
     setInput,
@@ -27,24 +29,23 @@ const Chat = ({ userId }) => {
   const [isNewChat, setIsNewChat] = useState(false);
 
   useEffect(() => {
-    if (location.pathname.startsWith('/chat/')) {
-      // Existing chat - get chatId from URL
-      const urlChatId = location.pathname.split('/chat/')[1];
+    if (urlChatId) {
+      // Existing chat - get chatId from URL params
       setCurrentChatId(urlChatId);
       setIsNewChat(false);
-    } else if (location.pathname === '/chat') {
+    } else if (isNewChatPage) {
       // New chat - generate a new chatId and clear log
       const newChatId = `${userId}_${Date.now()}`;
       setCurrentChatId(newChatId);
       setIsNewChat(true);
       setLog([]); // Clear log for new chat
     }
-  }, [location.pathname, userId, setLog]);
+  }, [urlChatId, isNewChatPage, userId, setLog]);
 
   // Load existing chat messages when viewing an existing chat
   useEffect(() => {
     const loadChatMessages = async () => {
-      if (location.pathname.startsWith('/chat/') && currentChatId && !loading && !isNewChat) {
+      if (urlChatId && currentChatId && !loading && !isNewChat) {
         try {
           const response = await fetch(`/api/chatbot/messages/${userId}/${currentChatId}`);
           if (response.ok) {
@@ -58,7 +59,7 @@ const Chat = ({ userId }) => {
               }));
               setLog(formattedMessages);
             } else {
-              console.log('No messages found for this chat');
+              console.info('No messages found for this chat');
               setLog([]);
             }
           } else {
@@ -73,16 +74,16 @@ const Chat = ({ userId }) => {
     };
 
     loadChatMessages();
-  }, [currentChatId, location.pathname, userId, setLog, loading, isNewChat]);
+  }, [urlChatId, currentChatId, userId, setLog, loading, isNewChat]);
 
   // Update URL when first message is sent in a new chat
   useEffect(() => {
-    if (location.pathname === '/chat' && currentChatId && log.length > 0) {
+    if (isNewChatPage && currentChatId && log.length > 0) {
       // First message sent, update URL to include chatId
       setIsNewChat(false); // Mark as no longer a new chat
       navigate(`/chat/${currentChatId}`, { replace: true });
     }
-  }, [log.length, currentChatId, location.pathname, navigate]);
+  }, [log.length, currentChatId, isNewChatPage, navigate]);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [callLLMStartTime, setCallLLMStartTime] = useState(null);
@@ -166,7 +167,7 @@ const Chat = ({ userId }) => {
             alignItems: 'center',
           }}
         >
-          {location.pathname.startsWith('/chat/') && (
+          {isExistingChat && (
             <button
               onClick={() => navigate('/')}
               className="back-to-chats-button"
