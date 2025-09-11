@@ -28,6 +28,7 @@ describe('ChatMemory model', () => {
   describe('storeMessage', () => {
     it('should store a message with embedding', async () => {
       const messageData = {
+        chatId: 'test_chat_1',
         userId: 'test_user_store',
         role: 'user',
         content: 'Test message for storage',
@@ -35,13 +36,15 @@ describe('ChatMemory model', () => {
 
       await ChatMemory.storeMessage(messageData);
 
-      const { rows } = await pool.query('SELECT * FROM chat_memory WHERE user_id = $1', [
-        messageData.userId,
-      ]);
+      const { rows } = await pool.query(
+        'SELECT * FROM chat_memory WHERE user_id = $1 AND chat_id = $2',
+        [messageData.userId, messageData.chatId],
+      );
 
       expect(rows).toHaveLength(1);
       expect(rows[0]).toEqual({
         id: expect.any(Number),
+        chat_id: messageData.chatId,
         user_id: messageData.userId,
         role: messageData.role,
         content: messageData.content,
@@ -52,10 +55,11 @@ describe('ChatMemory model', () => {
 
     it('should store multiple messages for the same user', async () => {
       const userId = 'test_user_multiple';
+      const chatId = 'test_chat_2';
       const messages = [
-        { userId, role: 'user', content: 'First message' },
-        { userId, role: 'bot', content: 'First response' },
-        { userId, role: 'user', content: 'Second message' },
+        { chatId, userId, role: 'user', content: 'First message' },
+        { chatId, userId, role: 'bot', content: 'First response' },
+        { chatId, userId, role: 'user', content: 'Second message' },
       ];
 
       for (const message of messages) {
@@ -63,8 +67,8 @@ describe('ChatMemory model', () => {
       }
 
       const { rows } = await pool.query(
-        'SELECT role, content FROM chat_memory WHERE user_id = $1 ORDER BY created_at',
-        [userId],
+        'SELECT role, content FROM chat_memory WHERE user_id = $1 AND chat_id = $2 ORDER BY created_at',
+        [userId, chatId],
       );
 
       expect(rows).toHaveLength(3);
@@ -86,11 +90,12 @@ describe('ChatMemory model', () => {
   describe('getRecentMessages', () => {
     it('should return recent messages in chronological order', async () => {
       const userId = 'test_user_recent';
+      const chatId = 'test_chat_3';
       const messages = [
-        { userId, role: 'user', content: 'Message 1' },
-        { userId, role: 'bot', content: 'Response 1' },
-        { userId, role: 'user', content: 'Message 2' },
-        { userId, role: 'bot', content: 'Response 2' },
+        { chatId, userId, role: 'user', content: 'Message 1' },
+        { chatId, userId, role: 'bot', content: 'Response 1' },
+        { chatId, userId, role: 'user', content: 'Message 2' },
+        { chatId, userId, role: 'bot', content: 'Response 2' },
       ];
 
       for (const message of messages) {
@@ -99,7 +104,7 @@ describe('ChatMemory model', () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
-      const recentMessages = await ChatMemory.getRecentMessages({ userId, limit: 3 });
+      const recentMessages = await ChatMemory.getRecentMessages({ chatId, userId, limit: 3 });
 
       expect(recentMessages).toHaveLength(3);
       expect(recentMessages[0]).toEqual({
@@ -121,12 +126,13 @@ describe('ChatMemory model', () => {
 
     it('should respect the limit parameter', async () => {
       const userId = 'test_user_limit';
+      const chatId = 'test_chat_4';
       const messages = [
-        { userId, role: 'user', content: 'Message 1' },
-        { userId, role: 'bot', content: 'Response 1' },
-        { userId, role: 'user', content: 'Message 2' },
-        { userId, role: 'bot', content: 'Response 2' },
-        { userId, role: 'user', content: 'Message 3' },
+        { chatId, userId, role: 'user', content: 'Message 1' },
+        { chatId, userId, role: 'bot', content: 'Response 1' },
+        { chatId, userId, role: 'user', content: 'Message 2' },
+        { chatId, userId, role: 'bot', content: 'Response 2' },
+        { chatId, userId, role: 'user', content: 'Message 3' },
       ];
 
       for (const message of messages) {
@@ -134,7 +140,7 @@ describe('ChatMemory model', () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
-      const recentMessages = await ChatMemory.getRecentMessages({ userId, limit: 2 });
+      const recentMessages = await ChatMemory.getRecentMessages({ chatId, userId, limit: 2 });
 
       expect(recentMessages).toHaveLength(2);
       expect(recentMessages[0].content).toBe('Response 2');
@@ -143,6 +149,7 @@ describe('ChatMemory model', () => {
 
     it('should return empty array for non-existent user', async () => {
       const recentMessages = await ChatMemory.getRecentMessages({
+        chatId: 'non_existent_chat',
         userId: 'non_existent_user',
         limit: 5,
       });
@@ -154,10 +161,11 @@ describe('ChatMemory model', () => {
   describe('getAllMessages', () => {
     it('should return all messages for a user in chronological order', async () => {
       const userId = 'test_user_all';
+      const chatId = 'test_chat_5';
       const messages = [
-        { userId, role: 'user', content: 'First message' },
-        { userId, role: 'bot', content: 'First response' },
-        { userId, role: 'user', content: 'Second message' },
+        { chatId, userId, role: 'user', content: 'First message' },
+        { chatId, userId, role: 'bot', content: 'First response' },
+        { chatId, userId, role: 'user', content: 'Second message' },
       ];
 
       for (const message of messages) {
@@ -165,7 +173,7 @@ describe('ChatMemory model', () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
 
-      const allMessages = await ChatMemory.getAllMessages({ userId });
+      const allMessages = await ChatMemory.getAllMessages({ chatId, userId });
 
       expect(allMessages).toHaveLength(3);
       expect(allMessages[0]).toEqual({
@@ -183,7 +191,10 @@ describe('ChatMemory model', () => {
     });
 
     it('should return empty array for user with no messages', async () => {
-      const allMessages = await ChatMemory.getAllMessages({ userId: 'empty_user' });
+      const allMessages = await ChatMemory.getAllMessages({
+        chatId: 'empty_chat',
+        userId: 'empty_user',
+      });
       expect(allMessages).toEqual([]);
     });
   });
@@ -192,14 +203,26 @@ describe('ChatMemory model', () => {
     it('should delete all messages for a specific user', async () => {
       const userId1 = 'test_user_delete_1';
       const userId2 = 'test_user_delete_2';
+      const chatId1 = 'test_chat_delete_1';
+      const chatId2 = 'test_chat_delete_2';
 
       // Add messages for both users
-      await ChatMemory.storeMessage({ userId: userId1, role: 'user', content: 'User 1 message' });
-      await ChatMemory.storeMessage({ userId: userId2, role: 'user', content: 'User 2 message' });
+      await ChatMemory.storeMessage({
+        chatId: chatId1,
+        userId: userId1,
+        role: 'user',
+        content: 'User 1 message',
+      });
+      await ChatMemory.storeMessage({
+        chatId: chatId2,
+        userId: userId2,
+        role: 'user',
+        content: 'User 2 message',
+      });
 
       // Verify both users have messages
-      const beforeDelete1 = await ChatMemory.getAllMessages({ userId: userId1 });
-      const beforeDelete2 = await ChatMemory.getAllMessages({ userId: userId2 });
+      const beforeDelete1 = await ChatMemory.getAllMessages({ chatId: chatId1, userId: userId1 });
+      const beforeDelete2 = await ChatMemory.getAllMessages({ chatId: chatId2, userId: userId2 });
       expect(beforeDelete1).toHaveLength(1);
       expect(beforeDelete2).toHaveLength(1);
 
@@ -207,8 +230,8 @@ describe('ChatMemory model', () => {
       await ChatMemory.deleteUserMessages({ userId: userId1 });
 
       // Verify only userId1 messages are deleted
-      const afterDelete1 = await ChatMemory.getAllMessages({ userId: userId1 });
-      const afterDelete2 = await ChatMemory.getAllMessages({ userId: userId2 });
+      const afterDelete1 = await ChatMemory.getAllMessages({ chatId: chatId1, userId: userId1 });
+      const afterDelete2 = await ChatMemory.getAllMessages({ chatId: chatId2, userId: userId2 });
       expect(afterDelete1).toHaveLength(0);
       expect(afterDelete2).toHaveLength(1);
     });
@@ -224,23 +247,27 @@ describe('ChatMemory model', () => {
   describe('getMessageCount', () => {
     it('should return correct message count for a user', async () => {
       const userId = 'test_user_count';
+      const chatId = 'test_chat_count';
 
       // Initially should be 0
-      let count = await ChatMemory.getMessageCount(userId);
+      let count = await ChatMemory.getMessageCount({ chatId, userId });
       expect(count).toBe(0);
 
       // Add messages
-      await ChatMemory.storeMessage({ userId, role: 'user', content: 'Message 1' });
-      await ChatMemory.storeMessage({ userId, role: 'bot', content: 'Response 1' });
-      await ChatMemory.storeMessage({ userId, role: 'user', content: 'Message 2' });
+      await ChatMemory.storeMessage({ chatId, userId, role: 'user', content: 'Message 1' });
+      await ChatMemory.storeMessage({ chatId, userId, role: 'bot', content: 'Response 1' });
+      await ChatMemory.storeMessage({ chatId, userId, role: 'user', content: 'Message 2' });
 
       // Should now be 3
-      count = await ChatMemory.getMessageCount(userId);
+      count = await ChatMemory.getMessageCount({ chatId, userId });
       expect(count).toBe(3);
     });
 
     it('should return 0 for non-existent user', async () => {
-      const count = await ChatMemory.getMessageCount('non_existent_user');
+      const count = await ChatMemory.getMessageCount({
+        chatId: 'non_existent_chat',
+        userId: 'non_existent_user',
+      });
       expect(count).toBe(0);
     });
   });
@@ -248,11 +275,12 @@ describe('ChatMemory model', () => {
   describe('getRelevantMessages', () => {
     it('should return messages ordered by similarity', async () => {
       const userId = 'test_user_relevant';
+      const chatId = 'test_chat_relevant';
       const messages = [
-        { userId, role: 'user', content: 'I need help with React hooks' },
-        { userId, role: 'bot', content: 'Here is how to use React hooks' },
-        { userId, role: 'user', content: 'What about Express middleware?' },
-        { userId, role: 'bot', content: 'Express middleware works like this' },
+        { chatId, userId, role: 'user', content: 'I need help with React hooks' },
+        { chatId, userId, role: 'bot', content: 'Here is how to use React hooks' },
+        { chatId, userId, role: 'user', content: 'What about Express middleware?' },
+        { chatId, userId, role: 'bot', content: 'Express middleware works like this' },
       ];
 
       for (const message of messages) {
@@ -260,6 +288,7 @@ describe('ChatMemory model', () => {
       }
 
       const relevantMessages = await ChatMemory.getRelevantMessages({
+        chatId,
         userId,
         inputText: 'React hooks usage',
         limit: 2,
@@ -275,6 +304,7 @@ describe('ChatMemory model', () => {
 
     it('should return empty array for user with no messages', async () => {
       const relevantMessages = await ChatMemory.getRelevantMessages({
+        chatId: 'empty_chat',
         userId: 'empty_user',
         inputText: 'test query',
         limit: 5,
@@ -287,12 +317,13 @@ describe('ChatMemory model', () => {
   describe('getHybridMessages', () => {
     it('should combine relevant and recent messages without duplicates', async () => {
       const userId = 'test_user_hybrid';
+      const chatId = 'test_chat_hybrid';
       const messages = [
-        { userId, role: 'user', content: 'React hooks question' },
-        { userId, role: 'bot', content: 'React hooks answer' },
-        { userId, role: 'user', content: 'Express middleware question' },
-        { userId, role: 'bot', content: 'Express middleware answer' },
-        { userId, role: 'user', content: 'Node.js streams question' },
+        { chatId, userId, role: 'user', content: 'React hooks question' },
+        { chatId, userId, role: 'bot', content: 'React hooks answer' },
+        { chatId, userId, role: 'user', content: 'Express middleware question' },
+        { chatId, userId, role: 'bot', content: 'Express middleware answer' },
+        { chatId, userId, role: 'user', content: 'Node.js streams question' },
       ];
 
       for (const message of messages) {
@@ -301,6 +332,7 @@ describe('ChatMemory model', () => {
       }
 
       const hybridMessages = await ChatMemory.getHybridMessages({
+        chatId,
         userId,
         inputText: 'React hooks',
         relevantLimit: 2,
@@ -320,6 +352,7 @@ describe('ChatMemory model', () => {
 
     it('should return empty array for user with no messages', async () => {
       const hybridMessages = await ChatMemory.getHybridMessages({
+        chatId: 'empty_chat',
         userId: 'empty_user',
         inputText: 'test query',
         relevantLimit: 2,
