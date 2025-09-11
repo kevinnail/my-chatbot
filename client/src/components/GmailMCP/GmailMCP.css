@@ -857,6 +857,31 @@
   background: #ff9922;
 }
 
+.event-link {
+  text-align: center;
+  padding: 6px 12px;
+  background: #4285f4;
+  color: #fff;
+  text-decoration: none;
+  display: block;
+  width: 75%;
+  margin: 0.5rem auto 0 auto;
+  border-radius: 15px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.event-link:hover {
+  background: #2f00ff;
+  color: #00ff88;
+  font-weight: bold;
+}
+
+/* ^  Responsive start ==================================================================== */
+
 @media (max-width: 768px) {
   .gmail-mcp {
     /* width: 90%; */

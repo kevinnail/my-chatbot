@@ -723,7 +723,6 @@ const GmailMCP = ({ userId }) => {
                           ) {
                             return null;
                           }
-
                           return (
                             <div className="calendar-events">
                               <h5>Calendar Events Created:</h5>
@@ -735,6 +734,17 @@ const GmailMCP = ({ userId }) => {
                                   {new Date(event.startTime).toLocaleTimeString()} -{' '}
                                   {new Date(event.endTime).toLocaleDateString()}{' '}
                                   {new Date(event.endTime).toLocaleTimeString()}
+                                  <br />
+                                  {/* <div class="event-link-wrapper"> */}
+                                  <a
+                                    className="event-link"
+                                    href={event.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    Event Link
+                                  </a>
+                                  {/* </div> */}
                                   {event.location && (
                                     <>
                                       <br />
