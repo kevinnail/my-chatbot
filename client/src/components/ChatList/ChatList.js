@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChatList.css';
+import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 
 const ChatList = ({ userId }) => {
   const [chats, setChats] = useState([]);
@@ -77,7 +78,7 @@ const ChatList = ({ userId }) => {
             New Chat
           </button>
         </div>
-        <div className="loading">Loading chats...</div>
+        <ChatLoadingInline />
       </div>
     );
   }
