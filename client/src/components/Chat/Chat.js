@@ -22,10 +22,67 @@ const Chat = ({ userId }) => {
     setLog,
   } = useChatContext();
 
-  // Get chatId from URL params
-  const chatId = location.pathname.startsWith('/chat/')
-    ? location.pathname.split('/chat/')[1]
-    : null;
+  // Get chatId from URL params or generate one for new chats
+  const [currentChatId, setCurrentChatId] = useState(null);
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/chat/')) {
+      // Existing chat - get chatId from URL
+      const urlChatId = location.pathname.split('/chat/')[1];
+      setCurrentChatId(urlChatId);
+    } else if (location.pathname === '/chat') {
+      // New chat - generate a new chatId and clear log
+      const newChatId = `${userId}_${Date.now()}`;
+      setCurrentChatId(newChatId);
+      setLog([]); // Clear log for new chat
+    }
+  }, [location.pathname, userId, setLog]);
+
+  // Load existing chat messages when viewing an existing chat
+  useEffect(() => {
+    const loadChatMessages = async () => {
+      if (location.pathname.startsWith('/chat/') && currentChatId) {
+        console.log('Loading chat messages for:', currentChatId, 'userId:', userId);
+        try {
+          const response = await fetch(`/api/chatbot/messages/${userId}/${currentChatId}`);
+          console.log('Response status:', response.status);
+          if (response.ok) {
+            const messages = await response.json();
+            console.log('Loaded messages:', messages);
+            if (messages && messages.length > 0) {
+              // Convert backend messages to frontend format
+              const formattedMessages = messages.map((msg, index) => ({
+                text: msg.content,
+                role: msg.role,
+                timestamp: Date.now() + index, // Simple timestamp for display
+              }));
+              console.log('Formatted messages:', formattedMessages);
+              setLog(formattedMessages);
+            } else {
+              console.log('No messages found for this chat');
+              setLog([]);
+            }
+          } else {
+            console.error('Failed to load messages:', response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+          }
+        } catch (error) {
+          console.error('Error loading chat messages:', error);
+        }
+      }
+    };
+
+    loadChatMessages();
+  }, [currentChatId, location.pathname, userId, setLog]);
+
+  // Update URL when first message is sent in a new chat
+  useEffect(() => {
+    if (location.pathname === '/chat' && currentChatId && log.length > 0) {
+      // First message sent, update URL to include chatId
+      navigate(`/chat/${currentChatId}`, { replace: true });
+    }
+  }, [log.length, currentChatId, location.pathname, navigate]);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [callLLMStartTime, setCallLLMStartTime] = useState(null);
@@ -107,7 +164,7 @@ const Chat = ({ userId }) => {
             alignItems: 'center',
           }}
         >
-          {location.pathname !== '/chat' && (
+          {location.pathname.startsWith('/chat/') && (
             <button
               onClick={() => navigate('/')}
               className="back-to-chats-button"
@@ -179,7 +236,7 @@ const Chat = ({ userId }) => {
         setCallLLMStartTime={setCallLLMStartTime}
         coachOrChat={coachOrChat}
         setCoachOrChat={setCoachOrChat}
-        chatId={chatId}
+        chatId={currentChatId}
       />
 
       <ContextProgressBar contextPercent={contextPercent} />
