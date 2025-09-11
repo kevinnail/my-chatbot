@@ -113,6 +113,36 @@ class ChatMemory {
 
     return parseInt(rows[0].count);
   }
+
+  static async getChatList(userId) {
+    const { rows } = await pool.query(
+      `
+      SELECT 
+        DATE(created_at) as chat_date,
+        COUNT(*) as message_count,
+        MIN(created_at) as first_message,
+        MAX(created_at) as last_message,
+        STRING_AGG(
+          CASE WHEN role = 'user' THEN content ELSE NULL END, 
+          ' | ' ORDER BY created_at
+        ) as user_messages
+      FROM chat_memory 
+      WHERE user_id = $1 
+      GROUP BY DATE(created_at)
+      ORDER BY chat_date DESC
+    `,
+      [userId],
+    );
+
+    return rows.map((row) => ({
+      id: row.chat_date,
+      date: row.chat_date,
+      messageCount: parseInt(row.message_count),
+      firstMessage: row.first_message,
+      lastMessage: row.last_message,
+      preview: row.user_messages ? row.user_messages.substring(0, 100) + '...' : 'No messages',
+    }));
+  }
 }
 
 // Export the class itself
