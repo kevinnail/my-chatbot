@@ -7,7 +7,7 @@
     "start": "node -r dotenv/config server.js",
     "start:watch": "nodemon -r dotenv/config server.js",
     "start:mcp": "node mcp-server.js",
-    "test": "set NODE_OPTIONS=--experimental-vm-modules && jest --verbose --runInBand --testLocationInResults --setupFiles dotenv/config --passWithNoTests",
+    "test": "set NODE_OPTIONS=--experimental-vm-modules && jest --verbose --runInBand --testLocationInResults --setupFiles dotenv/config --passWithNoTests --forceExit",
     "test:watch": "npm run test -- --watch",
     "setup-db": "node -r dotenv/config setup-db.js",
     "setup-test-db": "node -r dotenv/config setup-test-db.js"
@@ -21,6 +21,7 @@
     "setupFilesAfterEnv": [
       "<rootDir>/test-setup.js"
     ],
+    "globalTeardown": "<rootDir>/jest-teardown.js",
     "testMatch": [
       "**/__tests__/**/*.test.js"
     ],

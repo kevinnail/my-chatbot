@@ -16,7 +16,7 @@ const testPool = new Pool({
   database: 'chatbot_test', // Always use test database
   password: process.env.PG_PASSWORD,
   port: process.env.PG_PORT,
-  ssl: false
+  ssl: false,
 });
 
 const setup = async () => {
@@ -33,8 +33,12 @@ const setup = async () => {
 
 // Cleanup function for tests
 export const cleanup = async () => {
-  await testPool.end();
+  try {
+    await testPool.end();
+  } catch (error) {
+    console.error('Error during test cleanup:', error);
+  }
 };
 
 export default setup;
-export { testPool as pool }; 
+export { testPool as pool };
