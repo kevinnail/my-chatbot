@@ -5,9 +5,6 @@ const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
 
 // Helper function to create calendar event
 export async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
-  // eslint-disable-next-line no-console
-  console.log('🗓️ Raw event args received:', eventArgs);
-
   // Clean and validate event arguments
   try {
     // Parse eventArgs if it's a string
@@ -179,7 +176,10 @@ async function getMcpSessionId() {
   try {
     const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+      },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'initialize',
@@ -202,12 +202,38 @@ async function getMcpSessionId() {
   }
 }
 
+//^ still needs to be put in in place of stream loop just haven't done it
+function extractToolsFromSSEChunk(chunk) {
+  const lines = chunk.split('\n');
+  for (const line of lines) {
+    if (line.startsWith('data:')) {
+      const jsonStr = line.slice(5).trim();
+      if (jsonStr && jsonStr !== '[DONE]') {
+        try {
+          const event = JSON.parse(jsonStr);
+          if (event.result?.tools) {
+            return event.result.tools;
+          }
+        } catch (err) {
+          console.error('Bad JSON in SSE chunk: ' + err, jsonStr);
+        }
+      }
+    }
+  }
+  return null;
+}
+
 async function getToolsFromMcpServer() {
   try {
     const sessionId = await getMcpSessionId();
+
     const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Mcp-Session-Id': sessionId },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        'Mcp-Session-Id': sessionId,
+      },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'tools/list',
@@ -215,21 +241,45 @@ async function getToolsFromMcpServer() {
       }),
     });
 
-    const data = await response.json();
-    console.log('Raw MCP tools response:', JSON.stringify(data, null, 2));
+    if (!response.ok || !response.body) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
 
-    // Convert MCP tools to Ollama format
-    const ollamaTools = data.result.tools.map((tool) => ({
-      type: 'function',
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.inputSchema, // This should already be the correct format
-      },
-    }));
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let tools = [];
 
-    console.log('Converted Ollama tools:', JSON.stringify(ollamaTools, null, 2));
-    return ollamaTools;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+
+      for (const part of parts) {
+        const lines = part.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const jsonStr = line.slice(5).trim();
+            if (jsonStr === '[DONE]') {
+              return tools;
+            }
+            try {
+              const event = JSON.parse(jsonStr);
+              if (event.result?.tools) {
+                tools = event.result.tools;
+              } else {
+                console.log('Other event:', event);
+              }
+            } catch (err) {
+              console.error('Bad JSON chunk:', jsonStr, err);
+            }
+          }
+        }
+      }
+    }
+    return tools;
   } catch (error) {
     console.error('Failed to get tools from MCP server:', error);
     return [];
@@ -238,19 +288,24 @@ async function getToolsFromMcpServer() {
 
 async function executeToolViaMcp(toolCall, userId) {
   try {
+    // console.log('toolCall=====-----------=========', toolCall);
     const sessionId = await getMcpSessionId();
 
-    // Add userId to the arguments
     const args =
       typeof toolCall.function.arguments === 'string'
         ? JSON.parse(toolCall.function.arguments)
         : toolCall.function.arguments;
 
-    args.userId = userId; // Add this line
+    args.userId = userId;
 
     const response = await fetch(`${MCP_SERVER_URL}/mcp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Mcp-Session-Id': sessionId },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+
+        'Mcp-Session-Id': sessionId,
+      },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'tools/call',
@@ -262,8 +317,50 @@ async function executeToolViaMcp(toolCall, userId) {
       }),
     });
 
-    const data = await response.json();
-    return data.result;
+    // console.log('response', response);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // Handle streaming response
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+
+      for (const part of parts) {
+        const lines = part.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            const jsonStr = line.slice(5).trim();
+            if (jsonStr === '[DONE]') {
+              return result;
+            }
+            try {
+              // console.log('SSE data:', jsonStr);
+              const data = JSON.parse(jsonStr);
+              // console.log('Streaming data from MCP tool call:', data);
+
+              if (data.result) {
+                result = data.result;
+              }
+            } catch (parseError) {
+              console.error('Error parsing SSE JSON:', parseError, 'JSON:', jsonStr);
+            }
+          }
+        }
+      }
+    }
+
+    return result;
   } catch (error) {
     console.error('MCP tool execution failed:', error);
     return null;
@@ -300,30 +397,19 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
 
   const userPrompt = `Analyze this email:\nSubject: ${subject}\nBody: ${body}\nFrom: ${from}`;
 
-  const tools = await getToolsFromMcpServer();
+  const mcpTools = await getToolsFromMcpServer();
+  console.log('Raw MCP tools:', JSON.stringify(mcpTools, null, 2));
 
-  // Temporarily replace getToolsFromMcpServer() with:
-  // const tools = [
-  //   {
-  //     type: 'function',
-  //     function: {
-  //       name: 'create_calendar_event', // Exact same name as MCP
-  //       description: 'Create a calendar event for appointments, meetings, interviews',
-  //       parameters: {
-  //         type: 'object',
-  //         properties: {
-  //           title: { type: 'string', description: 'Event title' },
-  //           startDateTime: { type: 'string', description: 'Start time in ISO format' },
-  //           endDateTime: { type: 'string', description: 'End time in ISO format' },
-  //           description: { type: 'string', description: 'Event description' },
-  //           location: { type: 'string', description: 'Event location' },
-  //           attendees: { type: 'array', items: { type: 'string' }, description: 'Attendee emails' },
-  //         },
-  //         required: ['title', 'startDateTime', 'endDateTime'],
-  //       },
-  //     },
-  //   },
-  // ];
+  const tools = mcpTools.map((tool) => ({
+    type: 'function',
+    function: {
+      name: tool.name,
+      description: tool.description || tool.title || 'No description',
+      parameters: tool.inputSchema || {},
+    },
+  }));
+  // console.log('Mapped Ollama tools:', JSON.stringify(tools, null, 2));
+
   // Client-side timeout
   const controller = new AbortController();
   const clientTimeout = setTimeout(() => controller.abort(), 20 * 60 * 1000); // 20m
@@ -347,7 +433,6 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-
     clearTimeout(clientTimeout);
 
     if (!response.ok) {
@@ -366,13 +451,12 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
 
     const toolsCalled = data.message?.tool_calls || [];
 
-    // console.log('🔍 Tool calls found:', toolsCalled);
-
     // Track calendar events created
     const calendarEvents = [];
 
     // If we have tool calls but empty content, generate a contextual analysis
     if (toolsCalled.length > 0 && (!raw || raw === '')) {
+      // ! THIS FIRES WHETHER OR NOT A CALENDAR EVENT WAS CREATED
       // eslint-disable-next-line no-console
       console.log('🔧 Empty content with tool calls detected, generating contextual analysis');
 
@@ -455,7 +539,7 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
           console.log('🔍 Individual tool call:', JSON.stringify(call, null, 2));
           try {
             if (call.function && call.function.name === 'create_calendar_event') {
-              console.log('call=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=', call);
+              // console.log('call=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=', call);
               let args = call.function.arguments;
 
               // Parse arguments if they're a string
@@ -472,24 +556,22 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
               // eslint-disable-next-line no-console
               console.log('🗓️ Creating calendar event with args:', args);
 
-              //!!!!!!!!!!! CHATGPT THIS IS THE OLD WAY NOT YET REMOVED TO AVOID ERRORS
-              const eventResult = await createCalendarEvent(userId, args, subject, from);
-              // console.log('eventResult', eventResult);
-              // const mcpResult = await executeToolViaMcp(call);
               const mcpResult = await executeToolViaMcp(call, userId);
-              console.log('mcpResult', mcpResult);
+              // console.log('mcpResult: executeToolViaMcp ', mcpResult);
 
               // Capture calendar event data if creation was successful
-              if (eventResult && eventResult.htmlLink) {
-                calendarEvents.push({
-                  title: eventResult.summary || args.title,
-                  link: eventResult.htmlLink,
-                  startTime: eventResult.start?.dateTime || args.startDateTime,
-                  endTime: eventResult.end?.dateTime || args.endDateTime,
-                  location: eventResult.location || args.location,
-                });
-                // eslint-disable-next-line no-console
-                console.log('✅ Calendar event captured:', eventResult.htmlLink);
+              if (mcpResult && mcpResult.content) {
+                const content = mcpResult.content[0];
+                if (content.eventLink) {
+                  calendarEvents.push({
+                    title: content.calendarEvent,
+                    link: content.eventLink,
+                    startTime: args.startDateTime,
+                    endTime: args.endDateTime,
+                    location: args.location,
+                  });
+                  // console.log('✅ Calendar event captured via MCP:', content.eventLink);
+                }
               }
             } else {
               // eslint-disable-next-line no-console
