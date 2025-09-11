@@ -5,6 +5,7 @@ import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
 import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
+import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 
 const Chat = ({ userId }) => {
   const navigate = useNavigate();
@@ -24,15 +25,17 @@ const Chat = ({ userId }) => {
     setLog,
   } = useChatContext();
 
-  // Get chatId from URL params or generate one for new chats
   const [currentChatId, setCurrentChatId] = useState(null);
   const [isNewChat, setIsNewChat] = useState(false);
+
+  const [initialChatLoad, setInitialChatLoad] = useState(false);
 
   useEffect(() => {
     if (urlChatId) {
       // Existing chat - get chatId from URL params
       setCurrentChatId(urlChatId);
       setIsNewChat(false);
+      setLog([]); // Clear log immediately when switching chats
     } else if (isNewChatPage) {
       // New chat - generate a new chatId and clear log
       const newChatId = `${userId}_${Date.now()}`;
@@ -47,6 +50,7 @@ const Chat = ({ userId }) => {
     const loadChatMessages = async () => {
       if (urlChatId && currentChatId && !loading && !isNewChat) {
         try {
+          setInitialChatLoad(true);
           const response = await fetch(`/api/chatbot/messages/${userId}/${currentChatId}`);
           if (response.ok) {
             const messages = await response.json();
@@ -58,6 +62,8 @@ const Chat = ({ userId }) => {
                 timestamp: Date.now() + index, // Simple timestamp for display
               }));
               setLog(formattedMessages);
+              setInitialChatLoad(false);
+              console.log('hi!');
             } else {
               console.info('No messages found for this chat');
               setLog([]);
@@ -74,7 +80,7 @@ const Chat = ({ userId }) => {
     };
 
     loadChatMessages();
-  }, [urlChatId, currentChatId, userId, setLog, loading, isNewChat]);
+  }, [urlChatId, currentChatId, userId, setLog, isNewChat]);
 
   // Update URL when first message is sent in a new chat
   useEffect(() => {
@@ -218,13 +224,18 @@ const Chat = ({ userId }) => {
           </button>
         </div>
       </div>
-      <ChatMessages
-        log={log}
-        loading={loading}
-        callLLMStartTime={callLLMStartTime}
-        setCallLLMStartTime={setCallLLMStartTime}
-        calculateTimeSinceStart={calculateTimeSinceStart}
-      />
+
+      {initialChatLoad ? (
+        <ChatLoadingInline />
+      ) : (
+        <ChatMessages
+          log={log}
+          loading={loading}
+          callLLMStartTime={callLLMStartTime}
+          setCallLLMStartTime={setCallLLMStartTime}
+          calculateTimeSinceStart={calculateTimeSinceStart}
+        />
+      )}
 
       <MessageInput
         userId={userId}
