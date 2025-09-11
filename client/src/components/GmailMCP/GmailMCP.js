@@ -529,12 +529,14 @@ const GmailMCP = ({ userId }) => {
               </button>
             </div>
 
-            {analysisInProgress && (
+            {!analysisInProgress && (
               <div className="analysis-progress">
                 <div className="progress-header">
-                  <span>Analyzing emails...</span>
                   <span>
-                    {analysisProgress.analyzed}/{analysisProgress.total}
+                    Analyzing emails<span className="elipsis"></span>
+                  </span>
+                  <span style={{ fontWeight: '500', fontSize: '.8rem' }}>
+                    ( #{analysisProgress.analyzed} out of {analysisProgress.total} )
                   </span>
                 </div>
                 <div className="progress-bar">

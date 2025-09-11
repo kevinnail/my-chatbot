@@ -383,7 +383,9 @@
 
 .progress-header {
   display: flex;
-  justify-content: space-between;
+  /* justify-content: space-between; */
+  justify-content: flex-start;
+  gap: 10px;
   align-items: center;
   margin-bottom: 10px;
   color: #ddd;
@@ -505,6 +507,7 @@
   display: flex;
   flex-direction: column;
   margin-top: 6px;
+  padding-bottom: 200px;
 }
 
 /* Email Cards */
@@ -871,13 +874,42 @@
   font-size: 0.85rem;
   font-weight: bold;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: all 0s ease;
+  font-weight: 100;
 }
 
 .event-link:hover {
   background: #2f00ff;
   color: #00ff88;
   font-weight: bold;
+}
+
+.elipsis::after {
+  content: '.';
+  animation: ellipsis 4.5s infinite;
+  display: inline-block;
+  width: 15px;
+}
+
+@keyframes ellipsis {
+  0% {
+    content: ' ';
+  }
+  20% {
+    content: '.';
+  }
+  40% {
+    content: '..';
+  }
+  60% {
+    content: '...';
+  }
+  80% {
+    content: '....';
+  }
+  100% {
+    content: '.....';
+  }
 }
 
 /* ^  Responsive start ==================================================================== */
