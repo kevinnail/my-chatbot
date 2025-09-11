@@ -4,6 +4,7 @@
   padding: 20px;
   background: black;
   min-height: 100vh;
+  width: 70%;
 }
 
 .chat-list-header {
