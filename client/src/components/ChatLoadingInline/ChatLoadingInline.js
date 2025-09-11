@@ -1,9 +1,7 @@
 import React from 'react';
 import './ChatLoadingInline.css';
 
-const ChatLoadingInline = ({ isVisible }) => {
-  if (!isVisible) return null;
-
+const ChatLoadingInline = () => {
   return (
     <div className="chat-loading-inline">
       <div className="chat-loading-content">
