@@ -69,6 +69,8 @@ const ChatList = ({ userId }) => {
     }
   };
 
+  const chatLabel = 'chats';
+
   if (loading) {
     return (
       <div className="chat-list-container">
@@ -78,7 +80,7 @@ const ChatList = ({ userId }) => {
             New Chat
           </button>
         </div>
-        <ChatLoadingInline />
+        <ChatLoadingInline props={chatLabel} />
       </div>
     );
   }
