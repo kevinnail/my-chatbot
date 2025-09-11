@@ -1,11 +1,12 @@
 import ChatMemory from '../models/ChatMemory.js';
 
-export async function buildPromptWithMemory({ userId, userInput }) {
+export async function buildPromptWithMemory({ chatId, userId, userInput }) {
   // Get recent messages first (most important for context continuity)
-  const recentMessages = await ChatMemory.getRecentMessages({ userId, limit: 8 });
+  const recentMessages = await ChatMemory.getRecentMessages({ chatId, userId, limit: 8 });
 
   // Get only a few highly relevant messages to supplement context
   const relevantMessages = await ChatMemory.getRelevantMessages({
+    chatId,
     userId,
     inputText: userInput,
     limit: 3,
@@ -27,8 +28,9 @@ export async function buildPromptWithMemory({ userId, userInput }) {
 }
 
 // Alternative: Include timestamp context for the LLM
-export async function buildPromptWithMemoryAndTime({ userId, userInput }) {
+export async function buildPromptWithMemoryAndTime({ chatId, userId, userInput }) {
   const memories = await ChatMemory.getHybridMessages({
+    chatId,
     userId,
     inputText: userInput,
     relevantLimit: 10,

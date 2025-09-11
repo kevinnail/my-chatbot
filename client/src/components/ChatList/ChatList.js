@@ -40,7 +40,7 @@ const ChatList = ({ userId }) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this chat?')) {
       try {
-        const response = await fetch(`/api/chatbot/${userId}`, {
+        const response = await fetch(`/api/chatbot/${userId}/${chatId}`, {
           method: 'DELETE',
         });
         if (!response.ok) {
@@ -114,10 +114,10 @@ const ChatList = ({ userId }) => {
           {chats.map((chat) => (
             <div key={chat.id} className="chat-item" onClick={() => handleChatClick(chat.id)}>
               <div className="chat-item-header">
-                <span className="chat-date">{formatDate(chat.date)}</span>
+                <span className="chat-date">{formatDate(chat.lastMessage)}</span>
                 <button
                   className="delete-chat-button"
-                  onClick={(e) => handleDeleteChat(chat.id, e)}
+                  onClick={(e) => handleDeleteChat(chat.chatId, e)}
                   title="Delete chat"
                 >
                   ×

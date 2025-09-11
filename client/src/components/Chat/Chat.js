@@ -22,6 +22,11 @@ const Chat = ({ userId }) => {
     setLog,
   } = useChatContext();
 
+  // Get chatId from URL params
+  const chatId = location.pathname.startsWith('/chat/')
+    ? location.pathname.split('/chat/')[1]
+    : null;
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [callLLMStartTime, setCallLLMStartTime] = useState(null);
   const [coachOrChat, setCoachOrChat] = useState('chat');
@@ -174,6 +179,7 @@ const Chat = ({ userId }) => {
         setCallLLMStartTime={setCallLLMStartTime}
         coachOrChat={coachOrChat}
         setCoachOrChat={setCoachOrChat}
+        chatId={chatId}
       />
 
       <ContextProgressBar contextPercent={contextPercent} />

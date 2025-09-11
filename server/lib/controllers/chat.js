@@ -13,12 +13,16 @@ function countTokens(messages) {
 
 router.post('/', async (req, res) => {
   try {
-    const { msg, userId, coachOrChat } = req.body;
+    const { msg, userId, coachOrChat, chatId } = req.body;
+
+    // Generate chatId if not provided (for new chats)
+    const currentChatId = chatId || `${userId}_${Date.now()}`;
+
     // Get memories BEFORE storing current message (to avoid including current message in context)
-    const memories = await buildPromptWithMemory({ userId, userInput: msg });
+    const memories = await buildPromptWithMemory({ chatId: currentChatId, userId, userInput: msg });
 
     // Store the user message AFTER getting memories
-    await storeMessage({ userId, role: 'user', content: msg });
+    await storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
 
     // Get Socket.IO instance
     const io = req.app.get('io');
@@ -106,10 +110,15 @@ router.post('/', async (req, res) => {
 
             if (data.done) {
               // Store the complete response
-              await storeMessage({ userId, role: 'bot', content: fullResponse });
+              await storeMessage({
+                chatId: currentChatId,
+                userId,
+                role: 'bot',
+                content: fullResponse,
+              });
 
               // Calculate context percentage
-              const allMessages = await getAllMessages({ userId });
+              const allMessages = await getAllMessages({ chatId: currentChatId, userId });
               const allMessagesWithSystem = [
                 { role: 'system', content: systemPrompt },
                 ...allMessages,
@@ -121,6 +130,7 @@ router.post('/', async (req, res) => {
               io.to(`chat-${userId}`).emit('chat-complete', {
                 fullResponse,
                 contextPercent,
+                chatId: currentChatId,
                 done: true,
               });
 
@@ -200,6 +210,17 @@ router.delete('/:userId', async (req, res) => {
     res.json({ message: 'All messages deleted successfully' });
   } catch (error) {
     console.error('Error in delete chat controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/:userId/:chatId', async (req, res) => {
+  try {
+    const { userId, chatId } = req.params;
+    await ChatMemory.deleteChatMessages({ chatId, userId });
+    res.json({ message: 'Chat deleted successfully' });
+  } catch (error) {
+    console.error('Error in delete specific chat controller:', error);
     res.status(500).json({ error: error.message });
   }
 });

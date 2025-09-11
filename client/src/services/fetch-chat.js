@@ -30,6 +30,7 @@ export async function sendPrompt({
   setContextPercent,
   setCallLLMStartTime,
   coachOrChat,
+  chatId,
 }) {
   if (!input.trim()) return;
   const userMsg = input;
@@ -206,7 +207,7 @@ export async function sendPrompt({
     const res = await fetch(`${BASE_URL}/api/chatbot`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ msg: userMsg, userId, coachOrChat }),
+      body: JSON.stringify({ msg: userMsg, userId, coachOrChat, chatId }),
     });
 
     // Check if response indicates streaming
