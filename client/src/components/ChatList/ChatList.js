@@ -5,7 +5,7 @@ import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import { useChatContext } from '../../contexts/ChatContext';
 
 const ChatList = ({ userId }) => {
-  const { chats, setChats } = useChatContext();
+  const { chats, setChats, setRefreshChatList } = useChatContext();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -13,6 +13,10 @@ const ChatList = ({ userId }) => {
   useEffect(() => {
     fetchChatList();
   }, [userId]);
+
+  useEffect(() => {
+    setRefreshChatList(() => fetchChatList);
+  }, [setRefreshChatList]);
 
   const fetchChatList = async () => {
     setLoading(true);

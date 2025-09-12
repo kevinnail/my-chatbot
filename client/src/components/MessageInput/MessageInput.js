@@ -15,6 +15,7 @@ const MessageInput = ({
   setCallLLMStartTime,
   coachOrChat,
   chatId,
+  refreshChatList,
 }) => {
   const handleSend = () => {
     setCallLLMStartTime(new Date());
@@ -28,6 +29,7 @@ const MessageInput = ({
       setCallLLMStartTime,
       coachOrChat,
       chatId,
+      refreshChatList,
     };
 
     sendPrompt(prompt);

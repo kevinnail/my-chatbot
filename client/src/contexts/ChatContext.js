@@ -18,6 +18,7 @@ export const ChatProvider = ({ children }) => {
   const [log, setLog] = useState([]);
   const { chatLoading, setChatLoading } = useLoading();
   const [chats, setChats] = useState([]);
+  const [refreshChatList, setRefreshChatList] = useState(null);
 
   function countTokensFromString(text) {
     // Very rough estimate: 1 token ≈ 4 characters in English
@@ -43,6 +44,8 @@ export const ChatProvider = ({ children }) => {
     setLog,
     chats,
     setChats,
+    refreshChatList,
+    setRefreshChatList,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

@@ -31,6 +31,7 @@ export async function sendPrompt({
   setCallLLMStartTime,
   coachOrChat,
   chatId,
+  refreshChatList,
 }) {
   if (!input.trim()) return;
   const userMsg = input;
@@ -191,6 +192,11 @@ export async function sendPrompt({
             userId,
           }),
         });
+
+        // Refresh chat list to show the new title
+        if (refreshChatList) {
+          refreshChatList();
+        }
       }
     } catch (error) {
       console.error('Error checking title or calling summarize route:', error);
