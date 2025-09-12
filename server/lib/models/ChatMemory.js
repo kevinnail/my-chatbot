@@ -151,19 +151,20 @@ WHERE chat_id = $2 AND user_id = $3 AND role = 'user'
     const { rows } = await pool.query(
       `
       SELECT 
-        chat_id,
-        title,
-        COUNT(*) as message_count,
-        MIN(created_at) as first_message,
-        MAX(created_at) as last_message,
+        c.chat_id,
+        c.title,
+        c.created_at as first_message,
+        c.updated_at as last_message,
+        COUNT(cm.id) as message_count,
         STRING_AGG(
-          CASE WHEN role = 'user' THEN content ELSE NULL END, 
-          ' | ' ORDER BY created_at
+          CASE WHEN cm.role = 'user' THEN cm.content ELSE NULL END, 
+          ' | ' ORDER BY cm.created_at
         ) as user_messages
-      FROM chat_memory 
-      WHERE user_id = $1 
-      GROUP BY chat_id, title
-      ORDER BY MAX(created_at) DESC
+      FROM chats c
+      LEFT JOIN chat_memory cm ON c.chat_id = cm.chat_id
+      WHERE c.user_id = $1 
+      GROUP BY c.chat_id, c.title, c.created_at, c.updated_at
+      ORDER BY c.updated_at DESC
     `,
       [userId],
     );
