@@ -136,7 +136,7 @@ export async function sendPrompt({
     );
   };
 
-  const handleChatComplete = (data) => {
+  const handleChatComplete = async (data) => {
     const endTime = Date.now();
     const responseTime = endTime - startTime;
 
@@ -169,6 +169,34 @@ export async function sendPrompt({
     socket.off('chat-chunk', handleChatChunk);
     socket.off('chat-complete', handleChatComplete);
     socket.off('chat-error', handleChatError);
+
+    // Check if title exists, if not call the summarize route
+    try {
+      const titleCheck = await fetch(`${BASE_URL}/api/chatbot/has-title`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: data.chatId,
+          userId,
+        }),
+      });
+
+      const { hasTitle } = await titleCheck.json();
+
+      if (!hasTitle) {
+        await fetch(`${BASE_URL}/api/chatbot/summarize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: userMsg,
+            chatId: data.chatId,
+            userId,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error('Error checking title or calling summarize route:', error);
+    }
   };
 
   const handleChatError = (data) => {
