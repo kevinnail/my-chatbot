@@ -118,21 +118,59 @@ class ChatMemory {
 
   // Additional utility methods
   static async deleteUserMessages({ userId }) {
-    await pool.query(
-      `
-      DELETE FROM chat_memory WHERE user_id = $1
-    `,
-      [userId],
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `
+      DELETE FROM chat_memory WHERE user_id = $1;
+      `,
+        [userId],
+      );
+
+      await client.query(
+        `
+      DELETE FROM chats WHERE user_id = $1;
+      `,
+        [userId],
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async deleteChatMessages({ chatId, userId }) {
-    await pool.query(
-      `
-      DELETE FROM chat_memory WHERE chat_id = $1 AND user_id = $2
-    `,
-      [chatId, userId],
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `
+      DELETE FROM chat_memory WHERE chat_id = $1 AND user_id = $2;
+         `,
+        [chatId, userId],
+      );
+
+      await client.query(
+        `
+        DELETE FROM chats WHERE chat_id = $1 AND user_id = $2;
+        `,
+        [chatId, userId],
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async getMessageCount({ chatId, userId }) {
