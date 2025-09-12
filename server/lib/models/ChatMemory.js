@@ -183,7 +183,3 @@ WHERE chat_id = $2 AND user_id = $3 AND role = 'user'
 
 // Export the class itself
 export default ChatMemory;
-
-// Export specific functions for backward compatibility
-export const storeMessage = ChatMemory.storeMessage.bind(ChatMemory);
-export const getAllMessages = ChatMemory.getAllMessages.bind(ChatMemory);
