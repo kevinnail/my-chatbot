@@ -258,27 +258,47 @@ router.post('/summarize', async (req, res) => {
     if (!process.env.OLLAMA_SMALL_MODEL) {
       return res.status(500).json({ error: 'OLLAMA_SMALL_MODEL not configured' });
     }
-
+    performance.mark('summarize-start');
+    console.log('summarizing title creation START ==============');
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: process.env.OLLAMA_SMALL_MODEL,
+        model: process.env.OLLAMA_MODEL,
         messages: [
           {
             role: 'system',
-            content:
-              'You are a helpful assistant that creates concise summaries to create a title for a chat, be brief and to the point.',
+            content: `
+            You are a title generator. 
+            Return only ONE sentence, max 20 words, max 150 characters. 
+            Do not add explanations. 
+            
+            
+            `,
           },
           {
             role: 'user',
             content: prompt,
           },
         ],
+        options: {
+          min_p: 0,
+          temperature: 0.2,
+          top_p: 0.7,
+          mirostat: 0,
+          repeat_penalty: 1.05,
+          top_k: 20,
+        },
         stream: false,
       }),
     });
-
+    performance.mark('summarize-end');
+    console.log('summarizing title creation END ==============');
+    performance.measure('summarize', 'summarize-start', 'summarize-end');
+    console.log(
+      'summarize time',
+      performance.getEntriesByType('measure')[0].duration / 1000 + ' seconds',
+    );
     if (!response.ok) {
       throw new Error(`Ollama API error: ${response.status}`);
     }
