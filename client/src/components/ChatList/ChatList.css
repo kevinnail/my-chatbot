@@ -16,7 +16,7 @@
   padding: 20px 0;
   border-bottom: 1px solid #333;
   position: fixed;
-  top: 55px;
+  top: 45px;
   left: 0;
   right: 0;
   background: black;
@@ -26,6 +26,7 @@
   margin-right: auto;
   padding-left: 20px;
   padding-right: 20px;
+  height: 40px;
 }
 
 .chat-list-header h2 {
@@ -70,12 +71,10 @@
   left: 0;
   right: 0;
   background: black;
-  z-index: 100;
+  z-index: 5;
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
-  padding-left: 20px;
-  padding-right: 20px;
 }
 
 .no-chats p {
