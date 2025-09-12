@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import './ChatList.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import { useChatContext } from '../../contexts/ChatContext';
+import ConfirmationDialog from '../ConfirmationDialog/ConfirmationDialog';
 
 const ChatList = ({ userId }) => {
   const { chats, setChats, setRefreshChatList } = useChatContext();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -82,28 +85,42 @@ const ChatList = ({ userId }) => {
 
   const handleDeleteChat = async (chatId, e) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this chat?')) {
-      try {
-        // Check if running locally or on netlify
-        const isLocal =
-          window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        if (!isLocal) {
-          // Fake deletion for netlify deploy
-          setChats((prevChats) => prevChats.filter((chat) => chat.chatId !== chatId));
-          return;
-        }
+    setChatToDelete(chatId);
+    setShowDeleteDialog(true);
+  };
 
-        const response = await fetch(`/api/chatbot/${userId}/${chatId}`, {
-          method: 'DELETE',
-        });
-        if (!response.ok) {
-          throw new Error('Failed to delete chat');
-        }
-        fetchChatList(); // Refresh the list
-      } catch (err) {
-        setError(err.message);
+  const confirmDeleteChat = async () => {
+    if (!chatToDelete) return;
+
+    setShowDeleteDialog(false);
+    try {
+      // Check if running locally or on netlify
+      const isLocal =
+        window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (!isLocal) {
+        // Fake deletion for netlify deploy
+        setChats((prevChats) => prevChats.filter((chat) => chat.chatId !== chatToDelete));
+        setChatToDelete(null);
+        return;
       }
+
+      const response = await fetch(`/api/chatbot/${userId}/${chatToDelete}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete chat');
+      }
+      fetchChatList(); // Refresh the list
+      setChatToDelete(null);
+    } catch (err) {
+      setError(err.message);
+      setChatToDelete(null);
     }
+  };
+
+  const cancelDeleteChat = () => {
+    setShowDeleteDialog(false);
+    setChatToDelete(null);
   };
 
   const formatDate = (dateString) => {
@@ -192,6 +209,21 @@ const ChatList = ({ userId }) => {
           ))}
         </div>
       )}
+
+      <ConfirmationDialog
+        isOpen={showDeleteDialog}
+        title="Delete Chat"
+        message="Are you sure you want to delete this chat? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDeleteChat}
+        onCancel={cancelDeleteChat}
+        variant="subtle"
+        confirmButtonStyle={{
+          background: '#666',
+          color: 'white',
+        }}
+      />
     </div>
   );
 };

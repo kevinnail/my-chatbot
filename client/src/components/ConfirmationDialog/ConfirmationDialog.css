@@ -20,6 +20,13 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
+.confirmation-dialog-subtle {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  max-width: 320px;
+  padding: 20px;
+}
+
 .confirmation-title {
   margin: 0 0 16px 0;
   font-size: 1.2em;
@@ -27,11 +34,21 @@
   color: #333;
 }
 
+.confirmation-dialog-subtle .confirmation-title {
+  color: #fff;
+  font-size: 1.1em;
+}
+
 .confirmation-message {
   margin: 0 0 24px 0;
   color: #383838;
   line-height: 1.4;
   font-size: 1rem;
+}
+
+.confirmation-dialog-subtle .confirmation-message {
+  color: #ccc;
+  margin-bottom: 20px;
 }
 
 .confirmation-buttons {
@@ -59,6 +76,15 @@
   background: #e0e0e0;
 }
 
+.confirmation-dialog-subtle .confirmation-cancel {
+  background: #444;
+  color: #ccc;
+}
+
+.confirmation-dialog-subtle .confirmation-cancel:hover {
+  background: #555;
+}
+
 .confirmation-confirm {
   background: #dc3545;
   color: white;
@@ -66,4 +92,13 @@
 
 .confirmation-confirm:hover {
   background: #c82333;
+}
+
+.confirmation-dialog-subtle .confirmation-confirm {
+  background: #666;
+  color: white;
+}
+
+.confirmation-dialog-subtle .confirmation-confirm:hover {
+  background: #777;
 }
