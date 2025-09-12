@@ -147,13 +147,29 @@ class ChatMemory {
   }
 
   static async updateChatTitle({ chatId, userId, title }) {
-    await pool.query(
-      `
- UPDATE chat_memory SET title = $1 
-WHERE chat_id = $2 AND user_id = $3 AND role = 'user'
-      `,
-      [title, chatId, userId],
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `UPDATE chat_memory SET title = $1 
+         WHERE chat_id = $2 AND user_id = $3 AND role = 'user'`,
+        [title, chatId, userId],
+      );
+
+      await client.query('UPDATE chats SET title = $1 WHERE chat_id = $2 AND user_id = $3', [
+        title,
+        chatId,
+        userId,
+      ]);
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async hasTitle({ chatId, userId }) {
