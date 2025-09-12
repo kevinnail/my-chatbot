@@ -6,13 +6,14 @@ export default function DeleteMessagesButton({ userId, loading, setMobileMenuOpe
   const [hover, setHover] = useState(false);
   const [mouseDown, setMouseDown] = useState(false);
   const { setContextPercent, setLog } = useChatContext();
+  const { setChats } = useChatContext();
 
   const handleDelete = async () => {
     setMobileMenuOpen(false);
     try {
       setLog([]);
       setContextPercent(0);
-
+      setChats([]);
       await deleteMessages(userId);
     } catch (err) {
       console.error('Error deleting messages:', err);
@@ -42,7 +43,7 @@ export default function DeleteMessagesButton({ userId, loading, setMobileMenuOpe
       onMouseDown={() => setMouseDown(true)}
       onMouseUp={() => setMouseDown(false)}
     >
-      Delete Messages
+      Delete ALL Messages
     </button>
   );
 }

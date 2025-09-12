@@ -36,13 +36,13 @@ const Chat = ({ userId }) => {
       // Existing chat - get chatId from URL params
       setCurrentChatId(urlChatId);
       setIsNewChat(false);
-      setLog([]); // Clear log immediately when switching chats
+      setLog([]);
     } else if (isNewChatPage) {
       // New chat - generate a new chatId and clear log
       const newChatId = `${userId}_${Date.now()}`;
       setCurrentChatId(newChatId);
       setIsNewChat(true);
-      setLog([]); // Clear log for new chat
+      setLog([]);
     }
   }, [urlChatId, isNewChatPage, userId, setLog]);
 
@@ -116,11 +116,11 @@ const Chat = ({ userId }) => {
   // Update URL when first message is sent in a new chat
   useEffect(() => {
     if (isNewChatPage && currentChatId && log.length > 0) {
-      // First message sent, update URL to include chatId
+      // First message sent, update URL to include chatId without navigation
       setIsNewChat(false); // Mark as no longer a new chat
-      navigate(`/chat/${currentChatId}`, { replace: true });
+      window.history.replaceState(null, '', `/chat/${currentChatId}`);
     }
-  }, [log.length, currentChatId, isNewChatPage, navigate]);
+  }, [log.length, currentChatId, isNewChatPage]);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [callLLMStartTime, setCallLLMStartTime] = useState(null);

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChatList.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
+import { useChatContext } from '../../contexts/ChatContext';
 
 const ChatList = ({ userId }) => {
-  const [chats, setChats] = useState([]);
+  const { chats, setChats } = useChatContext();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -53,7 +54,6 @@ const ChatList = ({ userId }) => {
     }
 
     // Only make API calls when running locally
-    console.log('LOCAL MODE: Making API call - this should NOT happen on Netlify');
     try {
       const response = await fetch(`/api/chatbot/list/${userId}`);
       if (!response.ok) {
