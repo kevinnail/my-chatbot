@@ -236,4 +236,66 @@ router.delete('/:userId/:chatId', async (req, res) => {
   }
 });
 
+router.post('/has-title', async (req, res) => {
+  try {
+    const { chatId, userId } = req.body;
+    const hasTitle = await ChatMemory.hasTitle({ chatId, userId });
+    res.json({ hasTitle });
+  } catch (error) {
+    console.error('Error in has-title controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/summarize', async (req, res) => {
+  try {
+    const { prompt, chatId, userId } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    if (!process.env.OLLAMA_SMALL_MODEL) {
+      return res.status(500).json({ error: 'OLLAMA_SMALL_MODEL not configured' });
+    }
+
+    const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: process.env.OLLAMA_SMALL_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a helpful assistant that creates concise summaries of user prompts. Summarize the following prompt in 1-2 sentences, focusing on the main intent and key details.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const summary = data.message.content;
+
+    // Store the summary as title in the database
+    if (chatId && userId) {
+      await ChatMemory.updateChatTitle({ chatId, userId, title: summary });
+    }
+
+    res.json({ summary });
+  } catch (error) {
+    console.error('Error in summarize controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
