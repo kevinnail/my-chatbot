@@ -30,27 +30,26 @@ const ChatList = ({ userId }) => {
 
     // If not local, return demo data immediately - no API calls
     if (!isLocal) {
-      console.log('DEMO MODE: Returning fake data, should NOT fetch');
       // Fake chat list for netlify deploy
       const fakeChats = [
         {
           id: 'demo_chat_1',
           chatId: 'demo_chat_1',
-          preview: 'How do I implement authentication in React?',
+          title: null,
           lastMessage: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
           messageCount: 4,
         },
         {
           id: 'demo_chat_2',
           chatId: 'demo_chat_2',
-          preview: 'Best practices for API error handling',
+          title: 'Best practices for API error handling',
           lastMessage: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
           messageCount: 6,
         },
         {
           id: 'demo_chat_3',
           chatId: 'demo_chat_3',
-          preview: 'Database optimization strategies',
+          title: 'Database optimization strategies',
           lastMessage: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
           messageCount: 8,
         },
