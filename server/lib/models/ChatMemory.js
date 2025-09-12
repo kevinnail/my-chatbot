@@ -5,13 +5,30 @@ class ChatMemory {
   static async storeMessage({ chatId, userId, role, content }) {
     const embedding = await getEmbedding(content);
 
-    await pool.query(
-      `
-      INSERT INTO chat_memory (chat_id, user_id, role, content, embedding)
-      VALUES ($1, $2, $3, $4, $5)
-    `,
-      [chatId, userId, role, content, embedding],
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `INSERT INTO chat_memory (chat_id, user_id, role, content, embedding)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [chatId, userId, role, content, embedding],
+      );
+
+      await client.query(
+        `INSERT INTO chats (chat_id, user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (chat_id) DO NOTHING`,
+        [chatId, userId],
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async getRelevantMessages({ chatId, userId, inputText, limit = 5 }) {
