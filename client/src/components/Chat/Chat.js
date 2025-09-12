@@ -50,7 +50,6 @@ const Chat = ({ userId }) => {
       const newChatId = `${userId}_${Date.now()}`;
       setCurrentChatId(newChatId);
       setIsNewChat(true);
-      setLog([]); // Clear log for new chat
     }
   }, [urlChatId, isNewChatPage, userId, setLog]);
 
