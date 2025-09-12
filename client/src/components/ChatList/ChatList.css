@@ -117,7 +117,7 @@
 }
 
 .delete-chat-button {
-  background: #ff4444;
+  background: #666;
   color: white;
   border: none;
   border-radius: 50%;
@@ -133,7 +133,7 @@
 }
 
 .delete-chat-button:hover {
-  background: #cc3333;
+  background: #888;
 }
 
 .chat-preview {

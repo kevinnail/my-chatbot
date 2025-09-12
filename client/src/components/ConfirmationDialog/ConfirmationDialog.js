@@ -10,12 +10,15 @@ export default function ConfirmationDialog({
   onConfirm,
   onCancel,
   confirmButtonStyle = {},
+  variant = 'default', // 'default' or 'subtle'
 }) {
   if (!isOpen) return null;
 
   return (
     <div className="confirmation-overlay">
-      <div className="confirmation-dialog">
+      <div
+        className={`confirmation-dialog ${variant === 'subtle' ? 'confirmation-dialog-subtle' : ''}`}
+      >
         <h3 className="confirmation-title">{title}</h3>
         <p className="confirmation-message">{message}</p>
         <div className="confirmation-buttons">
