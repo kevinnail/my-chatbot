@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { buildPromptWithMemory } from '../utils/buildPrompt.js';
-import { storeMessage, getAllMessages } from '../models/ChatMemory.js';
 import ChatMemory from '../models/ChatMemory.js';
 import { careerCoach, codingAssistant } from '../utils/chatPrompts.js';
 
@@ -20,10 +19,8 @@ router.post('/', async (req, res) => {
 
     // Get memories BEFORE storing current message (to avoid including current message in context)
     const memories = await buildPromptWithMemory({ chatId: currentChatId, userId, userInput: msg });
-
     // Store the user message AFTER getting memories
-    await storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
-
+    await ChatMemory.storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
     // Get Socket.IO instance
     const io = req.app.get('io');
 
@@ -110,7 +107,7 @@ router.post('/', async (req, res) => {
 
             if (data.done) {
               // Store the complete response
-              await storeMessage({
+              await ChatMemory.storeMessage({
                 chatId: currentChatId,
                 userId,
                 role: 'bot',
@@ -118,7 +115,10 @@ router.post('/', async (req, res) => {
               });
 
               // Calculate context percentage
-              const allMessages = await getAllMessages({ chatId: currentChatId, userId });
+              const allMessages = await ChatMemory.getAllMessages({
+                chatId: currentChatId,
+                userId,
+              });
               const allMessagesWithSystem = [
                 { role: 'system', content: systemPrompt },
                 ...allMessages,
