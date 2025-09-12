@@ -500,6 +500,9 @@ describe('chat routes', () => {
       const userId = 'test_user_list';
       const chatId = 'test_chat_list';
 
+      // Add chat entry to chats table
+      await pool.query('INSERT INTO chats (chat_id, user_id) VALUES ($1, $2)', [chatId, userId]);
+
       // Add some messages to create a chat
       await pool.query(
         'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
@@ -533,6 +536,7 @@ describe('chat routes', () => {
         firstMessage: expect.any(String),
         lastMessage: expect.any(String),
         preview: 'Hello, this is a test message...',
+        title: null,
       });
     });
 
@@ -540,6 +544,10 @@ describe('chat routes', () => {
       const userId = 'test_user_multiple';
       const chatId1 = 'test_chat_1';
       const chatId2 = 'test_chat_2';
+
+      // Add chat entries to chats table
+      await pool.query('INSERT INTO chats (chat_id, user_id) VALUES ($1, $2)', [chatId1, userId]);
+      await pool.query('INSERT INTO chats (chat_id, user_id) VALUES ($1, $2)', [chatId2, userId]);
 
       // Add messages to first chat
       await pool.query(
@@ -575,6 +583,8 @@ describe('chat routes', () => {
       // Mock the database module to throw an error
       const dbModule = await import('../../lib/utils/db.js');
       const originalQuery = dbModule.pool.query;
+
+      // Mock the query method to throw an error
       dbModule.pool.query = jest.fn().mockRejectedValue(new Error('Database connection failed'));
 
       const response = await request(app).get('/api/chatbot/list/test_user_error');
@@ -690,18 +700,22 @@ describe('chat routes', () => {
     });
 
     it('should handle database error gracefully', async () => {
-      // Mock the database module to throw an error
-      const dbModule = await import('../../lib/utils/db.js');
-      const originalQuery = dbModule.pool.query;
-      dbModule.pool.query = jest.fn().mockRejectedValue(new Error('Database connection failed'));
+      // Mock the ChatMemory module to throw an error
+      const ChatMemoryModule = await import('../../lib/models/ChatMemory.js');
+      const originalDeleteChatMessages = ChatMemoryModule.default.deleteChatMessages;
+
+      // Mock the deleteChatMessages method to throw an error
+      ChatMemoryModule.default.deleteChatMessages = jest
+        .fn()
+        .mockRejectedValue(new Error('Database connection failed'));
 
       const response = await request(app).delete('/api/chatbot/test_user_error/test_chat_error');
 
       expect(response.status).toBe(500);
       expect(response.body).toHaveProperty('error');
 
-      // Restore original query method
-      dbModule.pool.query = originalQuery;
+      // Restore original method
+      ChatMemoryModule.default.deleteChatMessages = originalDeleteChatMessages;
     });
   });
 });
