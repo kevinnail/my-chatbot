@@ -268,7 +268,7 @@ router.post('/summarize', async (req, res) => {
           {
             role: 'system',
             content:
-              'You are a helpful assistant that creates concise summaries of user prompts. Summarize the following prompt in 1-2 sentences, focusing on the main intent and key details.',
+              'You are a helpful assistant that creates concise summaries to create a title for a chat, be brief and to the point.',
           },
           {
             role: 'user',
@@ -285,7 +285,6 @@ router.post('/summarize', async (req, res) => {
 
     const data = await response.json();
     const summary = data.message.content;
-
     // Store the summary as title in the database
     if (chatId && userId) {
       await ChatMemory.updateChatTitle({ chatId, userId, title: summary });

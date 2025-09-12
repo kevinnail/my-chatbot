@@ -169,7 +169,6 @@ export async function sendPrompt({
     socket.off('chat-chunk', handleChatChunk);
     socket.off('chat-complete', handleChatComplete);
     socket.off('chat-error', handleChatError);
-
     // Check if title exists, if not call the summarize route
     try {
       const titleCheck = await fetch(`${BASE_URL}/api/chatbot/has-title`, {
@@ -180,7 +179,6 @@ export async function sendPrompt({
           userId,
         }),
       });
-
       const { hasTitle } = await titleCheck.json();
 
       if (!hasTitle) {
