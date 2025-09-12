@@ -6,10 +6,21 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Drop existing tables
 DROP TABLE IF EXISTS chat_memory CASCADE;
+DROP TABLE IF EXISTS chats CASCADE;
 DROP TABLE IF EXISTS gmail_tokens CASCADE;
 DROP TABLE IF EXISTS gmail_sync_status CASCADE;
 DROP TABLE IF EXISTS email_memory CASCADE;
 DROP TABLE IF EXISTS google_calendar_tokens CASCADE;
+
+-- Create chats table
+CREATE TABLE chats (
+    id SERIAL PRIMARY KEY,
+    chat_id VARCHAR(255) NOT NULL UNIQUE,
+    user_id VARCHAR(255) NOT NULL,
+    title VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Create chat_memory table
 CREATE TABLE chat_memory (
@@ -55,6 +66,10 @@ CREATE TABLE email_memory (
 );
 
 -- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_chats_user_id ON chats(user_id);
+CREATE INDEX IF NOT EXISTS idx_chats_chat_id ON chats(chat_id);
+CREATE INDEX IF NOT EXISTS idx_chats_updated_at ON chats(updated_at);
+
 CREATE INDEX IF NOT EXISTS idx_chat_memory_user_id ON chat_memory(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_chat_id ON chat_memory(chat_id);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_created_at ON chat_memory(created_at);
