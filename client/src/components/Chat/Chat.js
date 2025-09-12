@@ -32,14 +32,6 @@ const Chat = ({ userId }) => {
   const [initialChatLoad, setInitialChatLoad] = useState(false);
 
   useEffect(() => {
-    console.log(
-      'Chat useEffect - urlChatId:',
-      urlChatId,
-      'isNewChatPage:',
-      isNewChatPage,
-      'current URL:',
-      window.location.pathname,
-    );
     if (urlChatId) {
       // Existing chat - get chatId from URL params
       setCurrentChatId(urlChatId);

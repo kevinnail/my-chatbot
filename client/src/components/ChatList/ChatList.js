@@ -53,7 +53,6 @@ const ChatList = ({ userId }) => {
     }
 
     // Only make API calls when running locally
-    console.log('LOCAL MODE: Making API call - this should NOT happen on Netlify');
     try {
       const response = await fetch(`/api/chatbot/list/${userId}`);
       if (!response.ok) {
