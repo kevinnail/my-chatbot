@@ -129,11 +129,30 @@ class ChatMemory {
     return parseInt(rows[0].count);
   }
 
+  static async updateChatTitle({ chatId, userId, title }) {
+    await pool.query(
+      `
+ UPDATE chat_memory SET title = $1 
+WHERE chat_id = $2 AND user_id = $3 AND role = 'user'
+      `,
+      [title, chatId, userId],
+    );
+  }
+
+  static async hasTitle({ chatId, userId }) {
+    const { rows } = await pool.query(
+      "SELECT title FROM chat_memory WHERE chat_id = $1 AND user_id = $2 AND role = 'user' ORDER BY created_at ASC LIMIT 1",
+      [chatId, userId],
+    );
+    return rows.length > 0 && rows[0].title !== null;
+  }
+
   static async getChatList(userId) {
     const { rows } = await pool.query(
       `
       SELECT 
         chat_id,
+        title,
         COUNT(*) as message_count,
         MIN(created_at) as first_message,
         MAX(created_at) as last_message,
@@ -143,7 +162,7 @@ class ChatMemory {
         ) as user_messages
       FROM chat_memory 
       WHERE user_id = $1 
-      GROUP BY chat_id
+      GROUP BY chat_id, title
       ORDER BY MAX(created_at) DESC
     `,
       [userId],
@@ -156,6 +175,7 @@ class ChatMemory {
       firstMessage: row.first_message,
       lastMessage: row.last_message,
       preview: row.user_messages ? row.user_messages.substring(0, 100) + '...' : 'No messages',
+      title: row.title,
     }));
   }
 }
