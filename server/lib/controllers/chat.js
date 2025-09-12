@@ -269,9 +269,10 @@ router.post('/summarize', async (req, res) => {
           {
             role: 'system',
             content: `
+            Your goal is to summarize the user's prompt into a short title for the ensuing chat.
             You are a title generator. 
             Return only ONE sentence, max 20 words, max 150 characters. 
-            Do not add explanations. 
+            Do not add explanations or commentary. 
             
             
             `,
@@ -288,6 +289,7 @@ router.post('/summarize', async (req, res) => {
           mirostat: 0,
           repeat_penalty: 1.05,
           top_k: 20,
+          keep_alive: '10m',
         },
         stream: false,
       }),
