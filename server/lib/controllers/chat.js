@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { buildPromptWithMemory } from '../utils/buildPrompt.js';
-import { storeMessage, getAllMessages } from '../models/ChatMemory.js';
 import ChatMemory from '../models/ChatMemory.js';
 import { careerCoach, codingAssistant } from '../utils/chatPrompts.js';
 
@@ -20,10 +19,8 @@ router.post('/', async (req, res) => {
 
     // Get memories BEFORE storing current message (to avoid including current message in context)
     const memories = await buildPromptWithMemory({ chatId: currentChatId, userId, userInput: msg });
-
     // Store the user message AFTER getting memories
-    await storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
-
+    await ChatMemory.storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
     // Get Socket.IO instance
     const io = req.app.get('io');
 
@@ -110,7 +107,7 @@ router.post('/', async (req, res) => {
 
             if (data.done) {
               // Store the complete response
-              await storeMessage({
+              await ChatMemory.storeMessage({
                 chatId: currentChatId,
                 userId,
                 role: 'bot',
@@ -118,7 +115,10 @@ router.post('/', async (req, res) => {
               });
 
               // Calculate context percentage
-              const allMessages = await getAllMessages({ chatId: currentChatId, userId });
+              const allMessages = await ChatMemory.getAllMessages({
+                chatId: currentChatId,
+                userId,
+              });
               const allMessagesWithSystem = [
                 { role: 'system', content: systemPrompt },
                 ...allMessages,
@@ -232,6 +232,89 @@ router.delete('/:userId/:chatId', async (req, res) => {
     res.json({ message: 'Chat deleted successfully' });
   } catch (error) {
     console.error('Error in delete specific chat controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/has-title', async (req, res) => {
+  try {
+    const { chatId, userId } = req.body;
+    const hasTitle = await ChatMemory.hasTitle({ chatId, userId });
+    res.json({ hasTitle });
+  } catch (error) {
+    console.error('Error in has-title controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/summarize', async (req, res) => {
+  try {
+    const { prompt, chatId, userId } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    if (!process.env.OLLAMA_SMALL_MODEL) {
+      return res.status(500).json({ error: 'OLLAMA_SMALL_MODEL not configured' });
+    }
+    performance.mark('summarize-start');
+    console.log('summarizing title creation START ==============');
+    const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: process.env.OLLAMA_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: `
+            Your goal is to summarize the user's prompt into a short title for the ensuing chat.
+            You are a title generator. 
+            Return only ONE sentence, max 20 words, max 150 characters. 
+            Do not add explanations or commentary. 
+            
+            
+            `,
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        options: {
+          min_p: 0,
+          temperature: 0.2,
+          top_p: 0.7,
+          mirostat: 0,
+          repeat_penalty: 1.05,
+          top_k: 20,
+          keep_alive: '10m',
+        },
+        stream: false,
+      }),
+    });
+    performance.mark('summarize-end');
+    console.log('summarizing title creation END ==============');
+    performance.measure('summarize', 'summarize-start', 'summarize-end');
+    console.log(
+      'summarize time',
+      performance.getEntriesByType('measure')[0].duration / 1000 + ' seconds',
+    );
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const summary = data.message.content;
+    // Store the summary as title in the database
+    if (chatId && userId) {
+      await ChatMemory.updateChatTitle({ chatId, userId, title: summary });
+    }
+
+    res.json({ summary });
+  } catch (error) {
+    console.error('Error in summarize controller:', error);
     res.status(500).json({ error: error.message });
   }
 });

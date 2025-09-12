@@ -23,6 +23,7 @@ const Chat = ({ userId }) => {
     handleInputChange,
     log,
     setLog,
+    refreshChatList,
   } = useChatContext();
   const { isAnyLoading } = useLoading();
 
@@ -286,6 +287,7 @@ const Chat = ({ userId }) => {
         coachOrChat={coachOrChat}
         setCoachOrChat={setCoachOrChat}
         chatId={currentChatId}
+        refreshChatList={refreshChatList}
       />
 
       <ContextProgressBar contextPercent={contextPercent} />

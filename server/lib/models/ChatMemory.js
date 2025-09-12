@@ -5,13 +5,30 @@ class ChatMemory {
   static async storeMessage({ chatId, userId, role, content }) {
     const embedding = await getEmbedding(content);
 
-    await pool.query(
-      `
-      INSERT INTO chat_memory (chat_id, user_id, role, content, embedding)
-      VALUES ($1, $2, $3, $4, $5)
-    `,
-      [chatId, userId, role, content, embedding],
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `INSERT INTO chat_memory (chat_id, user_id, role, content, embedding)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [chatId, userId, role, content, embedding],
+      );
+
+      await client.query(
+        `INSERT INTO chats (chat_id, user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (chat_id) DO NOTHING`,
+        [chatId, userId],
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async getRelevantMessages({ chatId, userId, inputText, limit = 5 }) {
@@ -101,21 +118,59 @@ class ChatMemory {
 
   // Additional utility methods
   static async deleteUserMessages({ userId }) {
-    await pool.query(
-      `
-      DELETE FROM chat_memory WHERE user_id = $1
-    `,
-      [userId],
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `
+      DELETE FROM chat_memory WHERE user_id = $1;
+      `,
+        [userId],
+      );
+
+      await client.query(
+        `
+      DELETE FROM chats WHERE user_id = $1;
+      `,
+        [userId],
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async deleteChatMessages({ chatId, userId }) {
-    await pool.query(
-      `
-      DELETE FROM chat_memory WHERE chat_id = $1 AND user_id = $2
-    `,
-      [chatId, userId],
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `
+      DELETE FROM chat_memory WHERE chat_id = $1 AND user_id = $2;
+         `,
+        [chatId, userId],
+      );
+
+      await client.query(
+        `
+        DELETE FROM chats WHERE chat_id = $1 AND user_id = $2;
+        `,
+        [chatId, userId],
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async getMessageCount({ chatId, userId }) {
@@ -129,22 +184,58 @@ class ChatMemory {
     return parseInt(rows[0].count);
   }
 
+  static async updateChatTitle({ chatId, userId, title }) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      await client.query(
+        `UPDATE chat_memory SET title = $1 
+         WHERE chat_id = $2 AND user_id = $3 AND role = 'user'`,
+        [title, chatId, userId],
+      );
+
+      await client.query('UPDATE chats SET title = $1 WHERE chat_id = $2 AND user_id = $3', [
+        title,
+        chatId,
+        userId,
+      ]);
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async hasTitle({ chatId, userId }) {
+    const { rows } = await pool.query(
+      "SELECT title FROM chat_memory WHERE chat_id = $1 AND user_id = $2 AND role = 'user' ORDER BY created_at ASC LIMIT 1",
+      [chatId, userId],
+    );
+    return rows.length > 0 && rows[0].title !== null;
+  }
+
   static async getChatList(userId) {
     const { rows } = await pool.query(
       `
       SELECT 
-        chat_id,
-        COUNT(*) as message_count,
-        MIN(created_at) as first_message,
-        MAX(created_at) as last_message,
+        c.chat_id,
+        c.title,
+        c.created_at as first_message,
+        c.updated_at as last_message,
+        COUNT(cm.id) as message_count,
         STRING_AGG(
-          CASE WHEN role = 'user' THEN content ELSE NULL END, 
-          ' | ' ORDER BY created_at
+          CASE WHEN cm.role = 'user' THEN cm.content ELSE NULL END, 
+          ' | ' ORDER BY cm.created_at
         ) as user_messages
-      FROM chat_memory 
-      WHERE user_id = $1 
-      GROUP BY chat_id
-      ORDER BY MAX(created_at) DESC
+      FROM chats c
+      LEFT JOIN chat_memory cm ON c.chat_id = cm.chat_id
+      WHERE c.user_id = $1 
+      GROUP BY c.chat_id, c.title, c.created_at, c.updated_at
+      ORDER BY c.updated_at DESC
     `,
       [userId],
     );
@@ -156,13 +247,10 @@ class ChatMemory {
       firstMessage: row.first_message,
       lastMessage: row.last_message,
       preview: row.user_messages ? row.user_messages.substring(0, 100) + '...' : 'No messages',
+      title: row.title,
     }));
   }
 }
 
 // Export the class itself
 export default ChatMemory;
-
-// Export specific functions for backward compatibility
-export const storeMessage = ChatMemory.storeMessage.bind(ChatMemory);
-export const getAllMessages = ChatMemory.getAllMessages.bind(ChatMemory);
