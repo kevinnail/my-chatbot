@@ -178,7 +178,7 @@ const ChatList = ({ userId }) => {
                   ×
                 </button>
               </div>
-              <div className="chat-preview">{chat.title}</div>
+              <div className="chat-preview">{chat?.title ? chat.title : 'title generating...'}</div>
               <div className="chat-meta">
                 {chat.messageCount} message{chat.messageCount !== 1 ? 's' : ''}
               </div>
