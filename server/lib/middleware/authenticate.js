@@ -1,12 +1,7 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
-module.exports = async (req, res, next) => {
+export default async (req, res, next) => {
   try {
-    // console.log(
-    //   '=============hit authenticate, cookie:  ',
-    //   req.cookies[process.env.COOKIE_NAME]
-    // );
-
     const cookie = req.cookies && req.cookies[process.env.COOKIE_NAME];
     // Check the httpOnly session cookie for the current user
     if (!cookie) throw new Error('You must be signed in to continue');
@@ -14,7 +9,6 @@ module.exports = async (req, res, next) => {
     // Verify the JWT token stored in the cookie, then attach to each request
     const user = jwt.verify(cookie, process.env.JWT_SECRET);
     req.user = user;
-    // console.log('=============hit authenticate, req.user:  ', user);
 
     next();
   } catch (err) {
