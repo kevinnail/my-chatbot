@@ -212,14 +212,6 @@ const Chat = ({ userId }) => {
               onClick={() => navigate('/')}
               className="back-to-chats-button"
               style={{
-                background: 'transparent',
-                border: '1px solid #639cff',
-                color: '#639cff',
-                padding: '8px 16px',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'all 0.2s',
                 pointerEvents: isAnyLoading ? 'none' : 'auto',
                 opacity: isAnyLoading ? 0.5 : 1,
               }}

@@ -2,7 +2,7 @@
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  padding-top: 100px;
+  padding-top: 60px;
   background: black;
   min-height: 100vh;
   width: 70%;
@@ -13,8 +13,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding: 20px 0;
+  padding: 6px 0 6px 0;
   border-bottom: 1px solid #333;
   position: fixed;
   top: 45px;
@@ -23,8 +22,7 @@
   background: black;
   z-index: 100;
   max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 auto 10px auto;
   padding-left: 20px;
   padding-right: 20px;
   height: 40px;
@@ -40,8 +38,8 @@
   background: rgb(99, 156, 255);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
+  padding: 6px 20px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
   transition: background-color 0.2s;
@@ -93,7 +91,7 @@
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: 8px;
-  padding: 20px;
+  padding: 10px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -106,14 +104,18 @@
 .chat-item-header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+}
+
+.chat-item-info {
+  display: flex;
+  gap: 20px;
   align-items: center;
-  margin-bottom: 10px;
 }
 
 .chat-date {
-  color: rgb(99, 156, 255);
-  font-weight: 600;
-  font-size: 16px;
+  color: #888;
+  font-size: 0.9rem;
 }
 
 .delete-chat-button {
@@ -130,6 +132,7 @@
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s;
+  transform: translate(5px, -4px);
 }
 
 .delete-chat-button:hover {
@@ -137,8 +140,9 @@
 }
 
 .chat-preview {
-  color: #ddd;
-  font-size: 14px;
+  color: rgb(99, 156, 255);
+  font-weight: 600;
+  font-size: 16px;
   line-height: 1.4;
   margin-bottom: 10px;
   overflow: hidden;
@@ -160,7 +164,7 @@
 
 @media (max-width: 1001px) {
   .chat-list-container {
-    padding: 100px 0;
+    padding: 60px 0;
     width: 95%;
   }
 
