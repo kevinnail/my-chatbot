@@ -6,6 +6,7 @@ import googleCalendarRouter from './controllers/googleCalendar.js';
 import notFound from './middleware/not-found.js';
 import errorHandler from './middleware/error.js';
 import users from './controllers/users.js';
+import authenticate from './middleware/authenticate.js';
 
 const app = express();
 app.use(
@@ -20,9 +21,9 @@ app.use(express.json());
 
 // Use the imported routers
 app.use('/api/users', users);
-app.use('/api/chatbot', chatRouter);
-app.use('/api/gmail', gmailMcpRouter);
-app.use('/api/calendar', googleCalendarRouter);
+app.use('/api/chatbot', authenticate, chatRouter);
+app.use('/api/gmail', authenticate, gmailMcpRouter);
+app.use('/api/calendar', authenticate, googleCalendarRouter);
 
 app.use(notFound);
 app.use(errorHandler);
