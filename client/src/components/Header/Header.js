@@ -134,19 +134,7 @@ const Header = ({ userId }) => {
           Gmail MCP
         </Link>
         {user && (
-          <button
-            onClick={handleLogout}
-            style={{
-              background: 'transparent',
-              border: '1px solid #666',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '20px',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              marginLeft: '1rem',
-            }}
-          >
+          <button onClick={handleLogout} className="logout-button">
             Logout
           </button>
         )}
@@ -193,11 +181,7 @@ const Header = ({ userId }) => {
             </div>
           )}
           {user && (
-            <button
-              onClick={handleLogout}
-              className="mobile-nav-link"
-              style={{ background: 'transparent', border: 'none', color: 'white' }}
-            >
+            <button onClick={handleLogout} className="mobile-nav-link logout-button-mobile">
               Logout
             </button>
           )}
