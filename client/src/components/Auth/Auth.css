@@ -41,7 +41,8 @@
 
 .sign-in-sign-out .link:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(99, 156, 255, 0.2);
+  border: 1px solid rgba(99, 156, 255, 0.5);
 }
 
 .sign-in-sign-out .link.active {
@@ -95,7 +96,9 @@
 }
 
 .email-container button:hover {
-  background: #5a8ae6;
+  background: #4a7ce6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 156, 255, 0.3);
 }
 
 .email-container button:active {
