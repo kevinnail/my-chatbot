@@ -54,7 +54,7 @@ export async function signInUser(email, password) {
 
   const data = await resp.json();
   if (resp.ok) {
-    return { user: data, error: null };
+    return { user: data.user, error: null };
   } else {
     return { user: null, error: data.message };
   }
