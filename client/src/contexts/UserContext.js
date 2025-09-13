@@ -11,6 +11,16 @@ const UserProvider = ({ children }) => {
 
   useEffect(() => {
     const fetchUser = async () => {
+      // For demo mode (non-local), skip auth and set demo user
+      if (!window.isLocal) {
+        setUser({
+          id: 'demo-user',
+          email: 'demo@example.com',
+        });
+        setLoading(false);
+        return;
+      }
+
       try {
         const user = await getUser();
         // Only set user if we get valid user data from the server
