@@ -1,46 +1,114 @@
 .auth-container {
-  width: 500px;
+  width: 400px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: 100px 100px 100px;
-  grid-gap: 20px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-items: center;
+  justify-content: center;
   margin-top: 100px;
-  box-shadow: 0 0 15px 5px rgb(68, 0, 255);
+  background: #181818;
+  border: 1px solid #333;
   border-radius: 10px;
-  padding: 20px;
-}
-
-label {
-  margin: 50px;
-}
-.email-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  justify-items: center;
-  gap: 20px;
-}
-input {
-  height: 30px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .sign-in-sign-out {
-  padding-right: 45%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-gap: 20px;
-  align-items: center;
-  justify-items: center;
-  margin: 0 5px;
-  width: 150px;
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  width: 100%;
+  justify-content: center;
 }
 
-.active {
-  background-color: #000;
-  color: #fff;
-  border: 1px solid rgb(68, 0, 255);
-  box-shadow: 0 0 15px 5px rgb(68, 0, 255);
+.sign-in-sign-out .link {
+  color: #ccc;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: transparent;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.sign-in-sign-out .link:hover {
+  color: #639cff;
+  border-color: #639cff;
+}
+
+.sign-in-sign-out .link.active {
+  background: #639cff;
+  color: white;
+  border-color: #639cff;
+}
+
+.email-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.email-container .input {
+  height: 50px;
+  padding: 0.75rem;
+  font-size: 1rem;
+  color: white;
+  background: black;
+  border: 1px solid #4f62cb;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.email-container .input:focus {
+  border-color: #639cff;
+}
+
+.email-container .input::placeholder {
+  color: #888;
+}
+
+.email-container button {
+  height: 50px;
+  padding: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  background: #639cff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.email-container button:hover {
+  background: #5a8ae6;
+  transform: translateY(-1px);
+}
+
+.email-container button:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+  .auth-container {
+    width: 90%;
+    margin-top: 50px;
+    padding: 1.5rem;
+  }
+
+  .sign-in-sign-out {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .sign-in-sign-out .link {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
 }
