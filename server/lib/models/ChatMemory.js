@@ -1,5 +1,6 @@
 import { pool } from '../utils/db.js';
 import { getEmbedding } from '../utils/ollamaEmbed.js';
+import { encrypt, decrypt } from '../services/encryption.js';
 
 class ChatMemory {
   static async storeMessage({ chatId, userId, role, content }) {
@@ -12,7 +13,7 @@ class ChatMemory {
       await client.query(
         `INSERT INTO chat_memory (chat_id, user_id, role, content, embedding)
          VALUES ($1, $2, $3, $4, $5)`,
-        [chatId, userId, role, content, embedding],
+        [chatId, userId, role, encrypt(content), embedding],
       );
 
       await client.query(
@@ -47,7 +48,7 @@ class ChatMemory {
 
     return rows.map(({ role, content, created_at }) => ({
       role,
-      content,
+      content: decrypt(content),
       timestamp: created_at,
     }));
   }
@@ -67,7 +68,7 @@ class ChatMemory {
     return rows
       .map(({ role, content, created_at }) => ({
         role,
-        content,
+        content: decrypt(content),
         timestamp: created_at,
       }))
       .reverse(); // Most recent last
@@ -112,7 +113,7 @@ class ChatMemory {
 
     return rows.map(({ role, content }) => ({
       role,
-      content,
+      content: decrypt(content),
     }));
   }
 
@@ -192,11 +193,11 @@ class ChatMemory {
       await client.query(
         `UPDATE chat_memory SET title = $1 
          WHERE chat_id = $2 AND user_id = $3 AND role = 'user'`,
-        [title, chatId, userId],
+        [encrypt(title), chatId, userId],
       );
 
       await client.query('UPDATE chats SET title = $1 WHERE chat_id = $2 AND user_id = $3', [
-        title,
+        encrypt(title),
         chatId,
         userId,
       ]);
@@ -246,8 +247,10 @@ class ChatMemory {
       messageCount: parseInt(row.message_count),
       firstMessage: row.first_message,
       lastMessage: row.last_message,
-      preview: row.user_messages ? row.user_messages.substring(0, 100) + '...' : 'No messages',
-      title: row.title,
+      preview: row.user_messages
+        ? decrypt(row.user_messages).substring(0, 100) + '...'
+        : 'No messages',
+      title: decrypt(row.title),
     }));
   }
 }
