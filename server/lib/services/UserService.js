@@ -27,7 +27,7 @@ export default class UserService {
         expiresIn: '1 day',
       });
 
-      return token;
+      return { token, user };
     } catch (error) {
       error.status = 401;
       throw error;
