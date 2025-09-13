@@ -1,0 +1,46 @@
+.auth-container {
+  width: 500px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 100px 100px 100px;
+  grid-gap: 20px;
+  align-items: center;
+  justify-items: center;
+  margin-top: 100px;
+  box-shadow: 0 0 15px 5px rgb(68, 0, 255);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+label {
+  margin: 50px;
+}
+.email-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+  gap: 20px;
+}
+input {
+  height: 30px;
+}
+
+.sign-in-sign-out {
+  padding-right: 45%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 20px;
+  align-items: center;
+  justify-items: center;
+  margin: 0 5px;
+  width: 150px;
+}
+
+.active {
+  background-color: #000;
+  color: #fff;
+  border: 1px solid rgb(68, 0, 255);
+  box-shadow: 0 0 15px 5px rgb(68, 0, 255);
+}
