@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useMatch } from 'react-router-dom';
+import { Link, useMatch, useNavigate } from 'react-router-dom';
 import DeleteMessagesButton from '../DeleteButton/DeleteButton.js';
 import { useLoading } from '../../contexts/LoadingContext';
+import { useUser } from '../../hooks/useUser.js';
+import { signOut } from '../../services/auth.js';
 import './Header.css';
 
 const Header = ({ userId }) => {
@@ -12,6 +14,8 @@ const Header = ({ userId }) => {
   const [, setIsChat] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAnyLoading } = useLoading();
+  const { user, setUser } = useUser();
+  const navigate = useNavigate();
 
   const handleChat = (e) => {
     if (isAnyLoading) {
@@ -39,6 +43,16 @@ const Header = ({ userId }) => {
   const handleChatMobile = (e) => {
     handleChat(e);
     setMobileMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setUser(null);
+      navigate('/auth/sign-in');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
   return (
     <header
@@ -79,6 +93,8 @@ const Header = ({ userId }) => {
         <span className="header-title-text">
           {`${isOnChatPage ? 'My Code & Job Search Assistant' : 'Gmail and Google Calendar Assistant'}`}
         </span>
+        {console.log('user', user)}
+        {user && <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email}</span>}
       </div>
 
       {/* Desktop Navigation */}
@@ -119,6 +135,23 @@ const Header = ({ userId }) => {
         >
           Gmail MCP
         </Link>
+        {user && (
+          <button
+            onClick={handleLogout}
+            style={{
+              background: 'transparent',
+              border: '1px solid #666',
+              color: 'white',
+              padding: '0.5rem 1rem',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              marginLeft: '1rem',
+            }}
+          >
+            Logout
+          </button>
+        )}
       </nav>
 
       {/* Desktop Delete Button */}
@@ -160,6 +193,15 @@ const Header = ({ userId }) => {
                 setMobileMenuOpen={setMobileMenuOpen}
               />
             </div>
+          )}
+          {user && (
+            <button
+              onClick={handleLogout}
+              className="mobile-nav-link"
+              style={{ background: 'transparent', border: 'none', color: 'white' }}
+            >
+              Logout
+            </button>
           )}
         </div>
       )}
