@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import authenticate from '../middleware/authenticate.js';
-import authorize from '../middleware/authorize.js';
-import User from '../models/User.js';
 import UserService from '../services/UserService.js';
 
 const ONE_DAY_IN_MS = 1000 * 60 * 60 * 24;
@@ -18,7 +16,7 @@ export default Router()
 
   .post('/sessions', async (req, res, next) => {
     try {
-      const token = await UserService.signIn(req.body); // go check if they can have a wristband
+      const { token, user } = await UserService.signIn(req.body); // go check if they can have a wristband
       res
         .cookie(process.env.COOKIE_NAME, token, {
           httpOnly: true,
@@ -26,7 +24,7 @@ export default Router()
           sameSite: process.env.SECURE_COOKIES === 'true' ? 'none' : 'strict',
           maxAge: ONE_DAY_IN_MS,
         })
-        .json({ message: 'Signed in successfully!' }); // attach wristband to wrist
+        .json({ user });
     } catch (e) {
       next(e);
     }
@@ -44,14 +42,6 @@ export default Router()
     res.json({ message: 'hello world' });
   })
 
-  .get('/', [authenticate, authorize], async (req, res, next) => {
-    try {
-      const users = await User.getAll();
-      res.json(users);
-    } catch (e) {
-      next(e);
-    }
-  })
   .delete('/sessions', (req, res) => {
     res
       .clearCookie(process.env.COOKIE_NAME, {
