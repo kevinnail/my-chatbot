@@ -1,4 +1,4 @@
-import { jest, describe, beforeEach, afterAll, it, expect } from '@jest/globals';
+import { describe, beforeEach, afterAll, it, expect } from '@jest/globals';
 import { pool } from '../../lib/utils/db.js';
 import setup from '../../test-setup.js';
 import request from 'supertest';
