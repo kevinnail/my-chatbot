@@ -29,6 +29,16 @@
       "lib/**/*.js",
       "!lib/**/*.test.js",
       "!**/node_modules/**"
+    ],
+    "reporters": [
+      "default",
+      [
+        "error-affirmations",
+        {
+          "colorTheme": "driven",
+          "borderTheme": "simple"
+        }
+      ]
     ]
   },
   "keywords": [],
@@ -53,6 +63,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
+    "error-affirmations": "^1.2.7",
     "eslint": "^9.30.1",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-react": "^7.37.5",
