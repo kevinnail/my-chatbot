@@ -1,6 +1,6 @@
-require('dotenv').config();
-const CryptoJS = require('crypto-js/core');
-require('crypto-js/aes');
+import 'dotenv/config';
+import CryptoJS from 'crypto-js/core';
+import 'crypto-js/aes';
 
 function encrypt(text) {
   if (text === null || text === '') {
@@ -31,10 +31,9 @@ function decrypt(ciphertext) {
 
 function isEncrypted(data) {
   try {
-    const decrypted = CryptoJS.AES.decrypt(
-      data,
-      process.env.ENCRYPTION_KEY
-    ).toString(CryptoJS.enc.Utf8);
+    const decrypted = CryptoJS.AES.decrypt(data, process.env.ENCRYPTION_KEY).toString(
+      CryptoJS.enc.Utf8,
+    );
     return decrypted.length > 0;
   } catch (e) {
     console.error('NOT ENCRYPTED:', e.message);
@@ -42,4 +41,4 @@ function isEncrypted(data) {
   }
 }
 
-module.exports = { encrypt, decrypt, isEncrypted };
+export { encrypt, decrypt, isEncrypted };
