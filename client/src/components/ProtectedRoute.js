@@ -4,9 +4,7 @@ import ChatLoadingInline from './ChatLoadingInline/ChatLoadingInline.js';
 
 // Helper function to validate user object
 const isValidUser = (user) => {
-  return (
-    user && user.id && user.email && typeof user.id === 'number' && typeof user.email === 'string'
-  );
+  return user && user.id && user.email && typeof user.email === 'string';
 };
 
 export default function ProtectedRoute({ children }) {
