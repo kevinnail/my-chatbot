@@ -18,15 +18,12 @@ export default Router()
 
   .post('/sessions', async (req, res, next) => {
     try {
-      // console.log('hit sessions');
-
       const token = await UserService.signIn(req.body); // go check if they can have a wristband
       res
         .cookie(process.env.COOKIE_NAME, token, {
           httpOnly: true,
           secure: process.env.SECURE_COOKIES === 'true',
           sameSite: process.env.SECURE_COOKIES === 'true' ? 'none' : 'strict',
-          // sameSite: process.env.SECURE_COOKIES === ' None',
           maxAge: ONE_DAY_IN_MS,
         })
         .json({ message: 'Signed in successfully!' }); // attach wristband to wrist

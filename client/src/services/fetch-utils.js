@@ -31,7 +31,6 @@ export async function signUpUser(email, password) {
     credentials: 'include',
   });
   const data = await resp.json();
-  // console.log('data', data);
 
   if (resp.ok) {
     await signInUser(email, password);
