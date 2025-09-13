@@ -106,6 +106,17 @@
   gap: 0.7em;
 }
 
+.back-to-chats-button {
+  background: transparent;
+  border: 1px solid #639cff;
+  color: #639cff;
+  padding: 8px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
 @media (max-width: 1001px) {
   .scroll-to-bottom-button {
     bottom: 120px;
