@@ -185,7 +185,13 @@ const ChatList = ({ userId }) => {
           {chats.map((chat) => (
             <div key={chat.id} className="chat-item" onClick={() => handleChatClick(chat.id)}>
               <div className="chat-item-header">
-                <span className="chat-date">{formatDate(chat.lastMessage)}</span>
+                <div className="chat-preview">
+                  {chat?.title ? (
+                    <span>{chat.title} </span>
+                  ) : (
+                    <span className="chat-title-generating"> title generating...</span>
+                  )}
+                </div>
                 <button
                   className="delete-chat-button"
                   onClick={(e) => handleDeleteChat(chat.chatId, e)}
@@ -194,15 +200,11 @@ const ChatList = ({ userId }) => {
                   ×
                 </button>
               </div>
-              <div className="chat-preview">
-                {chat?.title ? (
-                  <span>{chat.title} </span>
-                ) : (
-                  <span className="chat-title-generating"> title generating...</span>
-                )}
-              </div>
-              <div className="chat-meta">
-                {chat.messageCount} message{chat.messageCount !== 1 ? 's' : ''}
+              <div className="chat-item-info">
+                <span className="chat-date">{formatDate(chat.lastMessage)}</span>
+                <div className="chat-meta">
+                  {chat.messageCount} message{chat.messageCount !== 1 ? 's' : ''}
+                </div>
               </div>
             </div>
           ))}
