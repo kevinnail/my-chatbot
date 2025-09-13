@@ -13,11 +13,21 @@ const UserProvider = ({ children }) => {
     const fetchUser = async () => {
       try {
         const user = await getUser();
-        setUser(user);
+        // Only set user if we get valid user data from the server
+        if (user && user.id && user.email) {
+          setUser(user);
+        } else {
+          setUser(null);
+        }
         setLoading(false);
       } catch (error) {
         setError(error);
+        setUser(null);
         setLoading(false);
+        // If it's an auth error, clear any stale cookies
+        if (error.status === 401) {
+          // Could call signOut here to clear cookies
+        }
       }
     };
     fetchUser();
