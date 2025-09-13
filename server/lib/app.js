@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import chatRouter from './controllers/chat.js';
 import gmailMcpRouter from './controllers/gmail.js';
 import googleCalendarRouter from './controllers/googleCalendar.js';
@@ -18,6 +19,7 @@ app.use(
   }),
 );
 app.use(express.json());
+app.use(cookieParser());
 
 // Use the imported routers
 app.use('/api/users', users);
