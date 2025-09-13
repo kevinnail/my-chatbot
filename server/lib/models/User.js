@@ -1,10 +1,8 @@
-const pool = require('../utils/pool');
-const Todo = require('../models/Todo');
+import { pool } from '../utils/db.js';
 
-module.exports = class User {
+export default class User {
   id;
   email;
-  todos;
   #passwordHash; // private class field: hides it from anything outside of this class definition
 
   constructor(row) {
@@ -16,18 +14,18 @@ module.exports = class User {
   static async insert({ email, passwordHash }) {
     const { rows } = await pool.query(
       `
-      INSERT INTO users2 ( email, password_hash)
+      INSERT INTO users ( email, password_hash)
       VALUES ($1, $2)
       RETURNING *
     `,
-      [email, passwordHash]
+      [email, passwordHash],
     );
 
     return new User(rows[0]);
   }
 
   static async getAll() {
-    const { rows } = await pool.query('SELECT * FROM users2');
+    const { rows } = await pool.query('SELECT * FROM users');
     return rows.map((row) => new User(row));
   }
 
@@ -35,10 +33,10 @@ module.exports = class User {
     const { rows } = await pool.query(
       `
       SELECT *
-      FROM users2
+      FROM users
       WHERE email=$1
       `,
-      [email]
+      [email],
     );
 
     if (!rows[0]) return null;
@@ -49,18 +47,4 @@ module.exports = class User {
   get passwordHash() {
     return this.#passwordHash;
   }
-
-  async getTodos() {
-    const { rows } = await pool.query(
-      `
-      SELECT * FROM todos5
-      WHERE user_id=$1
-      ORDER BY created_at DESC;
-      
-    `,
-      [this.id]
-    );
-
-    this.todos = rows.map((row) => new Todo(row));
-  }
-};
+}
