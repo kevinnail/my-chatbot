@@ -7,6 +7,7 @@ export function useUser() {
 
   const logInUser = async (email, password, type) => {
     const user = await authUser(email, password, type);
+
     setUser(user);
   };
 
