@@ -93,8 +93,6 @@ const Header = ({ userId }) => {
         <span className="header-title-text">
           {`${isOnChatPage ? 'My Code & Job Search Assistant' : 'Gmail and Google Calendar Assistant'}`}
         </span>
-        {console.log('user', user)}
-        {user && <span style={{ fontSize: '0.8rem', color: '#888' }}>{user.email}</span>}
       </div>
 
       {/* Desktop Navigation */}
