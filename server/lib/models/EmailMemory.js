@@ -1,5 +1,6 @@
 import { pool } from '../utils/db.js';
 import { getEmbedding } from '../utils/ollamaEmbed.js';
+import { encrypt, decrypt } from '../services/encryption.js';
 
 class EmailMemory {
   // Store email with vector embedding and similarity score
@@ -54,9 +55,9 @@ class EmailMemory {
     const values = [
       userId,
       emailId,
-      subject,
-      sender,
-      body,
+      encrypt(subject),
+      encrypt(sender),
+      encrypt(body),
       emailDate,
       embedding,
       similarityScore,
@@ -103,7 +104,12 @@ class EmailMemory {
     values.push(limit);
 
     const { rows } = await pool.query(query, values);
-    return rows;
+    return rows.map((row) => ({
+      ...row,
+      subject: decrypt(row.subject),
+      sender: decrypt(row.sender),
+      body: decrypt(row.body),
+    }));
   }
 
   // Get emails that need LLM analysis (high similarity OR appointment-related but not yet analyzed)
@@ -151,7 +157,12 @@ class EmailMemory {
       );
     });
 
-    return rows;
+    return rows.map((row) => ({
+      ...row,
+      subject: decrypt(row.subject),
+      sender: decrypt(row.sender),
+      body: decrypt(row.body),
+    }));
   }
 
   // Update email analysis
@@ -191,6 +202,14 @@ class EmailMemory {
       'SELECT email_id, subject, sender, body, email_date, similarity_score, llm_analysis, llm_analyzed FROM email_memory WHERE user_id = $1 AND email_id = $2',
       [userId, emailId],
     );
+    if (rows[0]) {
+      return {
+        ...rows[0],
+        subject: decrypt(rows[0].subject),
+        sender: decrypt(rows[0].sender),
+        body: decrypt(rows[0].body),
+      };
+    }
     return rows[0];
   }
 }

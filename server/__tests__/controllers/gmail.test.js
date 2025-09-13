@@ -38,6 +38,35 @@ jest.unstable_mockModule('../../lib/utils/ollamaEmbed.js', () => ({
 const { default: setup, pool, cleanup } = await import('../../test-setup.js');
 const { default: request } = await import('supertest');
 const { default: app } = await import('../../lib/app.js');
+const { default: UserService } = await import('../../lib/services/UserService.js');
+
+// Dummy user for testing
+const mockUser = {
+  firstName: 'Test',
+  lastName: 'User',
+  email: 'test@example.com',
+  password: '12345',
+};
+
+const registerAndLogin = async (userProps = {}) => {
+  const password = userProps.password ?? mockUser.password;
+
+  // Create an "agent" that gives us the ability
+  // to store cookies between requests in a test
+  const agent = request.agent(app);
+
+  // Generate unique email for each test to avoid conflicts
+  const uniqueEmail = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@example.com`;
+  const userData = { ...mockUser, ...userProps, email: uniqueEmail };
+
+  // Create a user to sign in with
+  const user = await UserService.create(userData);
+
+  // ...then sign in
+  const { email } = user;
+  await agent.post('/api/users/sessions').send({ email, password });
+  return [agent, user];
+};
 
 describe('gmail routes', () => {
   beforeEach(async () => {
@@ -59,13 +88,15 @@ describe('gmail routes', () => {
 
   describe('GET /api/gmail/status/:userId', () => {
     it('should return not connected when IMAP credentials are missing', async () => {
+      const [agent] = await registerAndLogin();
+
       // Temporarily remove env vars
       const originalUser = process.env.GMAIL_USER;
       const originalPassword = process.env.GMAIL_APP_PASSWORD;
       delete process.env.GMAIL_USER;
       delete process.env.GMAIL_APP_PASSWORD;
 
-      const response = await request(app).get('/api/gmail/status/test_user');
+      const response = await agent.get('/api/gmail/status/test_user');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -79,13 +110,15 @@ describe('gmail routes', () => {
     });
 
     it('should return not connected when IMAP connection fails', async () => {
+      const [agent] = await registerAndLogin();
+
       // Set up env vars
       process.env.GMAIL_USER = 'test@gmail.com';
       process.env.GMAIL_APP_PASSWORD = 'test_password';
 
       mockTestImapConnection.mockRejectedValueOnce(new Error('IMAP connection failed'));
 
-      const response = await request(app).get('/api/gmail/status/test_user');
+      const response = await agent.get('/api/gmail/status/test_user');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -95,6 +128,8 @@ describe('gmail routes', () => {
     });
 
     it('should return connected status with last sync time', async () => {
+      const [agent] = await registerAndLogin();
+
       // Set up env vars
       process.env.GMAIL_USER = 'test@gmail.com';
       process.env.GMAIL_APP_PASSWORD = 'test_password';
@@ -110,7 +145,7 @@ describe('gmail routes', () => {
         new Date(),
       ]);
 
-      const response = await request(app).get(`/api/gmail/status/${userId}`);
+      const response = await agent.get(`/api/gmail/status/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -125,11 +160,11 @@ describe('gmail routes', () => {
 
   describe('POST /api/gmail/connect', () => {
     it('should successfully connect to Gmail IMAP', async () => {
+      const [agent] = await registerAndLogin();
+
       mockTestImapConnection.mockResolvedValueOnce();
 
-      const response = await request(app)
-        .post('/api/gmail/connect')
-        .send({ userId: 'test_user_connect' });
+      const response = await agent.post('/api/gmail/connect').send({ userId: 'test_user_connect' });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -146,11 +181,11 @@ describe('gmail routes', () => {
     });
 
     it('should handle IMAP connection failure', async () => {
+      const [agent] = await registerAndLogin();
+
       mockTestImapConnection.mockRejectedValueOnce(new Error('Connection failed'));
 
-      const response = await request(app)
-        .post('/api/gmail/connect')
-        .send({ userId: 'test_user_fail' });
+      const response = await agent.post('/api/gmail/connect').send({ userId: 'test_user_fail' });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -161,9 +196,11 @@ describe('gmail routes', () => {
 
   describe('GET /api/gmail/callback', () => {
     it('should redirect to client URL', async () => {
+      const [agent] = await registerAndLogin();
+
       process.env.CLIENT_URL = 'http://localhost:3000';
 
-      const response = await request(app).get('/api/gmail/callback');
+      const response = await agent.get('/api/gmail/callback');
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe('http://localhost:3000/gmail-mcp?connected=true');
@@ -172,6 +209,8 @@ describe('gmail routes', () => {
 
   describe('POST /api/gmail/sync', () => {
     it('should sync emails and return preliminary results', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_sync';
 
       const mockEmails = [
@@ -205,7 +244,7 @@ describe('gmail routes', () => {
         .map((_, i) => (i / 1024).toFixed(6));
       mockGetEmbedding.mockResolvedValue(`[${mockEmbedding.join(',')}]`);
 
-      const response = await request(app).post('/api/gmail/sync').send({ userId });
+      const response = await agent.post('/api/gmail/sync').send({ userId });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('emails');
@@ -237,11 +276,11 @@ describe('gmail routes', () => {
     });
 
     it('should handle sync errors gracefully', async () => {
+      const [agent] = await registerAndLogin();
+
       mockGetEmailsViaImap.mockRejectedValueOnce(new Error('IMAP error'));
 
-      const response = await request(app)
-        .post('/api/gmail/sync')
-        .send({ userId: 'test_user_error' });
+      const response = await agent.post('/api/gmail/sync').send({ userId: 'test_user_error' });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({
@@ -250,6 +289,8 @@ describe('gmail routes', () => {
     });
 
     it('should skip emails that already exist in database', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_existing';
 
       // First, add an email to the database
@@ -291,7 +332,7 @@ describe('gmail routes', () => {
         reductionPercentage: 50,
       });
 
-      const response = await request(app).post('/api/gmail/sync').send({ userId });
+      const response = await agent.post('/api/gmail/sync').send({ userId });
 
       expect(response.status).toBe(200);
       expect(response.body.performance.totalFetched).toBe(2);
@@ -308,6 +349,8 @@ describe('gmail routes', () => {
 
   describe('GET /api/gmail/emails/:userId', () => {
     it('should return stored web-dev emails', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_emails';
 
       // Add some test emails to the database
@@ -346,7 +389,7 @@ describe('gmail routes', () => {
         ],
       );
 
-      const response = await request(app).get(`/api/gmail/emails/${userId}`);
+      const response = await agent.get(`/api/gmail/emails/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('emails');
@@ -383,7 +426,9 @@ describe('gmail routes', () => {
     });
 
     it('should return empty array for user with no emails', async () => {
-      const response = await request(app).get('/api/gmail/emails/nonexistent_user');
+      const [agent] = await registerAndLogin();
+
+      const response = await agent.get('/api/gmail/emails/nonexistent_user');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -394,6 +439,8 @@ describe('gmail routes', () => {
     });
 
     it('should respect limit parameter', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_limit';
 
       // Add multiple emails
@@ -413,7 +460,7 @@ describe('gmail routes', () => {
         );
       }
 
-      const response = await request(app).get(`/api/gmail/emails/${userId}?limit=3`);
+      const response = await agent.get(`/api/gmail/emails/${userId}?limit=3`);
 
       expect(response.status).toBe(200);
       expect(response.body.emails).toHaveLength(3);

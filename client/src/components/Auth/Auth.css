@@ -1,0 +1,124 @@
+.auth-container {
+  width: 400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 100px;
+  background: #181818;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.sign-in-sign-out {
+  display: flex;
+  gap: 0;
+  margin-bottom: 2rem;
+  width: 100%;
+  background: #0f0f0f;
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid #333;
+}
+
+.sign-in-sign-out .link {
+  color: #888;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  flex: 1;
+  text-align: center;
+}
+
+.sign-in-sign-out .link:hover {
+  color: #fff;
+  background: rgba(99, 156, 255, 0.2);
+  border: 1px solid rgba(99, 156, 255, 0.5);
+}
+
+.sign-in-sign-out .link.active {
+  color: #fff;
+  border: 1px solid #639cff;
+  transition: all 2s ease;
+}
+
+.email-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.email-container .input {
+  /* height: 50px; */
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  color: white;
+  background: black;
+  border: 1px solid #4f62cb;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.email-container .input:focus {
+  border-color: #639cff;
+}
+
+.email-container .input::placeholder {
+  color: #888;
+}
+
+.email-container button {
+  height: 40px;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+  background: #639cff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+  margin-right: 3rem;
+  align-self: end;
+  min-width: 120px;
+}
+
+.email-container button:hover {
+  background: #4a7ce6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 156, 255, 0.3);
+}
+
+.email-container button:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+  .auth-container {
+    width: 90%;
+    margin-top: 50px;
+    padding: 1.5rem;
+  }
+
+  .sign-in-sign-out {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .sign-in-sign-out .link {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+}

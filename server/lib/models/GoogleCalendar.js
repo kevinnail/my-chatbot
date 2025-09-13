@@ -1,4 +1,5 @@
 import { pool } from '../utils/db.js';
+import { encrypt, decrypt } from '../services/encryption.js';
 
 class GoogleCalendar {
   static async hasValidTokens(userId) {
@@ -53,8 +54,8 @@ class GoogleCalendar {
       const { access_token, refresh_token, expires_at } = rows[0];
 
       return {
-        access_token,
-        refresh_token,
+        access_token: decrypt(access_token),
+        refresh_token: decrypt(refresh_token),
         expiry_date: new Date(expires_at).getTime(),
       };
     } catch (error) {
@@ -79,7 +80,7 @@ class GoogleCalendar {
           expires_at = EXCLUDED.expires_at,
           updated_at = CURRENT_TIMESTAMP
       `,
-        [userId, access_token, refresh_token, expiresAt],
+        [userId, encrypt(access_token), encrypt(refresh_token), expiresAt],
       );
     } catch (error) {
       console.error('Error storing Google Calendar tokens:', error);
