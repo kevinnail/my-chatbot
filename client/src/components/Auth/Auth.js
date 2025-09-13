@@ -8,10 +8,14 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignIn, setIsSignIn] = useState(true);
-  const { logInUser } = useUser();
+  const { user, logInUser } = useUser();
   const { type } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+
+  if (!window.isLocal && user.id === 'demo-user' && user.email === 'demo@example.com') {
+    navigate('/');
+  }
 
   const submitAuth = async () => {
     try {
