@@ -1,12 +1,12 @@
-const { Router } = require('express');
-const authenticate = require('../middleware/authenticate');
-const authorize = require('../middleware/authorize');
-const User = require('../models/User');
-const UserService = require('../services/UserService');
+import { Router } from 'express';
+import authenticate from '../middleware/authenticate.js';
+import authorize from '../middleware/authorize.js';
+import User from '../models/User.js';
+import UserService from '../services/UserService.js';
 
 const ONE_DAY_IN_MS = 1000 * 60 * 60 * 24;
 
-module.exports = Router()
+export default Router()
   .post('/', async (req, res, next) => {
     try {
       const user = await UserService.create(req.body); // calling UserService instead of model
