@@ -155,7 +155,7 @@ describe('chat routes', () => {
         chat_id: 'test_chat_1',
         user_id: 'test_user_1',
         role: 'user',
-        content: 'Hello, I need help with React hooks',
+        content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
         embedding: expect.any(String),
         created_at: expect.any(Date),
       });
@@ -164,7 +164,7 @@ describe('chat routes', () => {
         chat_id: 'test_chat_1',
         user_id: 'test_user_1',
         role: 'bot',
-        content: mockResponseContent,
+        content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
         embedding: expect.any(String),
         created_at: expect.any(Date),
       });
@@ -234,7 +234,7 @@ describe('chat routes', () => {
       );
 
       expect(rows).toHaveLength(1);
-      expect(rows[0].content).toBe('');
+      expect(rows[0].content).toMatch(/^U2FsdGVkX1/); // Encrypted empty string
     });
 
     it('should handle malformed Ollama response', async () => {
@@ -303,7 +303,7 @@ describe('chat routes', () => {
       );
 
       expect(rows).toHaveLength(1);
-      expect(rows[0].content).toBe('');
+      expect(rows[0].content).toMatch(/^U2FsdGVkX1/); // Encrypted empty string
     });
 
     it('should calculate context percentage correctly with multiple messages', async () => {
@@ -552,27 +552,24 @@ describe('chat routes', () => {
       // Add chat entry to chats table
       await pool.query('INSERT INTO chats (chat_id, user_id) VALUES ($1, $2)', [chatId, userId]);
 
-      // Add some messages to create a chat
-      await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
-        [
-          chatId,
-          userId,
-          'user',
-          'Hello, this is a test message',
-          `[${new Array(1024).fill(0.1).join(',')}]`,
-        ],
-      );
-      await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
-        [
-          chatId,
-          userId,
-          'bot',
-          'This is a test response',
-          `[${new Array(1024).fill(0.1).join(',')}]`,
-        ],
-      );
+      // Add some messages to create a chat using ChatMemory model
+      const { default: ChatMemory } = await import('../../lib/models/ChatMemory.js');
+
+      await ChatMemory.storeMessage({
+        chatId,
+        userId,
+        role: 'user',
+        content: 'Hello, this is a test message',
+        embedding: `[${new Array(1024).fill(0.1).join(',')}]`,
+      });
+
+      await ChatMemory.storeMessage({
+        chatId,
+        userId,
+        role: 'bot',
+        content: 'This is a test response',
+        embedding: `[${new Array(1024).fill(0.1).join(',')}]`,
+      });
 
       const response = await agent.get(`/api/chatbot/list/${userId}`);
 
