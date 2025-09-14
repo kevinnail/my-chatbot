@@ -1,20 +1,50 @@
 import { pool } from '../utils/db.js';
 import { getEmbedding } from '../utils/ollamaEmbed.js';
 import { encrypt, decrypt } from '../services/encryption.js';
+import { recursiveChunk } from '../utils/textChunking.js';
 
 class ChatMemory {
   static async storeMessage({ chatId, userId, role, content }) {
-    const embedding = await getEmbedding(content);
+    const startTime = performance.now();
+    console.log(`Starting message storage for ${role} message (${content.length} chars)`);
+
+    const messageId = `${chatId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const chunks = recursiveChunk(content);
+    const isChunked = chunks.length > 1;
+
+    if (isChunked) {
+      console.log(`Content chunked into ${chunks.length} pieces`);
+    }
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
+      // Store full message
+      console.log('Generating embedding for full message...');
+      const fullEmbedding = await getEmbedding(content);
       await client.query(
-        `INSERT INTO chat_memory (chat_id, user_id, role, content, embedding)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [chatId, userId, role, encrypt(content), embedding],
+        `INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding, is_chunked)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [chatId, userId, messageId, role, encrypt(content), fullEmbedding, isChunked],
       );
+
+      // Store chunks if content was chunked
+      if (isChunked) {
+        console.log(`Generating embeddings for ${chunks.length} chunks...`);
+        for (let i = 0; i < chunks.length; i++) {
+          const chunk = chunks[i];
+          console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} chars)`);
+          const chunkEmbedding = await getEmbedding(chunk);
+          const chunkType = i === 0 ? 'paragraph' : 'sentence'; // Simplified type detection
+
+          await client.query(
+            `INSERT INTO chat_memory_chunks (chat_id, user_id, message_id, chunk_index, content, embedding, chunk_type)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [chatId, userId, messageId, i, encrypt(chunk), chunkEmbedding, chunkType],
+          );
+        }
+      }
 
       await client.query(
         `INSERT INTO chats (chat_id, user_id)
@@ -24,8 +54,17 @@ class ChatMemory {
       );
 
       await client.query('COMMIT');
+
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(3);
+      console.log(
+        `✅ Message storage completed in ${duration} seconds (${isChunked ? `${chunks.length} chunks` : 'no chunking'})`,
+      );
     } catch (error) {
       await client.query('ROLLBACK');
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(3);
+      console.error(`❌ Message storage failed after ${duration} seconds:`, error);
       throw error;
     } finally {
       client.release();
@@ -33,17 +72,73 @@ class ChatMemory {
   }
 
   static async getRelevantMessages({ chatId, userId, inputText, limit = 5 }) {
+    const startTime = performance.now();
+    console.log(`Starting relevant message search for "${inputText.substring(0, 50)}..."`);
+
     const queryEmbedding = await getEmbedding(inputText);
 
-    const { rows } = await pool.query(
+    // Search chunks first for better granular matching
+    console.log('Searching chunks for relevant content...');
+    const chunkRows = await pool.query(
       `
-      SELECT role, content, created_at
-      FROM chat_memory
+      SELECT message_id, chunk_index, content, embedding <-> $3 as distance
+      FROM chat_memory_chunks
       WHERE chat_id = $1 AND user_id = $2
       ORDER BY embedding <-> $3
       LIMIT $4
     `,
-      [chatId, userId, queryEmbedding, limit],
+      [chatId, userId, queryEmbedding, limit * 2], // Get more chunks to ensure we have enough messages
+    );
+
+    // Get unique message_ids from chunk results
+    const messageIds = [...new Set(chunkRows.rows.map((row) => row.message_id))];
+    console.log(
+      `Found ${chunkRows.rows.length} relevant chunks from ${messageIds.length} messages`,
+    );
+
+    if (messageIds.length === 0) {
+      // Fallback to full message search if no chunks found
+      console.log('No chunks found, falling back to full message search...');
+      const { rows } = await pool.query(
+        `
+        SELECT role, content, created_at
+        FROM chat_memory
+        WHERE chat_id = $1 AND user_id = $2
+        ORDER BY embedding <-> $3
+        LIMIT $4
+      `,
+        [chatId, userId, queryEmbedding, limit],
+      );
+
+      const endTime = performance.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(3);
+      console.log(
+        `✅ Message search completed in ${duration} seconds (fallback mode, ${rows.length} messages)`,
+      );
+
+      return rows.map(({ role, content, created_at }) => ({
+        role,
+        content: decrypt(content),
+        timestamp: created_at,
+      }));
+    }
+
+    // Get full messages for the relevant message_ids
+    console.log('Retrieving full messages for relevant chunks...');
+    const { rows } = await pool.query(
+      `
+      SELECT role, content, created_at
+      FROM chat_memory
+      WHERE chat_id = $1 AND user_id = $2 AND message_id = ANY($3)
+      ORDER BY created_at ASC
+    `,
+      [chatId, userId, messageIds],
+    );
+
+    const endTime = performance.now();
+    const duration = ((endTime - startTime) / 1000).toFixed(3);
+    console.log(
+      `✅ Message search completed in ${duration} seconds (chunk mode, ${rows.length} messages)`,
     );
 
     return rows.map(({ role, content, created_at }) => ({
@@ -125,6 +220,13 @@ class ChatMemory {
 
       await client.query(
         `
+      DELETE FROM chat_memory_chunks WHERE user_id = $1;
+      `,
+        [userId],
+      );
+
+      await client.query(
+        `
       DELETE FROM chat_memory WHERE user_id = $1;
       `,
         [userId],
@@ -150,6 +252,13 @@ class ChatMemory {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+
+      await client.query(
+        `
+      DELETE FROM chat_memory_chunks WHERE chat_id = $1 AND user_id = $2;
+         `,
+        [chatId, userId],
+      );
 
       await client.query(
         `
