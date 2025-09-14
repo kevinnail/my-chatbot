@@ -36,3 +36,8 @@ jobs:
           PG_HOST: postgres
           PG_PASSWORD: knail
           PG_PORT: 5432
+          JWT_SECRET: test-jwt-secret-for-testing-only
+          COOKIE_NAME: test-session-cookie
+          SALT_ROUNDS: 10
+          SECURE_COOKIES: false
+          ENCRYPTION_KEY: test-encryption-key-for-testing-only
