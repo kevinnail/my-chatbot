@@ -2,14 +2,14 @@ import ChatMemory from '../models/ChatMemory.js';
 
 export async function buildPromptWithMemory({ chatId, userId, userInput }) {
   // Get recent messages first (most important for context continuity)
-  const recentMessages = await ChatMemory.getRecentMessages({ chatId, userId, limit: 8 });
+  const recentMessages = await ChatMemory.getRecentMessages({ chatId, userId, limit: 12 });
 
-  // Get only a few highly relevant messages to supplement context
+  // Get more relevant messages to supplement context
   const relevantMessages = await ChatMemory.getRelevantMessages({
     chatId,
     userId,
     inputText: userInput,
-    limit: 3,
+    limit: 8,
   });
 
   // Prioritize recent messages, then add relevant ones that aren't duplicates
