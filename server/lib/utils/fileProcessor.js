@@ -5,7 +5,19 @@ import { getEmbedding } from './ollamaEmbed.js';
 
 export async function processFolder(folderPath, options = {}) {
   const {
-    extensions = ['.js', '.jsx', '.ts', '.tsx', '.md', '.txt', '.json'],
+    extensions = [
+      '.js',
+      '.jsx',
+      '.ts',
+      '.tsx',
+      '.md',
+      '.txt',
+      '.json',
+      '.toml',
+      '.css',
+      '.sql',
+      '.html',
+    ],
     maxDepth = 10,
     ignore = ['node_modules', '.git', 'dist', 'build', '.next'],
   } = options;
