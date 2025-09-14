@@ -46,9 +46,11 @@ describe('ChatMemory model', () => {
         id: expect.any(Number),
         chat_id: messageData.chatId,
         user_id: messageData.userId,
+        message_id: expect.any(String),
         role: messageData.role,
         content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
         embedding: expect.any(String),
+        is_chunked: false,
         created_at: expect.any(Date),
       });
     });
