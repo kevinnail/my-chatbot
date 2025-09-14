@@ -1,4 +1,7 @@
 export async function getEmbedding(input) {
+  const startTime = performance.now();
+  console.log('Starting embedding generation...');
+
   try {
     const res = await fetch('http://localhost:11434/api/embed', {
       method: 'POST',
@@ -33,10 +36,16 @@ export async function getEmbedding(input) {
       throw new Error('Embedding is not an array');
     }
 
+    const endTime = performance.now();
+    const duration = ((endTime - startTime) / 1000).toFixed(3);
+    console.log(`✅ Embedding generation completed in ${duration} seconds`);
+
     // Convert array to PostgreSQL vector format: [0.1, 0.2, 0.3]
     return `[${embedding.join(',')}]`;
   } catch (error) {
-    console.error('Error getting embedding:', error);
+    const endTime = performance.now();
+    const duration = ((endTime - startTime) / 1000).toFixed(3);
+    console.error(`❌ Embedding generation failed after ${duration} seconds:`, error);
     throw error;
   }
 }
