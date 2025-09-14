@@ -248,9 +248,9 @@ class ChatMemory {
       firstMessage: row.first_message,
       lastMessage: row.last_message,
       preview: row.user_messages
-        ? decrypt(row.user_messages).substring(0, 100) + '...'
+        ? (decrypt(row.user_messages) || '').substring(0, 100) + '...'
         : 'No messages',
-      title: decrypt(row.title),
+      title: row.title ? decrypt(row.title) : null,
     }));
   }
 }
