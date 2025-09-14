@@ -217,6 +217,13 @@ router.post('/', async (req, res) => {
 
     // More comprehensive timeout error handling
     if (error.name === 'AbortError') {
+      // Check if this was a user-initiated stop (controller was deleted)
+      const { userId: errorUserId, chatId: errorChatId } = req.body;
+      const controllerKey = `${errorUserId}_${errorChatId || `${errorUserId}_${Date.now()}`}`;
+      if (!activeControllers.has(controllerKey)) {
+        // This was a user stop, don't show timeout error
+        return res.status(200).json({ stopped: true });
+      }
       return res.status(408).json({
         error: 'Request timed out - LLM is taking too long to respond. Please try again.',
       });

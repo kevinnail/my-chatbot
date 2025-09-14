@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { sendPrompt } from '../../services/fetch-chat';
+import { sendPrompt, setStopPressed } from '../../services/fetch-chat';
 import './MessageInput.css';
 
 const MessageInput = ({
@@ -58,6 +58,9 @@ const MessageInput = ({
 
   const handleStop = async () => {
     try {
+      // Set stop state immediately
+      setStopPressed(true);
+
       const response = await fetch('/api/chatbot/stop', {
         method: 'POST',
         headers: {
@@ -68,6 +71,7 @@ const MessageInput = ({
 
       if (response.ok) {
         setLoading(false);
+        // The chat-stopped event will handle removing the placeholder
       }
     } catch (error) {
       console.error('Error stopping request:', error);

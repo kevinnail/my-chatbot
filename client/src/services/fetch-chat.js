@@ -4,6 +4,9 @@ const BASE_URL = process.env.REACT_APP_BASE_URL;
 
 // Create socket connection
 let socket = null;
+// Track stop state globally
+let stopPressed = false;
+
 const getSocket = () => {
   if (!socket) {
     // Only connect to socket when running locally
@@ -20,6 +23,11 @@ const getSocket = () => {
   }
   return socket;
 };
+
+// Function to set stop state (called from MessageInput)
+export function setStopPressed(value) {
+  stopPressed = value;
+}
 
 export async function sendPrompt({
   userId,
@@ -39,6 +47,9 @@ export async function sendPrompt({
   setLog((l) => [...l, { text: userMsg, role: 'user', timestamp: startTime }]);
   setInput('');
   setLoading(true);
+
+  // Reset stop state for new request
+  stopPressed = false;
 
   // Check if running locally or on netlify
   if (!window.isLocal) {
@@ -207,6 +218,21 @@ export async function sendPrompt({
     const errorTime = Date.now();
     const responseTime = errorTime - startTime;
 
+    // If stop was pressed, just remove placeholder without showing error
+    if (stopPressed) {
+      setLog((l) => l.filter((msg) => !(msg.timestamp === botMessageId && msg.role === 'bot')));
+      setLoading(false);
+      if (setCallLLMStartTime) {
+        setCallLLMStartTime(null);
+      }
+      // Clean up listeners
+      socket.off('chat-chunk', handleChatChunk);
+      socket.off('chat-complete', handleChatComplete);
+      socket.off('chat-error', handleChatError);
+      socket.off('chat-stopped', handleChatStopped);
+      return;
+    }
+
     // Remove streaming placeholder and add error
     setLog((l) => l.filter((msg) => !(msg.timestamp === botMessageId && msg.role === 'bot')));
     setLog((l) => [
@@ -228,12 +254,29 @@ export async function sendPrompt({
     socket.off('chat-chunk', handleChatChunk);
     socket.off('chat-complete', handleChatComplete);
     socket.off('chat-error', handleChatError);
+    socket.off('chat-stopped', handleChatStopped);
+  };
+
+  const handleChatStopped = () => {
+    stopPressed = true;
+    // Remove the empty placeholder
+    setLog((l) => l.filter((msg) => !(msg.timestamp === botMessageId && msg.role === 'bot')));
+    setLoading(false);
+    if (setCallLLMStartTime) {
+      setCallLLMStartTime(null);
+    }
+    // Clean up listeners
+    socket.off('chat-chunk', handleChatChunk);
+    socket.off('chat-complete', handleChatComplete);
+    socket.off('chat-error', handleChatError);
+    socket.off('chat-stopped', handleChatStopped);
   };
 
   // Add event listeners
   socket.on('chat-chunk', handleChatChunk);
   socket.on('chat-complete', handleChatComplete);
   socket.on('chat-error', handleChatError);
+  socket.on('chat-stopped', handleChatStopped);
 
   try {
     const requestBody = { msg: userMsg, userId, coachOrChat, chatId };
@@ -248,6 +291,21 @@ export async function sendPrompt({
 
     if (!res.ok) {
       throw new Error(data.error || 'Failed to send prompt');
+    }
+
+    // If this was a stopped request, remove placeholder and return
+    if (data.stopped) {
+      setLog((l) => l.filter((msg) => !(msg.timestamp === botMessageId && msg.role === 'bot')));
+      setLoading(false);
+      if (setCallLLMStartTime) {
+        setCallLLMStartTime(null);
+      }
+      // Clean up listeners
+      socket.off('chat-chunk', handleChatChunk);
+      socket.off('chat-complete', handleChatComplete);
+      socket.off('chat-error', handleChatError);
+      socket.off('chat-stopped', handleChatStopped);
+      return;
     }
 
     // If not streaming, handle as before
@@ -285,6 +343,7 @@ export async function sendPrompt({
       socket.off('chat-chunk', handleChatChunk);
       socket.off('chat-complete', handleChatComplete);
       socket.off('chat-error', handleChatError);
+      socket.off('chat-stopped', handleChatStopped);
     }
     // If streaming, the WebSocket handlers will manage the response
   } catch (e) {
@@ -313,6 +372,7 @@ export async function sendPrompt({
     socket.off('chat-chunk', handleChatChunk);
     socket.off('chat-complete', handleChatComplete);
     socket.off('chat-error', handleChatError);
+    socket.off('chat-stopped', handleChatStopped);
   }
 }
 
