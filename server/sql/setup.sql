@@ -7,6 +7,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Drop existing tables
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS chat_memory CASCADE;
+DROP TABLE IF EXISTS chat_memory_chunks CASCADE;
 DROP TABLE IF EXISTS chats CASCADE;
 DROP TABLE IF EXISTS gmail_tokens CASCADE;
 DROP TABLE IF EXISTS gmail_sync_status CASCADE;
@@ -34,9 +35,24 @@ CREATE TABLE chat_memory (
     id SERIAL PRIMARY KEY,
     chat_id VARCHAR(255) NOT NULL,
     user_id VARCHAR(255) NOT NULL,
+    message_id VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL,
     content TEXT NOT NULL,
     embedding VECTOR(1024),
+    is_chunked BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create chat_memory_chunks table
+CREATE TABLE chat_memory_chunks (
+    id SERIAL PRIMARY KEY,
+    chat_id VARCHAR(255) NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
+    message_id VARCHAR(255) NOT NULL,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    embedding VECTOR(1024),
+    chunk_type VARCHAR(20) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -79,8 +95,14 @@ CREATE INDEX IF NOT EXISTS idx_chats_updated_at ON chats(updated_at);
 
 CREATE INDEX IF NOT EXISTS idx_chat_memory_user_id ON chat_memory(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_chat_id ON chat_memory(chat_id);
+CREATE INDEX IF NOT EXISTS idx_chat_memory_message_id ON chat_memory(message_id);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_created_at ON chat_memory(created_at);
 CREATE INDEX IF NOT EXISTS idx_chat_memory_embedding ON chat_memory USING ivfflat (embedding vector_cosine_ops);
+
+CREATE INDEX IF NOT EXISTS idx_chat_memory_chunks_user_id ON chat_memory_chunks(user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_memory_chunks_chat_id ON chat_memory_chunks(chat_id);
+CREATE INDEX IF NOT EXISTS idx_chat_memory_chunks_message_id ON chat_memory_chunks(message_id);
+CREATE INDEX IF NOT EXISTS idx_chat_memory_chunks_embedding ON chat_memory_chunks USING ivfflat (embedding vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS idx_gmail_sync_status_user_id ON gmail_sync_status(user_id);
 
@@ -111,11 +133,11 @@ CREATE TABLE google_calendar_tokens (
 CREATE INDEX IF NOT EXISTS idx_google_calendar_tokens_user_id ON google_calendar_tokens(user_id);
 
 -- Insert sample test data (for development/testing) with encrypted content
-INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES
-('sample_chat_1', 'sample_user', 'user', 'U2FsdGVkX1/QRkjJ1dJqqYeYPYSG8vtfhwq/NxOjm9x8v2MiNvVsmbuLXrwqOkqS', 
- ('[' || array_to_string(ARRAY(SELECT 0.1 FROM generate_series(1, 1024)), ',') || ']')::vector),
-('sample_chat_1', 'sample_user', 'bot', 'U2FsdGVkX1/RuOD1c7tzqVDZHHN1IHO49hbfeOnzXGMXDcu55k4DCzPkzhjYOQ5Ms+o+D9TojovO+lcHZrUB68ypulwey2lXXMilCegoFLt7wdHvsNMYqA6ia74agIt1tuKRDdq4gP4R8fzTs65psLPCT4/lOmbnaiBaqHIyIHT6iaDzU9VhR8Rvo8gH3pdv', 
- ('[' || array_to_string(ARRAY(SELECT 0.2 FROM generate_series(1, 1024)), ',') || ']')::vector);
+INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding, is_chunked) VALUES
+('sample_chat_1', 'sample_user', 'msg_1', 'user', 'U2FsdGVkX1/QRkjJ1dJqqYeYPYSG8vtfhwq/NxOjm9x8v2MiNvVsmbuLXrwqOkqS', 
+ ('[' || array_to_string(ARRAY(SELECT 0.1 FROM generate_series(1, 1024)), ',') || ']')::vector, false),
+('sample_chat_1', 'sample_user', 'msg_2', 'bot', 'U2FsdGVkX1/RuOD1c7tzqVDZHHN1IHO49hbfeOnzXGMXDcu55k4DCzPkzhjYOQ5Ms+o+D9TojovO+lcHZrUB68ypulwey2lXXMilCegoFLt7wdHvsNMYqA6ia74agIt1tuKRDdq4gP4R8fzTs65psLPCT4/lOmbnaiBaqHIyIHT6iaDzU9VhR8Rvo8gH3pdv', 
+ ('[' || array_to_string(ARRAY(SELECT 0.2 FROM generate_series(1, 1024)), ',') || ']')::vector, false);
 
 -- Insert sample email data for testing with encrypted content
 INSERT INTO email_memory (user_id, email_id, subject, sender, body, email_date, similarity_score, is_web_dev_related, llm_analyzed, llm_analysis) VALUES

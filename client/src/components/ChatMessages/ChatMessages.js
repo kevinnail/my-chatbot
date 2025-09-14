@@ -214,7 +214,7 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                   {m.text}
                 </ReactMarkdown>
               ) : (
-                m.text
+                <div style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
               )}
               {/* Show processing/streaming indicator inside message */}
               {isBot && m.isStreaming && (

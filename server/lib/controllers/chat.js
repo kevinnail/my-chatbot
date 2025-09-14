@@ -5,7 +5,7 @@ import { careerCoach, codingAssistant } from '../utils/chatPrompts.js';
 
 const router = Router();
 
-function countTokens(messages) {
+export function countTokens(messages) {
   // Very rough estimate: 1 token ≈ 4 characters in English
   return messages.reduce((acc, msg) => acc + Math.ceil(msg.content.length / 4), 0);
 }

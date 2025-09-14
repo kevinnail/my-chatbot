@@ -364,7 +364,10 @@ describe('ollamaEmbed utilities', () => {
 
       await expect(getEmbedding(testInput)).rejects.toThrow('Original fetch error');
 
-      expect(consoleSpy).toHaveBeenCalledWith('Error getting embedding:', originalError);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/❌ Embedding generation failed after \d+\.\d+ seconds:/),
+        originalError,
+      );
       consoleSpy.mockRestore();
     });
   });

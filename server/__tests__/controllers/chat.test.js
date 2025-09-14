@@ -163,18 +163,22 @@ describe('chat routes', () => {
         id: expect.any(Number),
         chat_id: 'test_chat_1',
         user_id: 'test_user_1',
+        message_id: expect.any(String),
         role: 'user',
         content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
         embedding: expect.any(String),
+        is_chunked: false,
         created_at: expect.any(Date),
       });
       expect(rows[1]).toEqual({
         id: expect.any(Number),
         chat_id: 'test_chat_1',
         user_id: 'test_user_1',
+        message_id: expect.any(String),
         role: 'bot',
         content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
         embedding: expect.any(String),
+        is_chunked: false,
         created_at: expect.any(Date),
       });
     });
@@ -449,20 +453,22 @@ describe('chat routes', () => {
 
       // First, add some messages
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
         [
           'test_chat_delete',
           userId,
+          'test_msg_1',
           'user',
           'Test message 1',
           `[${new Array(1024).fill(0.1).join(',')}]`,
         ],
       );
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
         [
           'test_chat_delete',
           userId,
+          'test_msg_2',
           'bot',
           'Test response 1',
           `[${new Array(1024).fill(0.1).join(',')}]`,
@@ -511,20 +517,22 @@ describe('chat routes', () => {
 
       // Add messages for both users
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
         [
           'test_chat_keep',
           userId1,
+          'test_msg_keep_1',
           'user',
           'Keep this message',
           `[${new Array(1024).fill(0.1).join(',')}]`,
         ],
       );
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
         [
           'test_chat_delete_specific',
           userId2,
+          'test_msg_delete_1',
           'user',
           'Delete this message',
           `[${new Array(1024).fill(0.1).join(',')}]`,
@@ -618,8 +626,15 @@ describe('chat routes', () => {
 
       // Add messages to first chat
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
-        [chatId1, userId, 'user', 'First chat message', `[${new Array(1024).fill(0.1).join(',')}]`],
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
+        [
+          chatId1,
+          userId,
+          'test_msg_chat1_1',
+          'user',
+          'First chat message',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
       );
 
       // Wait a moment to ensure different timestamps
@@ -627,10 +642,11 @@ describe('chat routes', () => {
 
       // Add messages to second chat
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
         [
           chatId2,
           userId,
+          'test_msg_chat2_1',
           'user',
           'Second chat message',
           `[${new Array(1024).fill(0.1).join(',')}]`,
@@ -675,20 +691,22 @@ describe('chat routes', () => {
 
       // Add messages to the chat
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
         [
           chatId,
           userId,
+          'test_msg_delete_chat_1',
           'user',
           'Test message to delete',
           `[${new Array(1024).fill(0.1).join(',')}]`,
         ],
       );
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
         [
           chatId,
           userId,
+          'test_msg_delete_chat_2',
           'bot',
           'Test response to delete',
           `[${new Array(1024).fill(0.1).join(',')}]`,
@@ -738,14 +756,22 @@ describe('chat routes', () => {
 
       // Add messages to both chats
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
-        [chatId1, userId, 'user', 'Keep this message', `[${new Array(1024).fill(0.1).join(',')}]`],
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
+        [
+          chatId1,
+          userId,
+          'test_msg_keep_chat1_1',
+          'user',
+          'Keep this message',
+          `[${new Array(1024).fill(0.1).join(',')}]`,
+        ],
       );
       await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO chat_memory (chat_id, user_id, message_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5, $6)',
         [
           chatId2,
           userId,
+          'test_msg_delete_chat2_1',
           'user',
           'Delete this message',
           `[${new Array(1024).fill(0.1).join(',')}]`,
