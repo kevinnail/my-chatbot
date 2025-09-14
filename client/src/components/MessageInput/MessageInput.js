@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { sendPrompt } from '../../services/fetch-chat';
 import './MessageInput.css';
 
@@ -20,13 +20,24 @@ const MessageInput = ({
   const textareaRef = useRef(null);
 
   // Auto-resize textarea based on content
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
+  const handleTextareaChange = (e) => {
+    onInputChange(e);
+
+    // Auto-resize after input change
+    const textarea = e.target;
+    const oldHeight = textarea.offsetHeight;
+    textarea.style.height = 'auto';
+    const newHeight = textarea.scrollHeight;
+    textarea.style.height = `${newHeight}px`;
+
+    // If textarea grew, scroll down by the exact amount it expanded
+    // This keeps the textarea in the same position relative to viewport
+    // and prevents the "scroll to bottom" button from appearing
+    if (newHeight > oldHeight) {
+      window.scrollBy(0, newHeight - oldHeight);
     }
-  }, [input]);
+  };
+
   const handleSend = () => {
     setCallLLMStartTime(new Date());
     const prompt = {
@@ -45,17 +56,26 @@ const MessageInput = ({
     sendPrompt(prompt);
   };
 
+  const handleStop = async () => {
+    try {
+      const response = await fetch('/api/chatbot/stop', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (response.ok) {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error stopping request:', error);
+    }
+  };
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.35rem',
-        width: '100%',
-        paddingTop: '40px',
-      }}
-    >
+    <div className="message-input-container">
       <textarea
         ref={textareaRef}
         className="message-input"
@@ -69,7 +89,7 @@ const MessageInput = ({
             : 'What can I do to help with your job search?'
         }
         disabled={loading}
-        onChange={onInputChange}
+        onChange={handleTextareaChange}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -78,31 +98,32 @@ const MessageInput = ({
           // If Shift+Enter is pressed, allow default behavior (new line)
         }}
       />
+      {loading && (
+        <div className="token-mode-send">
+          <div className="token-mode-wrapper">
+            <div className="tokens-in-prompt-display">Generating response...</div>
+          </div>
+          <button className="stop-button" onClick={handleStop}>
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{ marginRight: '0.2em' }}
+            >
+              <rect x="6" y="6" width="12" height="12" fill="white" />
+            </svg>
+            Stop
+          </button>
+        </div>
+      )}
       {!loading && (
         <div className="token-mode-send">
           <div className="token-mode-wrapper">
             <div className="tokens-in-prompt-display">~{tokenCount} tokens in prompt</div>
           </div>
-          <button
-            style={{
-              fontSize: '0.77rem',
-              borderRadius: '15px',
-              padding: '.28rem 1.05rem',
-              background: 'linear-gradient(90deg, #4af 0%, #0fa 100%)',
-              color: '#fff',
-              border: 'none',
-              boxShadow: '0 2px 12px #0af4',
-              fontWeight: 'bold',
-              letterSpacing: '.08em',
-              cursor: 'pointer',
-              transition: 'background 0.3s, transform 0.15s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.7em',
-            }}
-            disabled={loading}
-            onClick={handleSend}
-          >
+          <button className="send-button" disabled={loading} onClick={handleSend}>
             <svg
               width="17"
               height="17"

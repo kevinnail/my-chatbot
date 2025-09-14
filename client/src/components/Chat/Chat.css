@@ -1,7 +1,7 @@
 .chat-main-container {
   margin: 0 auto;
   font-family: sans-serif;
-  font-size: 1.2rem;
+  font-size: 1rem;
   letter-spacing: 0.07rem;
   background: black;
   color: white;
@@ -115,6 +115,22 @@
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
+}
+
+.chat-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  position: relative;
+}
+
+.chat-message-content {
+  color: #ffffffd3;
+  border-radius: 10px;
+  padding: 0.75rem 1.25rem;
+  min-width: 70%;
+  max-width: 70%;
+  word-break: break-word;
 }
 
 @media (max-width: 1001px) {
