@@ -86,6 +86,7 @@ export async function preFilterWebDevEmails(emails) {
         // Determine the primary category and reason
         const reason = bestCategory || 'low_similarity';
 
+        // eslint-disable-next-line no-console
         console.log(
           ` Email: "${email.subject.substring(0, 50)}..." - Best: ${bestCategory || 'none'} (${bestScore.toFixed(3)}) - Scores: ${Object.entries(
             categoryScores,

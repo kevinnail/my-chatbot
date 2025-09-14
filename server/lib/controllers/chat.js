@@ -35,6 +35,7 @@ router.post('/', async (req, res) => {
     // Create AbortController for timeout handling - reduced to 5 minutes
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minute timeout
+    // eslint-disable-next-line no-console
     console.log('calling LLM...');
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
@@ -313,6 +314,7 @@ router.post('/summarize', async (req, res) => {
       return res.status(500).json({ error: 'OLLAMA_SMALL_MODEL not configured' });
     }
     performance.mark('summarize-start');
+    // eslint-disable-next-line no-console
     console.log('summarizing title creation START ==============');
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
@@ -349,8 +351,10 @@ router.post('/summarize', async (req, res) => {
       }),
     });
     performance.mark('summarize-end');
+    // eslint-disable-next-line no-console
     console.log('summarizing title creation END ==============');
     performance.measure('summarize', 'summarize-start', 'summarize-end');
+    // eslint-disable-next-line no-console
     console.log(
       'summarize time',
       performance.getEntriesByType('measure')[0].duration / 1000 + ' seconds',

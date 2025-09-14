@@ -219,7 +219,6 @@ describe('vectorSimilarity utilities', () => {
       // Clear any existing mock implementation and set up rejection
       mockGetEmbedding.mockClear();
       mockGetEmbedding.mockImplementation(() => {
-        console.log('Mock embedding called - should reject');
         return Promise.reject(new Error('Embedding service unavailable'));
       });
 

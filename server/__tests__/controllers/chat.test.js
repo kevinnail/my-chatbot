@@ -76,9 +76,6 @@ describe('chat routes', () => {
     it('should send a message and receive a streaming response', async () => {
       const [agent] = await registerAndLogin();
 
-      const mockResponseContent =
-        "Hello! I'm a senior software engineer. How can I help you with your React, Express, or Node.js questions?";
-
       // Mock streaming response
       const mockStreamData = [
         JSON.stringify({ message: { content: 'Hello! ' }, done: false }),

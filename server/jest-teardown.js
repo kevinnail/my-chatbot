@@ -10,6 +10,7 @@ export default async function globalTeardown() {
 
   // Force exit if needed (this is handled by --forceExit but adding as backup)
   if (process.env.CI) {
+    // eslint-disable-next-line no-console
     console.log('CI environment detected, ensuring clean exit...');
   }
 }

@@ -111,5 +111,7 @@ app.listen(PORT, (error) => {
     console.error('Failed to start MCP server:', error);
     process.exit(1);
   }
+
+  // eslint-disable-next-line no-console
   console.log(`MCP HTTP Server listening on port ${PORT}`);
 });
