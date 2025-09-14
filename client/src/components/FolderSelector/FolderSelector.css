@@ -1,0 +1,48 @@
+.folder-header-button {
+  background: transparent;
+  border: 1px solid #639cff;
+  color: #639cff;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.folder-header-button:hover {
+  background: #639cff;
+  color: white;
+}
+
+.process-header-button {
+  background: #28a745;
+  border: 1px solid #28a745;
+  color: white;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  margin-left: 5px;
+}
+
+.process-header-button:hover {
+  background: #218838;
+  border-color: #218838;
+}
+
+.process-header-button:disabled {
+  background: #666;
+  border-color: #666;
+  cursor: not-allowed;
+}
