@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { sendPrompt } from '../../services/fetch-chat';
 import './MessageInput.css';
 
@@ -17,6 +17,16 @@ const MessageInput = ({
   chatId,
   refreshChatList,
 }) => {
+  const textareaRef = useRef(null);
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [input]);
   const handleSend = () => {
     setCallLLMStartTime(new Date());
     const prompt = {
@@ -47,6 +57,7 @@ const MessageInput = ({
       }}
     >
       <textarea
+        ref={textareaRef}
         className="message-input"
         style={{
           display: loading ? 'none' : 'block',

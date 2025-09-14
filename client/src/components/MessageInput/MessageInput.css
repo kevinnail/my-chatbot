@@ -10,13 +10,16 @@
   min-width: 70%;
   max-width: 100%;
   min-height: 50px;
+  max-height: 500px;
   font-size: 1.05rem;
-  height: 70px;
   color: white;
   background-color: black;
   padding: 10px;
   border-radius: 10px;
   border: 1px solid #4f62cb;
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.4;
 }
 
 .token-mode-send {
