@@ -6,6 +6,7 @@ import { recursiveChunk } from '../utils/textChunking.js';
 class ChatMemory {
   static async storeMessage({ chatId, userId, role, content }) {
     const startTime = performance.now();
+    // eslint-disable-next-line no-console
     console.log(`Starting message storage for ${role} message (${content.length} chars)`);
 
     const messageId = `${chatId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -13,6 +14,7 @@ class ChatMemory {
     const isChunked = chunks.length > 1;
 
     if (isChunked) {
+      // eslint-disable-next-line no-console
       console.log(`Content chunked into ${chunks.length} pieces`);
     }
 
@@ -21,6 +23,7 @@ class ChatMemory {
       await client.query('BEGIN');
 
       // Store full message
+      // eslint-disable-next-line no-console
       console.log('Generating embedding for full message...');
       const fullEmbedding = await getEmbedding(content);
       await client.query(
@@ -31,9 +34,11 @@ class ChatMemory {
 
       // Store chunks if content was chunked
       if (isChunked) {
+        // eslint-disable-next-line no-console
         console.log(`Generating embeddings for ${chunks.length} chunks...`);
         for (let i = 0; i < chunks.length; i++) {
           const chunk = chunks[i];
+          // eslint-disable-next-line no-console
           console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} chars)`);
           const chunkEmbedding = await getEmbedding(chunk);
           const chunkType = i === 0 ? 'paragraph' : 'sentence'; // Simplified type detection
@@ -57,6 +62,7 @@ class ChatMemory {
 
       const endTime = performance.now();
       const duration = ((endTime - startTime) / 1000).toFixed(3);
+      // eslint-disable-next-line no-console
       console.log(
         `✅ Message storage completed in ${duration} seconds (${isChunked ? `${chunks.length} chunks` : 'no chunking'})`,
       );
@@ -73,11 +79,13 @@ class ChatMemory {
 
   static async getRelevantMessages({ chatId, userId, inputText, limit = 5 }) {
     const startTime = performance.now();
+    // eslint-disable-next-line no-console
     console.log(`Starting relevant message search for "${inputText.substring(0, 50)}..."`);
 
     const queryEmbedding = await getEmbedding(inputText);
 
     // Search chunks first for better granular matching
+    // eslint-disable-next-line no-console
     console.log('Searching chunks for relevant content...');
     const chunkRows = await pool.query(
       `
@@ -92,12 +100,14 @@ class ChatMemory {
 
     // Get unique message_ids from chunk results
     const messageIds = [...new Set(chunkRows.rows.map((row) => row.message_id))];
+    // eslint-disable-next-line no-console
     console.log(
       `Found ${chunkRows.rows.length} relevant chunks from ${messageIds.length} messages`,
     );
 
     if (messageIds.length === 0) {
       // Fallback to full message search if no chunks found
+      // eslint-disable-next-line no-console
       console.log('No chunks found, falling back to full message search...');
       const { rows } = await pool.query(
         `
@@ -112,6 +122,7 @@ class ChatMemory {
 
       const endTime = performance.now();
       const duration = ((endTime - startTime) / 1000).toFixed(3);
+      // eslint-disable-next-line no-console
       console.log(
         `✅ Message search completed in ${duration} seconds (fallback mode, ${rows.length} messages)`,
       );
@@ -124,6 +135,7 @@ class ChatMemory {
     }
 
     // Get full messages for the relevant message_ids
+    // eslint-disable-next-line no-console
     console.log('Retrieving full messages for relevant chunks...');
     const { rows } = await pool.query(
       `
@@ -137,6 +149,7 @@ class ChatMemory {
 
     const endTime = performance.now();
     const duration = ((endTime - startTime) / 1000).toFixed(3);
+    // eslint-disable-next-line no-console
     console.log(
       `✅ Message search completed in ${duration} seconds (chunk mode, ${rows.length} messages)`,
     );
