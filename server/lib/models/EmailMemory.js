@@ -62,7 +62,7 @@ class EmailMemory {
       embedding,
       similarityScore,
       llmAnalysis?.isWebDevRelated || false,
-      llmAnalysis?.category || 'other',
+      llmAnalysis?.category || (isAppointmentRelated ? 'appointment' : 'other'),
       llmAnalysis?.priority || 'medium',
       llmAnalysis?.sentiment || 'neutral',
       llmAnalysis?.actionItems || [],
