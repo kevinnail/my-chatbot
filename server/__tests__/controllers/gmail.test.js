@@ -272,7 +272,8 @@ describe('gmail routes', () => {
       const { rows } = await pool.query('SELECT * FROM email_memory WHERE user_id = $1', [userId]);
       expect(rows).toHaveLength(1);
       expect(rows[0].email_id).toBe('email1');
-      expect(rows[0].subject).toBe('React Development Question');
+      // Subject should be encrypted in database
+      expect(rows[0].subject).toMatch(/^U2FsdGVkX1/); // Encrypted data starts with this pattern
     });
 
     it('should handle sync errors gracefully', async () => {
@@ -353,41 +354,7 @@ describe('gmail routes', () => {
 
       const userId = 'test_user_emails';
 
-      // Add some test emails to the database
-      await pool.query(
-        'INSERT INTO email_memory (user_id, email_id, subject, sender, body, email_date, similarity_score, is_web_dev_related, llm_analyzed, llm_analysis) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-        [
-          userId,
-          'test_email_1',
-          'React Question',
-          'dev@example.com',
-          'React body',
-          new Date(),
-          0.85,
-          true,
-          true,
-          JSON.stringify({
-            summary: 'React help needed',
-            category: 'technical',
-            priority: 'medium',
-          }),
-        ],
-      );
-
-      await pool.query(
-        'INSERT INTO email_memory (user_id, email_id, subject, sender, body, email_date, similarity_score, is_web_dev_related, llm_analyzed) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-        [
-          userId,
-          'test_email_2',
-          'Vue Question',
-          'vue@example.com',
-          'Vue body',
-          new Date(),
-          0.75,
-          true,
-          false,
-        ],
-      );
+      // Test data is now provided by setup.sql with encrypted content
 
       const response = await agent.get(`/api/gmail/emails/${userId}`);
 
@@ -397,20 +364,11 @@ describe('gmail routes', () => {
       expect(response.body).toHaveProperty('source', 'database');
       expect(response.body.emails).toHaveLength(2);
 
-      expect(response.body.emails[0]).toEqual({
-        id: 'test_email_2',
-        subject: 'Vue Question',
-        from: 'vue@example.com',
-        date: expect.any(String),
-        analysis: null,
-        webLink: 'https://mail.google.com/mail/u/0/#inbox',
-        summary: 'Analysis pending...',
-        vectorSimilarity: '0.750',
-        analyzed: false,
-        category: null,
-        priority: null,
-      });
-      expect(response.body.emails[1]).toEqual({
+      // Find emails by ID since order may vary
+      const email1 = response.body.emails.find((e) => e.id === 'test_email_1');
+      const email2 = response.body.emails.find((e) => e.id === 'test_email_2');
+
+      expect(email1).toEqual({
         id: 'test_email_1',
         subject: 'React Question',
         from: 'dev@example.com',
@@ -422,6 +380,20 @@ describe('gmail routes', () => {
         analyzed: true,
         category: 'technical',
         priority: 'medium',
+      });
+
+      expect(email2).toEqual({
+        id: 'test_email_2',
+        subject: 'Vue Question',
+        from: 'vue@example.com',
+        date: expect.any(String),
+        analysis: null,
+        webLink: 'https://mail.google.com/mail/u/0/#inbox',
+        summary: 'Analysis pending...',
+        vectorSimilarity: '0.750',
+        analyzed: false,
+        category: null,
+        priority: null,
       });
     });
 
