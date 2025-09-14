@@ -1,0 +1,62 @@
+// Text chunking utility for breaking large content into manageable pieces
+import { countTokens } from '../controllers/chat.js';
+
+export function recursiveChunk(text, maxTokens = 512) {
+  if (!text || text.trim().length === 0) {
+    return [];
+  }
+
+  // 1. Split by double newline
+  const paragraphs = text.split(/\n\n+/);
+  const chunks = [];
+
+  for (const para of paragraphs) {
+    if (countTokens([{ content: para }]) <= maxTokens) {
+      chunks.push(para.trim());
+    } else {
+      // 2. Split by single newline
+      const lines = para.split(/\n+/);
+      let current = '';
+
+      for (const line of lines) {
+        const testContent = current + (current ? '\n' : '') + line;
+        if (countTokens([{ content: testContent }]) > maxTokens) {
+          if (current.trim()) {
+            chunks.push(current.trim());
+          }
+          current = line;
+        } else {
+          current = testContent;
+        }
+      }
+
+      if (current.trim()) {
+        chunks.push(current.trim());
+      }
+    }
+  }
+
+  return chunks.filter((chunk) => chunk.length > 0);
+}
+
+// Helper to chunk content and generate embeddings for each chunk
+export async function chunkAndEmbed(content, maxTokens = 512) {
+  const { getEmbedding } = await import('./ollamaEmbed.js');
+
+  const chunks = recursiveChunk(content, maxTokens);
+  const chunkedData = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    const embedding = await getEmbedding(chunk);
+
+    chunkedData.push({
+      chunkIndex: i,
+      content: chunk,
+      embedding,
+      tokenCount: countTokens([{ content: chunk }]),
+    });
+  }
+
+  return chunkedData;
+}
