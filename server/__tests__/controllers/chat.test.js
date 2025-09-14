@@ -1,7 +1,45 @@
 import setup, { pool, cleanup } from '../../test-setup.js';
 import request from 'supertest';
 import app from '../../lib/app.js';
+import UserService from '../../lib/services/UserService.js';
 import { jest, describe, beforeEach, afterAll, it, expect } from '@jest/globals';
+
+// Mock Socket.IO
+const mockIo = {
+  to: jest.fn().mockReturnThis(),
+  emit: jest.fn(),
+};
+
+// Set the mock Socket.IO instance on the app
+app.set('io', mockIo);
+
+// Dummy user for testing
+const mockUser = {
+  firstName: 'Test',
+  lastName: 'User',
+  email: 'test@example.com',
+  password: '12345',
+};
+
+const registerAndLogin = async (userProps = {}) => {
+  const password = userProps.password ?? mockUser.password;
+
+  // Create an "agent" that gives us the ability
+  // to store cookies between requests in a test
+  const agent = request.agent(app);
+
+  // Generate unique email for each test to avoid conflicts
+  const uniqueEmail = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@example.com`;
+  const userData = { ...mockUser, ...userProps, email: uniqueEmail };
+
+  // Create a user to sign in with
+  const user = await UserService.create(userData);
+
+  // ...then sign in
+  const { email } = user;
+  await agent.post('/api/users/sessions').send({ email, password });
+  return [agent, user];
+};
 
 // Mock the external Ollama API
 global.fetch = jest.fn();
@@ -11,6 +49,9 @@ describe('chat routes', () => {
     await setup();
     // Reset fetch mock before each test
     fetch.mockClear();
+    // Reset Socket.IO mock before each test
+    mockIo.to.mockClear();
+    mockIo.emit.mockClear();
 
     // Mock fetch for embedding API calls
 
@@ -45,8 +86,7 @@ describe('chat routes', () => {
 
   describe('POST /api/chatbot', () => {
     it('should send a message and receive a streaming response', async () => {
-      const mockResponseContent =
-        "Hello! I'm a senior software engineer. How can I help you with your React, Express, or Node.js questions?";
+      const [agent] = await registerAndLogin();
 
       // Mock streaming response
       const mockStreamData = [
@@ -100,7 +140,7 @@ describe('chat routes', () => {
         chatId: 'test_chat_1',
       };
 
-      const response = await request(app).post('/api/chatbot').send(testMessage);
+      const response = await agent.post('/api/chatbot').send(testMessage);
 
       // Should get immediate streaming confirmation response
       expect(response.status).toBe(200);
@@ -124,7 +164,7 @@ describe('chat routes', () => {
         chat_id: 'test_chat_1',
         user_id: 'test_user_1',
         role: 'user',
-        content: 'Hello, I need help with React hooks',
+        content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
         embedding: expect.any(String),
         created_at: expect.any(Date),
       });
@@ -133,13 +173,15 @@ describe('chat routes', () => {
         chat_id: 'test_chat_1',
         user_id: 'test_user_1',
         role: 'bot',
-        content: mockResponseContent,
+        content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
         embedding: expect.any(String),
         created_at: expect.any(Date),
       });
     });
 
     it('should handle empty bot response gracefully', async () => {
+      const [agent] = await registerAndLogin();
+
       // Mock streaming response with empty content
       const mockStreamData = [
         JSON.stringify({ done: true }), // No content, just done
@@ -182,7 +224,7 @@ describe('chat routes', () => {
         chatId: 'test_chat_2',
       };
 
-      const response = await request(app).post('/api/chatbot').send(testMessage);
+      const response = await agent.post('/api/chatbot').send(testMessage);
 
       // Should get immediate streaming confirmation response
       expect(response.status).toBe(200);
@@ -194,17 +236,24 @@ describe('chat routes', () => {
       // Wait for streaming to complete and message to be stored
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Verify the bot response was stored as empty string
+      // Should emit error event for empty response
+      expect(mockIo.to).toHaveBeenCalledWith('chat-test_user_2');
+      expect(mockIo.emit).toHaveBeenCalledWith('chat-error', {
+        error: 'No response content received from LLM',
+      });
+
+      // Verify no bot response was stored (empty response should not store anything)
       const { rows } = await pool.query(
         'SELECT * FROM chat_memory WHERE user_id = $1 AND chat_id = $2 AND role = $3 ORDER BY created_at',
         ['test_user_2', 'test_chat_2', 'bot'],
       );
 
-      expect(rows).toHaveLength(1);
-      expect(rows[0].content).toBe('');
+      expect(rows).toHaveLength(0); // No bot message should be stored for empty response
     });
 
     it('should handle malformed Ollama response', async () => {
+      const [agent] = await registerAndLogin();
+
       // Mock streaming response with malformed data
       const mockStreamData = [
         'invalid json', // This should be ignored
@@ -249,7 +298,7 @@ describe('chat routes', () => {
         chatId: 'test_chat_3',
       };
 
-      const response = await request(app).post('/api/chatbot').send(testMessage);
+      const response = await agent.post('/api/chatbot').send(testMessage);
 
       // Should get immediate streaming confirmation response
       expect(response.status).toBe(200);
@@ -259,19 +308,26 @@ describe('chat routes', () => {
       });
 
       // Wait for streaming to complete and message to be stored
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Verify the bot response was stored as empty string (no valid content received)
+      // Should emit error event for malformed response (no valid content received)
+      expect(mockIo.to).toHaveBeenCalledWith('chat-test_user_3');
+      expect(mockIo.emit).toHaveBeenCalledWith('chat-error', {
+        error: 'No response content received from LLM',
+      });
+
+      // Verify no bot response was stored (malformed response should not store anything)
       const { rows } = await pool.query(
         'SELECT * FROM chat_memory WHERE user_id = $1 AND chat_id = $2 AND role = $3 ORDER BY created_at',
         ['test_user_3', 'test_chat_3', 'bot'],
       );
 
-      expect(rows).toHaveLength(1);
-      expect(rows[0].content).toBe('');
+      expect(rows).toHaveLength(0); // No bot message should be stored for malformed response
     });
 
     it('should calculate context percentage correctly with multiple messages', async () => {
+      const [agent] = await registerAndLogin();
+
       const mockResponseContent = 'This is a test response';
 
       // Mock streaming response
@@ -316,13 +372,11 @@ describe('chat routes', () => {
 
       // Send multiple messages to build up context
       for (let i = 0; i < 3; i++) {
-        const response = await request(app)
-          .post('/api/chatbot')
-          .send({
-            msg: `Test message ${i + 1}`,
-            userId,
-            chatId,
-          });
+        const response = await agent.post('/api/chatbot').send({
+          msg: `Test message ${i + 1}`,
+          userId,
+          chatId,
+        });
 
         // Should get streaming confirmation
         expect(response.status).toBe(200);
@@ -335,7 +389,7 @@ describe('chat routes', () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      const finalResponse = await request(app).post('/api/chatbot').send({
+      const finalResponse = await agent.post('/api/chatbot').send({
         msg: 'Final test message',
         userId,
         chatId,
@@ -359,7 +413,9 @@ describe('chat routes', () => {
     });
 
     it('should handle missing required fields', async () => {
-      const response = await request(app).post('/api/chatbot').send({
+      const [agent] = await registerAndLogin();
+
+      const response = await agent.post('/api/chatbot').send({
         msg: 'Test message',
         // Missing userId
       });
@@ -368,6 +424,8 @@ describe('chat routes', () => {
     });
 
     it('should handle Ollama API error', async () => {
+      const [agent] = await registerAndLogin();
+
       // Mock fetch to throw an error
       fetch.mockRejectedValueOnce(new Error('Ollama API connection failed'));
 
@@ -377,7 +435,7 @@ describe('chat routes', () => {
         chatId: 'test_chat_error',
       };
 
-      const response = await request(app).post('/api/chatbot').send(testMessage);
+      const response = await agent.post('/api/chatbot').send(testMessage);
 
       expect(response.status).toBe(500);
     });
@@ -385,6 +443,8 @@ describe('chat routes', () => {
 
   describe('DELETE /api/chatbot/:userId', () => {
     it('should delete all messages for a user', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_delete';
 
       // First, add some messages
@@ -417,7 +477,7 @@ describe('chat routes', () => {
       expect(parseInt(beforeDelete[0].count)).toBe(2);
 
       // Delete messages
-      const response = await request(app).delete(`/api/chatbot/${userId}`);
+      const response = await agent.delete(`/api/chatbot/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -433,7 +493,9 @@ describe('chat routes', () => {
     });
 
     it('should handle deletion of non-existent user', async () => {
-      const response = await request(app).delete('/api/chatbot/non_existent_user');
+      const [agent] = await registerAndLogin();
+
+      const response = await agent.delete('/api/chatbot/non_existent_user');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -442,6 +504,8 @@ describe('chat routes', () => {
     });
 
     it('should only delete messages for the specified user', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId1 = 'test_user_keep';
       const userId2 = 'test_user_delete_specific';
 
@@ -468,7 +532,7 @@ describe('chat routes', () => {
       );
 
       // Delete messages for userId2 only
-      const response = await request(app).delete(`/api/chatbot/${userId2}`);
+      const response = await agent.delete(`/api/chatbot/${userId2}`);
 
       expect(response.status).toBe(200);
 
@@ -490,42 +554,43 @@ describe('chat routes', () => {
 
   describe('GET /api/chatbot/list/:userId', () => {
     it('should return empty list for user with no chats', async () => {
-      const response = await request(app).get('/api/chatbot/list/test_user_empty');
+      const [agent] = await registerAndLogin();
+
+      const response = await agent.get('/api/chatbot/list/test_user_empty');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual([]);
     });
 
     it('should return chat list for user with chats', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_list';
       const chatId = 'test_chat_list';
 
       // Add chat entry to chats table
       await pool.query('INSERT INTO chats (chat_id, user_id) VALUES ($1, $2)', [chatId, userId]);
 
-      // Add some messages to create a chat
-      await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
-        [
-          chatId,
-          userId,
-          'user',
-          'Hello, this is a test message',
-          `[${new Array(1024).fill(0.1).join(',')}]`,
-        ],
-      );
-      await pool.query(
-        'INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES ($1, $2, $3, $4, $5)',
-        [
-          chatId,
-          userId,
-          'bot',
-          'This is a test response',
-          `[${new Array(1024).fill(0.1).join(',')}]`,
-        ],
-      );
+      // Add some messages to create a chat using ChatMemory model
+      const { default: ChatMemory } = await import('../../lib/models/ChatMemory.js');
 
-      const response = await request(app).get(`/api/chatbot/list/${userId}`);
+      await ChatMemory.storeMessage({
+        chatId,
+        userId,
+        role: 'user',
+        content: 'Hello, this is a test message',
+        embedding: `[${new Array(1024).fill(0.1).join(',')}]`,
+      });
+
+      await ChatMemory.storeMessage({
+        chatId,
+        userId,
+        role: 'bot',
+        content: 'This is a test response',
+        embedding: `[${new Array(1024).fill(0.1).join(',')}]`,
+      });
+
+      const response = await agent.get(`/api/chatbot/list/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveLength(1);
@@ -541,6 +606,8 @@ describe('chat routes', () => {
     });
 
     it('should return multiple chats ordered by last message', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_multiple';
       const chatId1 = 'test_chat_1';
       const chatId2 = 'test_chat_2';
@@ -570,7 +637,7 @@ describe('chat routes', () => {
         ],
       );
 
-      const response = await request(app).get(`/api/chatbot/list/${userId}`);
+      const response = await agent.get(`/api/chatbot/list/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveLength(2);
@@ -580,6 +647,8 @@ describe('chat routes', () => {
     });
 
     it('should handle database error gracefully', async () => {
+      const [agent] = await registerAndLogin();
+
       // Mock the database module to throw an error
       const dbModule = await import('../../lib/utils/db.js');
       const originalQuery = dbModule.pool.query;
@@ -587,7 +656,7 @@ describe('chat routes', () => {
       // Mock the query method to throw an error
       dbModule.pool.query = jest.fn().mockRejectedValue(new Error('Database connection failed'));
 
-      const response = await request(app).get('/api/chatbot/list/test_user_error');
+      const response = await agent.get('/api/chatbot/list/test_user_error');
 
       expect(response.status).toBe(500);
       expect(response.body).toHaveProperty('error');
@@ -599,6 +668,8 @@ describe('chat routes', () => {
 
   describe('DELETE /api/chatbot/:userId/:chatId', () => {
     it('should delete specific chat messages', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_delete_chat';
       const chatId = 'test_chat_delete_specific';
 
@@ -632,7 +703,7 @@ describe('chat routes', () => {
       expect(parseInt(beforeDelete[0].count)).toBe(2);
 
       // Delete the chat
-      const response = await request(app).delete(`/api/chatbot/${userId}/${chatId}`);
+      const response = await agent.delete(`/api/chatbot/${userId}/${chatId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -648,9 +719,9 @@ describe('chat routes', () => {
     });
 
     it('should handle deletion of non-existent chat', async () => {
-      const response = await request(app).delete(
-        '/api/chatbot/test_user_nonexistent/nonexistent_chat',
-      );
+      const [agent] = await registerAndLogin();
+
+      const response = await agent.delete('/api/chatbot/test_user_nonexistent/nonexistent_chat');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -659,6 +730,8 @@ describe('chat routes', () => {
     });
 
     it('should only delete messages for specific chat and user', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_isolated';
       const chatId1 = 'test_chat_keep';
       const chatId2 = 'test_chat_delete_isolated';
@@ -680,7 +753,7 @@ describe('chat routes', () => {
       );
 
       // Delete only chatId2
-      const response = await request(app).delete(`/api/chatbot/${userId}/${chatId2}`);
+      const response = await agent.delete(`/api/chatbot/${userId}/${chatId2}`);
 
       expect(response.status).toBe(200);
 
@@ -700,6 +773,8 @@ describe('chat routes', () => {
     });
 
     it('should handle database error gracefully', async () => {
+      const [agent] = await registerAndLogin();
+
       // Mock the ChatMemory module to throw an error
       const ChatMemoryModule = await import('../../lib/models/ChatMemory.js');
       const originalDeleteChatMessages = ChatMemoryModule.default.deleteChatMessages;
@@ -709,7 +784,7 @@ describe('chat routes', () => {
         .fn()
         .mockRejectedValue(new Error('Database connection failed'));
 
-      const response = await request(app).delete('/api/chatbot/test_user_error/test_chat_error');
+      const response = await agent.delete('/api/chatbot/test_user_error/test_chat_error');
 
       expect(response.status).toBe(500);
       expect(response.body).toHaveProperty('error');

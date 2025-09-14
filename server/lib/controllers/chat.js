@@ -13,12 +13,12 @@ function countTokens(messages) {
 router.post('/', async (req, res) => {
   try {
     const { msg, userId, coachOrChat, chatId } = req.body;
-
     // Generate chatId if not provided (for new chats)
     const currentChatId = chatId || `${userId}_${Date.now()}`;
 
     // Get memories BEFORE storing current message (to avoid including current message in context)
     const memories = await buildPromptWithMemory({ chatId: currentChatId, userId, userInput: msg });
+
     // Store the user message AFTER getting memories
     await ChatMemory.storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
     // Get Socket.IO instance
@@ -35,7 +35,8 @@ router.post('/', async (req, res) => {
     // Create AbortController for timeout handling - reduced to 5 minutes
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minute timeout
-
+    // eslint-disable-next-line no-console
+    console.log('calling LLM...');
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -69,23 +70,36 @@ router.post('/', async (req, res) => {
       headersTimeout: 12000000, // 20 minutes - same as AbortController
       bodyTimeout: 12000000, // 20 minutes - same as AbortController
     });
-
     // Clear the timeout since we got a response
     clearTimeout(timeoutId);
+
+    // Check if response is ok before processing
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LLM API error:', response.status, errorText);
+      io.to(`chat-${userId}`).emit('chat-error', {
+        error: `LLM server error: ${response.status} - ${errorText}`,
+      });
+      return;
+    }
 
     // Handle streaming response via WebSocket
     let fullResponse = '';
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let chunkCount = 0;
+    const maxChunks = 10000; // Safety limit to prevent infinite loops
+    let hasReceivedContent = false;
 
     // Send initial response to confirm request received
     res.json({ streaming: true, message: 'Streaming response via WebSocket' });
 
     try {
-      while (true) {
+      while (chunkCount < maxChunks) {
         const { done, value } = await reader.read();
         if (done) break;
 
+        chunkCount++;
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n').filter((line) => line.trim());
 
@@ -93,9 +107,19 @@ router.post('/', async (req, res) => {
           try {
             const data = JSON.parse(line);
 
+            // Check for error responses from LLM
+            if (data.error) {
+              console.error('LLM streaming error:', data.error);
+              io.to(`chat-${userId}`).emit('chat-error', {
+                error: `LLM error: ${data.error}`,
+              });
+              return;
+            }
+
             if (data.message && data.message.content) {
               const content = data.message.content;
               fullResponse += content;
+              hasReceivedContent = true;
 
               // Emit streaming chunk via WebSocket
               io.to(`chat-${userId}`).emit('chat-chunk', {
@@ -106,6 +130,15 @@ router.post('/', async (req, res) => {
             }
 
             if (data.done) {
+              // Validate we received some content
+              if (!hasReceivedContent) {
+                console.error('Stream completed but no content received');
+                io.to(`chat-${userId}`).emit('chat-error', {
+                  error: 'No response content received from LLM',
+                });
+                return;
+              }
+
               // Store the complete response
               await ChatMemory.storeMessage({
                 chatId: currentChatId,
@@ -137,15 +170,37 @@ router.post('/', async (req, res) => {
               return;
             }
           } catch (parseError) {
-            console.error('Error parsing streaming chunk:', parseError);
+            console.error('Error parsing streaming chunk:', parseError, 'Line:', line);
+            // Continue processing other lines instead of failing completely
           }
         }
+      }
+
+      // If we exit the loop without done=true, something went wrong
+      if (chunkCount >= maxChunks) {
+        console.error('Stream processing hit safety limit');
+        io.to(`chat-${userId}`).emit('chat-error', {
+          error: 'Response too long - processing stopped for safety',
+        });
+      } else if (!hasReceivedContent) {
+        console.error('Stream ended without content');
+        io.to(`chat-${userId}`).emit('chat-error', {
+          error: 'No response content received from LLM',
+        });
       }
     } catch (streamError) {
       console.error('Error reading stream:', streamError);
       io.to(`chat-${userId}`).emit('chat-error', {
         error: 'Streaming error occurred',
       });
+    } finally {
+      // Ensure reader is always closed
+      try {
+        reader.releaseLock();
+      } catch (e) {
+        console.error('Reader already closed', e);
+        // Reader might already be released
+      }
     }
   } catch (error) {
     console.error('Error in chat controller:', error);
@@ -259,6 +314,7 @@ router.post('/summarize', async (req, res) => {
       return res.status(500).json({ error: 'OLLAMA_SMALL_MODEL not configured' });
     }
     performance.mark('summarize-start');
+    // eslint-disable-next-line no-console
     console.log('summarizing title creation START ==============');
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
@@ -295,8 +351,10 @@ router.post('/summarize', async (req, res) => {
       }),
     });
     performance.mark('summarize-end');
+    // eslint-disable-next-line no-console
     console.log('summarizing title creation END ==============');
     performance.measure('summarize', 'summarize-start', 'summarize-end');
+    // eslint-disable-next-line no-console
     console.log(
       'summarize time',
       performance.getEntriesByType('measure')[0].duration / 1000 + ' seconds',

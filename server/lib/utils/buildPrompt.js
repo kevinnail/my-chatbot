@@ -22,7 +22,6 @@ export async function buildPromptWithMemory({ chatId, userId, userInput }) {
 
   // Sort chronologically to maintain conversation flow
   const memories = combined.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
   // Remove timestamp for the LLM
   return memories.map(({ role, content }) => ({ role, content }));
 }

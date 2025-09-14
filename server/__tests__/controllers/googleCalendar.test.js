@@ -20,6 +20,35 @@ jest.unstable_mockModule('googleapis', () => ({
 const { default: setup, pool, cleanup } = await import('../../test-setup.js');
 const { default: request } = await import('supertest');
 const { default: app } = await import('../../lib/app.js');
+const { default: UserService } = await import('../../lib/services/UserService.js');
+
+// Dummy user for testing
+const mockUser = {
+  firstName: 'Test',
+  lastName: 'User',
+  email: 'test@example.com',
+  password: '12345',
+};
+
+const registerAndLogin = async (userProps = {}) => {
+  const password = userProps.password ?? mockUser.password;
+
+  // Create an "agent" that gives us the ability
+  // to store cookies between requests in a test
+  const agent = request.agent(app);
+
+  // Generate unique email for each test to avoid conflicts
+  const uniqueEmail = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@example.com`;
+  const userData = { ...mockUser, ...userProps, email: uniqueEmail };
+
+  // Create a user to sign in with
+  const user = await UserService.create(userData);
+
+  // ...then sign in
+  const { email } = user;
+  await agent.post('/api/users/sessions').send({ email, password });
+  return [agent, user];
+};
 
 describe('googleCalendar routes', () => {
   beforeEach(async () => {
@@ -35,13 +64,17 @@ describe('googleCalendar routes', () => {
 
   describe('GET /api/calendar/status/:userId', () => {
     it('should return not connected when user has no tokens', async () => {
-      const response = await request(app).get('/api/calendar/status/test_user_no_tokens');
+      const [agent] = await registerAndLogin();
+
+      const response = await agent.get('/api/calendar/status/test_user_no_tokens');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ connected: false });
     });
 
     it('should return not connected when tokens are missing', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_missing_tokens';
 
       // Insert incomplete token record (missing refresh_token)
@@ -50,13 +83,15 @@ describe('googleCalendar routes', () => {
         [userId, 'access_token', new Date(Date.now() + 3600000)],
       );
 
-      const response = await request(app).get(`/api/calendar/status/${userId}`);
+      const response = await agent.get(`/api/calendar/status/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ connected: false });
     });
 
     it('should return not connected when tokens are expired', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_expired_tokens';
 
       // Insert expired tokens
@@ -66,13 +101,15 @@ describe('googleCalendar routes', () => {
         [userId, 'access_token', 'refresh_token', expiredDate],
       );
 
-      const response = await request(app).get(`/api/calendar/status/${userId}`);
+      const response = await agent.get(`/api/calendar/status/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ connected: false });
     });
 
     it('should return connected when tokens are valid', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_valid_tokens';
 
       // Insert valid tokens
@@ -82,16 +119,18 @@ describe('googleCalendar routes', () => {
         [userId, 'access_token', 'refresh_token', futureDate],
       );
 
-      const response = await request(app).get(`/api/calendar/status/${userId}`);
+      const response = await agent.get(`/api/calendar/status/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ connected: true });
     });
 
     it('should handle database errors gracefully', async () => {
+      const [agent] = await registerAndLogin();
+
       // Create a user ID that will trigger a database error by using SQL injection-like string
       // that would cause issues if not properly parameterized
-      const response = await request(app).get('/api/calendar/status/test_user_db_error');
+      const response = await agent.get('/api/calendar/status/test_user_db_error');
 
       // Since the actual controller handles database errors gracefully,
       // this should return false connection status rather than throwing
@@ -109,13 +148,17 @@ describe('googleCalendar routes', () => {
     });
 
     it('should return error when userId is missing', async () => {
-      const response = await request(app).post('/api/calendar/connect').send({});
+      const [agent] = await registerAndLogin();
+
+      const response = await agent.post('/api/calendar/connect').send({});
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'User ID is required' });
     });
 
     it('should return success when already connected', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_already_connected';
 
       // Insert valid tokens
@@ -125,7 +168,7 @@ describe('googleCalendar routes', () => {
         [userId, 'access_token', 'refresh_token', futureDate],
       );
 
-      const response = await request(app).post('/api/calendar/connect').send({ userId });
+      const response = await agent.post('/api/calendar/connect').send({ userId });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -135,12 +178,14 @@ describe('googleCalendar routes', () => {
     });
 
     it('should generate OAuth URL for new connection', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_new_connection';
       const mockAuthUrl = 'https://accounts.google.com/oauth/authorize?test=true';
 
       mockGenerateAuthUrl.mockReturnValueOnce(mockAuthUrl);
 
-      const response = await request(app).post('/api/calendar/connect').send({ userId });
+      const response = await agent.post('/api/calendar/connect').send({ userId });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ authUrl: mockAuthUrl });
@@ -154,13 +199,15 @@ describe('googleCalendar routes', () => {
     });
 
     it('should handle OAuth URL generation errors', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_oauth_error';
 
       mockGenerateAuthUrl.mockImplementationOnce(() => {
         throw new Error('OAuth error');
       });
 
-      const response = await request(app).post('/api/calendar/connect').send({ userId });
+      const response = await agent.post('/api/calendar/connect').send({ userId });
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Failed to start OAuth flow' });
@@ -173,7 +220,9 @@ describe('googleCalendar routes', () => {
     });
 
     it('should redirect with error when code is missing', async () => {
-      const response = await request(app).get('/api/calendar/callback?state=test_user');
+      const [agent] = await registerAndLogin();
+
+      const response = await agent.get('/api/calendar/callback?state=test_user');
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe(
@@ -182,7 +231,9 @@ describe('googleCalendar routes', () => {
     });
 
     it('should redirect with error when userId (state) is missing', async () => {
-      const response = await request(app).get('/api/calendar/callback?code=test_code');
+      const [agent] = await registerAndLogin();
+
+      const response = await agent.get('/api/calendar/callback?code=test_code');
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe(
@@ -191,6 +242,8 @@ describe('googleCalendar routes', () => {
     });
 
     it('should successfully handle OAuth callback and store tokens', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_callback_success';
       const code = 'test_authorization_code';
       const mockTokens = {
@@ -201,9 +254,7 @@ describe('googleCalendar routes', () => {
 
       mockGetToken.mockResolvedValueOnce({ tokens: mockTokens });
 
-      const response = await request(app).get(
-        `/api/calendar/callback?code=${code}&state=${userId}`,
-      );
+      const response = await agent.get(`/api/calendar/callback?code=${code}&state=${userId}`);
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe(
@@ -218,19 +269,19 @@ describe('googleCalendar routes', () => {
       ]);
       expect(result.rows).toHaveLength(1);
       expect(result.rows[0].user_id).toBe(userId);
-      expect(result.rows[0].access_token).toBe('test_access_token');
-      expect(result.rows[0].refresh_token).toBe('test_refresh_token');
+      expect(result.rows[0].access_token).toMatch(/^U2FsdGVkX1/); // Encrypted token
+      expect(result.rows[0].refresh_token).toMatch(/^U2FsdGVkX1/); // Encrypted token
     });
 
     it('should handle token exchange errors', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_callback_error';
       const code = 'test_authorization_code';
 
       mockGetToken.mockRejectedValueOnce(new Error('Token exchange failed'));
 
-      const response = await request(app).get(
-        `/api/calendar/callback?code=${code}&state=${userId}`,
-      );
+      const response = await agent.get(`/api/calendar/callback?code=${code}&state=${userId}`);
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe(
@@ -247,15 +298,15 @@ describe('googleCalendar routes', () => {
     });
 
     it('should handle database errors during token storage', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_db_error_storage';
       const code = 'test_authorization_code';
 
       // Mock token exchange to fail, simulating a database storage error
       mockGetToken.mockRejectedValueOnce(new Error('Storage failed'));
 
-      const response = await request(app).get(
-        `/api/calendar/callback?code=${code}&state=${userId}`,
-      );
+      const response = await agent.get(`/api/calendar/callback?code=${code}&state=${userId}`);
 
       expect(response.status).toBe(302);
       expect(response.headers.location).toBe(
@@ -277,6 +328,8 @@ describe('googleCalendar routes', () => {
 
   describe('Edge cases and error handling', () => {
     it('should handle malformed token expiry dates', async () => {
+      const [agent] = await registerAndLogin();
+
       const userId = 'test_user_malformed_date';
 
       // Insert token with null expiry date to simulate database corruption
@@ -285,13 +338,15 @@ describe('googleCalendar routes', () => {
         [userId, 'access_token', 'refresh_token', null],
       );
 
-      const response = await request(app).get(`/api/calendar/status/${userId}`);
+      const response = await agent.get(`/api/calendar/status/${userId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ connected: false });
     });
 
     it('should handle missing environment variables gracefully', async () => {
+      const [agent] = await registerAndLogin();
+
       // Temporarily remove environment variables
       const originalClientId = process.env.GOOGLE_CLIENT_ID;
       const originalClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -301,9 +356,7 @@ describe('googleCalendar routes', () => {
       delete process.env.GOOGLE_CLIENT_SECRET;
       delete process.env.GOOGLE_REDIRECT_URI;
 
-      const response = await request(app)
-        .post('/api/calendar/connect')
-        .send({ userId: 'test_user' });
+      const response = await agent.post('/api/calendar/connect').send({ userId: 'test_user' });
 
       // The test should still work because the OAuth2 client is created at module load
       // but in a real scenario, this would cause issues
@@ -316,20 +369,22 @@ describe('googleCalendar routes', () => {
     });
 
     it('should handle very long userId values', async () => {
+      const [agent] = await registerAndLogin();
+
       const longUserId = 'a'.repeat(1000);
 
-      const response = await request(app).get(`/api/calendar/status/${longUserId}`);
+      const response = await agent.get(`/api/calendar/status/${longUserId}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ connected: false });
     });
 
     it('should handle special characters in userId', async () => {
+      const [agent] = await registerAndLogin();
+
       const specialUserId = 'user@domain.com';
 
-      const response = await request(app).get(
-        `/api/calendar/status/${encodeURIComponent(specialUserId)}`,
-      );
+      const response = await agent.get(`/api/calendar/status/${encodeURIComponent(specialUserId)}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ connected: false });

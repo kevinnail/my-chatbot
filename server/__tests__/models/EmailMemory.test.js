@@ -50,9 +50,9 @@ describe('EmailMemory model', () => {
       expect(rows[0]).toMatchObject({
         user_id: emailData.userId,
         email_id: emailData.emailId,
-        subject: emailData.subject,
-        sender: emailData.sender,
-        body: emailData.body,
+        subject: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted subject
+        sender: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted sender
+        body: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted body
         similarity_score: emailData.similarityScore,
         is_web_dev_related: false,
         category: 'other',
@@ -132,9 +132,9 @@ describe('EmailMemory model', () => {
 
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
-        subject: 'Updated Subject',
-        sender: 'updated@example.com',
-        body: 'Updated body',
+        subject: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted subject
+        sender: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted sender
+        body: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted body
         similarity_score: 0.8,
       });
     });
@@ -158,7 +158,7 @@ describe('EmailMemory model', () => {
       );
 
       expect(rows).toHaveLength(1);
-      expect(rows[0].subject).toBe('Doctor Appointment Confirmation');
+      expect(rows[0].subject).toMatch(/^U2FsdGVkX1/); // Encrypted subject
     });
   });
 

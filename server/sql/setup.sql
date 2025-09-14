@@ -5,12 +5,19 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Drop existing tables
+DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS chat_memory CASCADE;
 DROP TABLE IF EXISTS chats CASCADE;
 DROP TABLE IF EXISTS gmail_tokens CASCADE;
 DROP TABLE IF EXISTS gmail_sync_status CASCADE;
 DROP TABLE IF EXISTS email_memory CASCADE;
 DROP TABLE IF EXISTS google_calendar_tokens CASCADE;
+
+CREATE TABLE users (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  email  VARCHAR UNIQUE,
+  password_hash VARCHAR NOT NULL
+);
 
 -- Create chats table
 CREATE TABLE chats (
@@ -103,9 +110,14 @@ CREATE TABLE google_calendar_tokens (
 -- Create indexes for Google Calendar tables
 CREATE INDEX IF NOT EXISTS idx_google_calendar_tokens_user_id ON google_calendar_tokens(user_id);
 
--- Insert sample test data (for development/testing)
+-- Insert sample test data (for development/testing) with encrypted content
 INSERT INTO chat_memory (chat_id, user_id, role, content, embedding) VALUES
-('sample_chat_1', 'sample_user', 'user', 'Hello, how can I learn React?', 
+('sample_chat_1', 'sample_user', 'user', 'U2FsdGVkX1/QRkjJ1dJqqYeYPYSG8vtfhwq/NxOjm9x8v2MiNvVsmbuLXrwqOkqS', 
  ('[' || array_to_string(ARRAY(SELECT 0.1 FROM generate_series(1, 1024)), ',') || ']')::vector),
-('sample_chat_1', 'sample_user', 'bot', 'React is a JavaScript library for building user interfaces. You can start by learning components, props, and state.', 
+('sample_chat_1', 'sample_user', 'bot', 'U2FsdGVkX1/RuOD1c7tzqVDZHHN1IHO49hbfeOnzXGMXDcu55k4DCzPkzhjYOQ5Ms+o+D9TojovO+lcHZrUB68ypulwey2lXXMilCegoFLt7wdHvsNMYqA6ia74agIt1tuKRDdq4gP4R8fzTs65psLPCT4/lOmbnaiBaqHIyIHT6iaDzU9VhR8Rvo8gH3pdv', 
  ('[' || array_to_string(ARRAY(SELECT 0.2 FROM generate_series(1, 1024)), ',') || ']')::vector);
+
+-- Insert sample email data for testing with encrypted content
+INSERT INTO email_memory (user_id, email_id, subject, sender, body, email_date, similarity_score, is_web_dev_related, llm_analyzed, llm_analysis) VALUES
+('test_user_emails', 'test_email_1', 'U2FsdGVkX1+5qYY+Tt4FBikZTOO1cmEv8Dkz+Nhq/Bk=', 'U2FsdGVkX1/gFiUcmWzR2EX9XUCp/a7jSidRdqS2TCk=', 'U2FsdGVkX1974vj3dm2RiZl+VPoWJlRVJNcvLVirIYs=', NOW(), 0.85, true, true, '{"summary": "React help needed", "category": "technical", "priority": "medium"}'),
+('test_user_emails', 'test_email_2', 'U2FsdGVkX1/vdUwTeMt2ud9oVxMc7H7miksp0X3n3QA=', 'U2FsdGVkX197u7telm9EtJcQbOJuAW0dwhMy6XB6lR0=', 'U2FsdGVkX18XmnD/mMSyJXMCaI34lAjb0JXanwGcgEw=', NOW(), 0.75, true, false, NULL);
