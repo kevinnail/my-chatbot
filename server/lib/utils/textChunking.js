@@ -11,7 +11,9 @@ export function recursiveChunk(text, maxTokens = 512) {
   const chunks = [];
 
   for (const para of paragraphs) {
-    if (countTokens([{ content: para }]) <= maxTokens) {
+    const paraTokens = countTokens([{ content: para }]);
+
+    if (paraTokens <= maxTokens) {
       chunks.push(para.trim());
     } else {
       // 2. Split by single newline
@@ -33,10 +35,47 @@ export function recursiveChunk(text, maxTokens = 512) {
       if (current.trim()) {
         chunks.push(current.trim());
       }
+
+      // If we still have chunks that are too large (no newlines), split by words
+      const finalChunks = [];
+      for (const chunk of chunks) {
+        if (countTokens([{ content: chunk }]) > maxTokens) {
+          const wordChunks = splitByWords(chunk, maxTokens);
+          finalChunks.push(...wordChunks);
+        } else {
+          finalChunks.push(chunk);
+        }
+      }
+      chunks.length = 0;
+      chunks.push(...finalChunks);
     }
   }
 
   return chunks.filter((chunk) => chunk.length > 0);
+}
+
+function splitByWords(text, maxTokens) {
+  const words = text.split(/\s+/);
+  const chunks = [];
+  let current = '';
+
+  for (const word of words) {
+    const testContent = current + (current ? ' ' : '') + word;
+    if (countTokens([{ content: testContent }]) > maxTokens) {
+      if (current.trim()) {
+        chunks.push(current.trim());
+      }
+      current = word;
+    } else {
+      current = testContent;
+    }
+  }
+
+  if (current.trim()) {
+    chunks.push(current.trim());
+  }
+
+  return chunks;
 }
 
 // Helper to chunk content and generate embeddings for each chunk
