@@ -269,8 +269,8 @@ describe('googleCalendar routes', () => {
       ]);
       expect(result.rows).toHaveLength(1);
       expect(result.rows[0].user_id).toBe(userId);
-      expect(result.rows[0].access_token).toBe('test_access_token');
-      expect(result.rows[0].refresh_token).toBe('test_refresh_token');
+      expect(result.rows[0].access_token).toMatch(/^U2FsdGVkX1/); // Encrypted token
+      expect(result.rows[0].refresh_token).toMatch(/^U2FsdGVkX1/); // Encrypted token
     });
 
     it('should handle token exchange errors', async () => {
