@@ -1,10 +1,14 @@
 import 'dotenv/config';
-import CryptoJS from 'crypto-js/core';
-import 'crypto-js/aes';
+import CryptoJS from 'crypto-js';
 
 function encrypt(text) {
-  if (text === null || text === '') {
+  if (text === null) {
     return null;
+  }
+  if (text === '') {
+    // Encrypt empty string as empty encrypted string to satisfy not-null constraint
+    const encrypted = CryptoJS.AES.encrypt('', process.env.ENCRYPTION_KEY);
+    return encrypted.toString();
   }
   const encrypted = CryptoJS.AES.encrypt(text, process.env.ENCRYPTION_KEY);
   return encrypted.toString();
