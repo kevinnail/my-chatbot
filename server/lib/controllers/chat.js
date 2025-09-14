@@ -5,6 +5,9 @@ import { careerCoach, codingAssistant } from '../utils/chatPrompts.js';
 
 const router = Router();
 
+// Store active AbortControllers for stop functionality
+const activeControllers = new Map();
+
 export function countTokens(messages) {
   // Very rough estimate: 1 token ≈ 4 characters in English
   return messages.reduce((acc, msg) => acc + Math.ceil(msg.content.length / 4), 0);
@@ -35,6 +38,11 @@ router.post('/', async (req, res) => {
     // Create AbortController for timeout handling - reduced to 5 minutes
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minute timeout
+
+    // Store controller for stop functionality
+    const controllerKey = `${userId}_${currentChatId}`;
+    activeControllers.set(controllerKey, controller);
+    console.log('Chat request - stored controller with key:', controllerKey);
     // eslint-disable-next-line no-console
     console.log('calling LLM...');
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
@@ -167,6 +175,8 @@ router.post('/', async (req, res) => {
                 done: true,
               });
 
+              // Clean up controller
+              activeControllers.delete(controllerKey);
               return;
             }
           } catch (parseError) {
@@ -373,6 +383,59 @@ router.post('/summarize', async (req, res) => {
     res.json({ summary });
   } catch (error) {
     console.error('Error in summarize controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/stop', async (req, res) => {
+  try {
+    const { userId, chatId } = req.body;
+
+    if (!userId || !chatId) {
+      return res.status(400).json({ error: 'userId and chatId are required' });
+    }
+
+    // Get Socket.IO instance
+    const io = req.app.get('io');
+
+    // Find and abort the active controller
+    const controllerKey = `${userId}_${chatId}`;
+    const controller = activeControllers.get(controllerKey);
+
+    console.log('Stop request - controllerKey:', controllerKey);
+    console.log('Stop request - active controllers:', Array.from(activeControllers.keys()));
+    console.log('Stop request - found controller:', !!controller);
+
+    if (controller) {
+      controller.abort();
+      activeControllers.delete(controllerKey);
+    }
+
+    // Call Ollama stop endpoint
+    try {
+      await fetch(`${process.env.OLLAMA_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: process.env.OLLAMA_MODEL,
+          prompt: '',
+          stream: false,
+          options: { stop: true },
+        }),
+      });
+    } catch (ollamaError) {
+      console.error('Error calling Ollama stop:', ollamaError);
+    }
+
+    // Emit stop signal via WebSocket
+    io.to(`chat-${userId}`).emit('chat-stopped', {
+      chatId,
+      message: 'Generation stopped by user',
+    });
+
+    res.json({ message: 'Stop signal sent successfully' });
+  } catch (error) {
+    console.error('Error in stop controller:', error);
     res.status(500).json({ error: error.message });
   }
 });
