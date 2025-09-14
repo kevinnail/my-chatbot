@@ -26,6 +26,11 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
     }
   };
 
+  // Don't render anything if there are no messages
+  if (!log || log.length === 0) {
+    return null;
+  }
+
   return (
     <div
       style={{
