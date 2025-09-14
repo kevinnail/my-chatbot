@@ -3,6 +3,7 @@ import { useNavigate, useParams, useMatch } from 'react-router-dom';
 import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
+import FolderSelector from '../FolderSelector/FolderSelector';
 import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
@@ -193,6 +194,23 @@ const Chat = ({ userId }) => {
     });
   };
 
+  const handleFolderProcess = async (files) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    formData.append('userId', userId);
+
+    const response = await fetch('/api/rag/process-folder', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to process folder');
+    }
+
+    return await response.json();
+  };
+
   const messageLabel = 'messages';
 
   return (
@@ -224,7 +242,8 @@ const Chat = ({ userId }) => {
                 e.target.style.color = '#639cff';
               }}
             >
-              ← Back to Chats
+              ← <span className="back-text-full">Back to Chats</span>
+              <span className="back-text-short">Back</span>
             </button>
           }
           <span className="chat-header-title">
@@ -250,6 +269,10 @@ const Chat = ({ userId }) => {
           >
             Job Search
           </button>
+          <FolderSelector
+            onFolderProcess={handleFolderProcess}
+            disabled={loading || isAnyLoading}
+          />
         </div>
       </div>
 

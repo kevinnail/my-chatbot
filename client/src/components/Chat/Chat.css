@@ -117,6 +117,24 @@
   transition: all 0.2s;
 }
 
+.back-text-short {
+  display: none;
+}
+
+.back-text-full {
+  display: inline;
+}
+
+@media (max-width: 600px) {
+  .back-text-short {
+    display: inline;
+  }
+
+  .back-text-full {
+    display: none;
+  }
+}
+
 .chat-message {
   display: flex;
   align-items: flex-start;
@@ -142,6 +160,10 @@
   }
   .chat-header-container {
     top: 60px;
+  }
+
+  .chat-header-title {
+    display: none;
   }
 }
 
