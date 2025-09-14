@@ -4,6 +4,15 @@ import app from '../../lib/app.js';
 import UserService from '../../lib/services/UserService.js';
 import { jest, describe, beforeEach, afterAll, it, expect } from '@jest/globals';
 
+// Mock Socket.IO
+const mockIo = {
+  to: jest.fn().mockReturnThis(),
+  emit: jest.fn(),
+};
+
+// Set the mock Socket.IO instance on the app
+app.set('io', mockIo);
+
 // Dummy user for testing
 const mockUser = {
   firstName: 'Test',
@@ -40,6 +49,9 @@ describe('chat routes', () => {
     await setup();
     // Reset fetch mock before each test
     fetch.mockClear();
+    // Reset Socket.IO mock before each test
+    mockIo.to.mockClear();
+    mockIo.emit.mockClear();
 
     // Mock fetch for embedding API calls
 
@@ -224,14 +236,19 @@ describe('chat routes', () => {
       // Wait for streaming to complete and message to be stored
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Verify the bot response was stored as empty string
+      // Should emit error event for empty response
+      expect(mockIo.to).toHaveBeenCalledWith('chat-test_user_2');
+      expect(mockIo.emit).toHaveBeenCalledWith('chat-error', {
+        error: 'No response content received from LLM',
+      });
+
+      // Verify no bot response was stored (empty response should not store anything)
       const { rows } = await pool.query(
         'SELECT * FROM chat_memory WHERE user_id = $1 AND chat_id = $2 AND role = $3 ORDER BY created_at',
         ['test_user_2', 'test_chat_2', 'bot'],
       );
 
-      expect(rows).toHaveLength(1);
-      expect(rows[0].content).toMatch(/^U2FsdGVkX1/); // Encrypted empty string
+      expect(rows).toHaveLength(0); // No bot message should be stored for empty response
     });
 
     it('should handle malformed Ollama response', async () => {
@@ -291,16 +308,21 @@ describe('chat routes', () => {
       });
 
       // Wait for streaming to complete and message to be stored
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Verify the bot response was stored as empty string (no valid content received)
+      // Should emit error event for malformed response (no valid content received)
+      expect(mockIo.to).toHaveBeenCalledWith('chat-test_user_3');
+      expect(mockIo.emit).toHaveBeenCalledWith('chat-error', {
+        error: 'No response content received from LLM',
+      });
+
+      // Verify no bot response was stored (malformed response should not store anything)
       const { rows } = await pool.query(
         'SELECT * FROM chat_memory WHERE user_id = $1 AND chat_id = $2 AND role = $3 ORDER BY created_at',
         ['test_user_3', 'test_chat_3', 'bot'],
       );
 
-      expect(rows).toHaveLength(1);
-      expect(rows[0].content).toMatch(/^U2FsdGVkX1/); // Encrypted empty string
+      expect(rows).toHaveLength(0); // No bot message should be stored for malformed response
     });
 
     it('should calculate context percentage correctly with multiple messages', async () => {

@@ -119,45 +119,58 @@ class EmailMemory {
       ` Getting emails needing analysis for user ${userId} with minSimilarity ${minSimilarity}`,
     );
 
+    // First get all unanalyzed emails for this user
     const { rows } = await pool.query(
       `
       SELECT 
-        email_id, subject, sender, body, email_date, similarity_score, created_at,
-        CASE WHEN similarity_score >= $2 THEN 'web_dev' ELSE 'appointment' END as selection_reason
+        email_id, subject, sender, body, email_date, similarity_score, created_at
       FROM email_memory
       WHERE user_id = $1 AND llm_analyzed = false
-      AND (
-        similarity_score >= $2
-        OR subject ILIKE '%appt%'
-        OR subject ILIKE '%appointment%'
-        OR subject ILIKE '%meeting%'
-        OR subject ILIKE '%call%'
-        OR subject ILIKE '%schedule%'
-        OR subject ILIKE '%scheduled%'
-        OR subject ILIKE '%reschedule%'
-        OR subject ILIKE '%confirm%'
-        OR subject ILIKE '%confirmation%'
-        OR subject ILIKE '%reminder%'
-      )
-      ORDER BY 
-        CASE WHEN similarity_score >= $2 THEN 0 ELSE 1 END, -- Web dev emails first
-        similarity_score DESC, 
-        email_date DESC
-      LIMIT $3
+      ORDER BY similarity_score DESC, email_date DESC
+      LIMIT $2
     `,
-      [userId, minSimilarity, limit],
+      [userId, limit * 2], // Get more than needed to filter
     );
 
+    // Filter emails that need analysis (high similarity OR appointment-related)
+    const emailsNeedingAnalysis = rows
+      .filter((row) => {
+        const decryptedSubject = decrypt(row.subject);
+        const decryptedBody = decrypt(row.body);
+        const decryptedSender = decrypt(row.sender);
+        const emailContent = `${decryptedSubject} ${decryptedBody} ${decryptedSender}`;
+
+        // Check if high similarity
+        if (row.similarity_score >= minSimilarity) {
+          return true;
+        }
+
+        // Check if appointment-related using same logic as storeEmail
+        const isAppointmentRelated =
+          /\b(appointment|appt|meeting|call|schedule|scheduled|reschedule|confirm|confirmation|reminder|calendar|invite|invitation|doctor|dentist|medical|clinic|hospital|consultation|follow-up|follow up|catch up|phone call|video call|zoom|teams|meet|coffee|lunch|dinner|one-on-one|standup|sync|check-in|service|maintenance)\b/i.test(
+            emailContent,
+          );
+
+        return isAppointmentRelated;
+      })
+      .slice(0, limit); // Limit to requested amount
+
+    // Add selection reason
+    const emailsWithReason = emailsNeedingAnalysis.map((row) => ({
+      ...row,
+      selection_reason: row.similarity_score >= minSimilarity ? 'web_dev' : 'appointment',
+    }));
+
     // eslint-disable-next-line no-console
-    console.log(` Found ${rows.length} emails needing analysis:`);
-    rows.forEach((row) => {
+    console.log(` Found ${emailsWithReason.length} emails needing analysis:`);
+    emailsWithReason.forEach((row) => {
       // eslint-disable-next-line no-console
       console.log(
-        `  - "${row.subject}" (${row.selection_reason}, similarity: ${row.similarity_score?.toFixed(3)})`,
+        `  - "${decrypt(row.subject)}" (${row.selection_reason}, similarity: ${row.similarity_score?.toFixed(3)})`,
       );
     });
 
-    return rows.map((row) => ({
+    return emailsWithReason.map((row) => ({
       ...row,
       subject: decrypt(row.subject),
       sender: decrypt(row.sender),
