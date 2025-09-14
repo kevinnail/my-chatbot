@@ -44,7 +44,6 @@ router.post('/connect', async (req, res) => {
     if (hasValidTokens) {
       return res.json({ success: true, message: 'Already connected' });
     }
-
     // Generate OAuth URL
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',

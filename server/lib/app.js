@@ -24,8 +24,8 @@ app.use(cookieParser());
 // Use the imported routers
 app.use('/api/users', users);
 app.use('/api/chatbot', authenticate, chatRouter);
-app.use('/api/gmail', authenticate, gmailMcpRouter);
-app.use('/api/calendar', authenticate, googleCalendarRouter);
+app.use('/api/gmail', gmailMcpRouter);
+app.use('/api/calendar', googleCalendarRouter);
 
 app.use(notFound);
 app.use(errorHandler);
