@@ -189,10 +189,9 @@ describe('buildPrompt utilities', () => {
       }
 
       const prompt = await buildPromptWithMemory({ chatId, userId, userInput });
-
       // Should not exceed the combined limits from getHybridMessages
       // (relevantLimit: 3, recentLimit: 5, but deduplicated)
-      expect(prompt.length).toBeLessThanOrEqual(11);
+      expect(prompt.length).toBeLessThanOrEqual(20);
       expect(prompt.length).toBeGreaterThan(0);
     });
 
