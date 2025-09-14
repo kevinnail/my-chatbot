@@ -536,7 +536,9 @@ const GmailMCP = ({ userId }) => {
                     Analyzing emails<span className="elipsis"></span>
                   </span>
                   <span style={{ fontWeight: '500', fontSize: '.8rem' }}>
-                    ( #{analysisProgress.analyzed} out of {analysisProgress.total} )
+                    {analysisProgress.total > 0
+                      ? `( #${Math.min(analysisProgress.analyzed + 1, analysisProgress.total)} out of ${analysisProgress.total} )`
+                      : '( preparing... )'}
                   </span>
                 </div>
                 <div className="progress-bar">
