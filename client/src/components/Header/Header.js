@@ -133,7 +133,7 @@ const Header = ({ userId }) => {
         >
           Gmail MCP
         </Link>
-        {user && (
+        {user && window.isLocal && (
           <button onClick={handleLogout} className="logout-button">
             Logout
           </button>
@@ -180,7 +180,7 @@ const Header = ({ userId }) => {
               />
             </div>
           )}
-          {user && (
+          {user && window.isLocal && (
             <button onClick={handleLogout} className="mobile-nav-link logout-button-mobile">
               Logout
             </button>
