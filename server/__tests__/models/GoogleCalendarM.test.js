@@ -84,10 +84,11 @@ describe('GoogleCalendar model', () => {
       const refreshToken = 'test_refresh_token';
       const expiryDate = new Date(Date.now() + 3600000); // 1 hour from now
 
-      await pool.query(
-        'INSERT INTO google_calendar_tokens (user_id, access_token, refresh_token, expires_at) VALUES ($1, $2, $3, $4)',
-        [userId, accessToken, refreshToken, expiryDate],
-      );
+      await GoogleCalendar.storeTokens(userId, {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expiry_date: expiryDate,
+      });
 
       const tokens = await GoogleCalendar.getTokens(userId);
 
@@ -117,8 +118,8 @@ describe('GoogleCalendar model', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
         user_id: userId,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
+        access_token: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted token
+        refresh_token: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted token
       });
       expect(new Date(rows[0].expires_at).getTime()).toBe(tokens.expiry_date);
     });
@@ -151,8 +152,8 @@ describe('GoogleCalendar model', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0]).toMatchObject({
         user_id: userId,
-        access_token: updatedTokens.access_token,
-        refresh_token: updatedTokens.refresh_token,
+        access_token: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted token
+        refresh_token: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted token
       });
       expect(new Date(rows[0].expires_at).getTime()).toBe(updatedTokens.expiry_date);
     });
