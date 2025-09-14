@@ -47,7 +47,7 @@ describe('ChatMemory model', () => {
         chat_id: messageData.chatId,
         user_id: messageData.userId,
         role: messageData.role,
-        content: messageData.content,
+        content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
         embedding: expect.any(String),
         created_at: expect.any(Date),
       });
@@ -74,15 +74,15 @@ describe('ChatMemory model', () => {
       expect(rows).toHaveLength(3);
       expect(rows[0]).toEqual({
         role: 'user',
-        content: 'First message',
+        content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
       });
       expect(rows[1]).toEqual({
         role: 'bot',
-        content: 'First response',
+        content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
       });
       expect(rows[2]).toEqual({
         role: 'user',
-        content: 'Second message',
+        content: expect.stringMatching(/^U2FsdGVkX1/), // Encrypted content
       });
     });
   });
