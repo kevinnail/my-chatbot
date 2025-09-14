@@ -63,7 +63,7 @@ const MessageInput = ({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, chatId }),
       });
 
       if (response.ok) {
