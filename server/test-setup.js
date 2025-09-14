@@ -8,6 +8,7 @@ process.env.NODE_ENV = 'test';
 process.env.PG_DATABASE = 'chatbot_test'; // Force test database
 process.env.OLLAMA_URL = 'http://localhost:11434';
 process.env.OLLAMA_MODEL = 'llama2';
+process.env.ENCRYPTION_KEY = 'test-encryption-key-for-testing-only';
 
 // Create test database pool
 const testPool = new Pool({
