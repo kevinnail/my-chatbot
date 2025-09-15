@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './GoogleCalendar.css';
+import { checkCalendarStatus, connectCalendar } from '../../services/fetch-utils';
 
 const GoogleCalendar = ({ userId, onConnectionChange }) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -73,19 +74,7 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
     }
 
     try {
-      const response = await fetch(`/api/calendar/status/${userId}`);
-
-      // Check if response is actually JSON before parsing
-      const contentType = response.headers.get('content-type');
-
-      let data;
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        // Get the actual response text to see the full error
-        const responseText = await response.text();
-        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}...`);
-      }
+      const data = await checkCalendarStatus(userId);
 
       setIsConnected(data.connected);
       setConnectionError(data.error || null);
@@ -193,25 +182,7 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/calendar/connect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId }),
-      });
-
-      // Check if response is actually JSON before parsing
-      const contentType = response.headers.get('content-type');
-
-      let data;
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        // Get the actual response text to see the full error
-        const responseText = await response.text();
-        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}...`);
-      }
+      const { data, response } = await connectCalendar(userId);
 
       if (response.ok) {
         // Open OAuth URL in a new popup window

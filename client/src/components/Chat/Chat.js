@@ -8,6 +8,7 @@ import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import { useLoading } from '../../contexts/LoadingContext.js';
+import { processFolder } from '../../services/fetch-utils';
 
 const Chat = ({ userId }) => {
   const navigate = useNavigate();
@@ -195,20 +196,7 @@ const Chat = ({ userId }) => {
   };
 
   const handleFolderProcess = async (files) => {
-    const formData = new FormData();
-    files.forEach((file) => formData.append('files', file));
-    formData.append('userId', userId);
-
-    const response = await fetch('/api/rag/process-folder', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to process folder');
-    }
-
-    return await response.json();
+    return await processFolder(files, userId);
   };
 
   const messageLabel = 'messages';

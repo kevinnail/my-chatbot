@@ -1,4 +1,4 @@
-import { signInUser, signOutUser, signUpUser } from './fetch-utils.js';
+import { signInUser, signOutUser, signUpUser } from './fetch-auth.js';
 
 export async function authUser(email, password, type) {
   let response;

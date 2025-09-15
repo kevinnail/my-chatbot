@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { sendPrompt, setStopPressed } from '../../services/fetch-chat';
+import { stopChat } from '../../services/fetch-utils';
 import './MessageInput.css';
 
 const MessageInput = ({
@@ -61,13 +62,7 @@ const MessageInput = ({
       // Set stop state immediately
       setStopPressed(true);
 
-      const response = await fetch('/api/chatbot/stop', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, chatId }),
-      });
+      const response = await stopChat(userId, chatId);
 
       if (response.ok) {
         setLoading(false);

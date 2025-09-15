@@ -1,7 +1,6 @@
 import Parser from 'tree-sitter';
 import JavaScript from 'tree-sitter-javascript';
 import TypeScript from 'tree-sitter-typescript';
-import { readFileSync } from 'fs';
 import path from 'path';
 
 const jsParser = new Parser();
