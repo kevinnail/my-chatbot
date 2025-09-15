@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -15,11 +15,21 @@ const ChatMessages = ({
   log,
   loading,
   callLLMStartTime,
+  setCallLLMStartTime,
   calculateTimeSinceStart,
   userId,
   chatId,
   setLoading,
 }) => {
+  const [stopPressed, setStopPressedState] = useState(false);
+
+  // Reset stop pressed state when loading changes
+  useEffect(() => {
+    if (!loading) {
+      setStopPressedState(false);
+    }
+  }, [loading]);
+
   const formatResponseTime = (responseTime) => {
     if (!responseTime) return '';
     if (responseTime < 1000) {
@@ -38,17 +48,24 @@ const ChatMessages = ({
 
   const handleStop = async () => {
     try {
-      // Set stop state immediately
+      // Set stop state immediately for visual feedback
+      setStopPressedState(true);
       setStopPressed(true);
 
       const response = await stopChat(userId, chatId);
 
       if (response.ok) {
         setLoading(false);
+        // Reset the timer
+        if (setCallLLMStartTime) {
+          setCallLLMStartTime(null);
+        }
         // The chat-stopped event will handle removing the placeholder
       }
     } catch (error) {
       console.error('Error stopping request:', error);
+      // Reset stop state on error
+      setStopPressedState(false);
     }
   };
 
@@ -291,29 +308,35 @@ const ChatMessages = ({
                 <button
                   className="stop-button-inline"
                   onClick={handleStop}
+                  disabled={stopPressed}
                   style={{
-                    background: 'none',
+                    background: stopPressed ? '#ff4444' : 'none',
                     fontSize: '0.77rem',
                     borderRadius: '15px',
                     padding: '0.28rem 1.05rem',
                     color: '#fff',
-                    border: '1px solid #4f62cb',
+                    border: stopPressed ? '1px solid #ff4444' : '1px solid #4f62cb',
                     fontWeight: 'bold',
                     letterSpacing: '0.08em',
-                    cursor: 'pointer',
+                    cursor: stopPressed ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.7em',
                     marginTop: '8px',
                     transition: 'all 0.3s ease',
+                    opacity: stopPressed ? 0.7 : 1,
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.background = '#4f62cb3e';
-                    e.target.style.borderColor = 'red';
+                    if (!stopPressed) {
+                      e.target.style.background = '#4f62cb3e';
+                      e.target.style.borderColor = 'red';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.background = 'none';
-                    e.target.style.borderColor = '#4f62cb';
+                    if (!stopPressed) {
+                      e.target.style.background = 'none';
+                      e.target.style.borderColor = '#4f62cb';
+                    }
                   }}
                 >
                   <svg
@@ -326,7 +349,7 @@ const ChatMessages = ({
                   >
                     <rect x="6" y="6" width="12" height="12" fill="white" />
                   </svg>
-                  Stop
+                  {stopPressed ? 'Stopping...' : 'Stop'}
                 </button>
               )}
             </div>
