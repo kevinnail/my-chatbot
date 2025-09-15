@@ -2,11 +2,11 @@ const BASE_URL = process.env.REACT_APP_BASE_URL;
 
 // Pure API functions - no state, no side effects beyond network calls
 
-export async function sendChatMessage({ msg, userId, coachOrChat, chatId }) {
+export async function sendChatMessage({ msg, userId, coachOrChat, chatId, messageId }) {
   const response = await fetch(`${BASE_URL}/api/chatbot`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ msg, userId, coachOrChat, chatId }),
+    body: JSON.stringify({ msg, userId, coachOrChat, chatId, messageId }),
     credentials: 'include',
   });
 
