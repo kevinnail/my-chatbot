@@ -216,15 +216,7 @@ const Chat = ({ userId }) => {
   return (
     <main className="chat-main-container">
       <div className="chat-header-container">
-        <div
-          style={{
-            margin: '8px auto',
-            display: 'flex',
-            gap: '15px',
-            justifyContent: 'space-around',
-            alignItems: 'center',
-          }}
-        >
+        <div className="chat-header-content">
           {
             <button
               onClick={() => navigate('/')}
