@@ -127,7 +127,7 @@ export async function retrieveRelevantDocuments(userId, query, limit = 5) {
         content: row.content,
         similarity: parseFloat(row.similarity),
       }))
-      .filter((doc) => doc.similarity > 0.01); // Very low threshold - almost everything
+      .filter((doc) => doc.similarity > 0.25); // Very low threshold - almost everything
 
     // If no good semantic matches, try simple keyword matching as fallback
     if (filteredResults.length === 0) {
