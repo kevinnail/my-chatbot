@@ -6,16 +6,38 @@ const FolderSelector = ({ onFolderProcess, disabled }) => {
   const [processing, setProcessing] = useState(false);
   const [status, setStatus] = useState('');
 
-  const handleFolderSelect = (e) => {
+  const handleFolderSelect = async (e) => {
+    if (!e.target.files || e.target.files.length === 0) {
+      console.log('No files selected');
+      return;
+    }
+
     const files = Array.from(e.target.files);
+
     if (files.length > 0) {
       const folderPath = files[0].webkitRelativePath.split('/')[0];
       setSelectedFolder(folderPath);
-      setStatus('');
+      setStatus('Processing folder...');
+      setProcessing(true);
+
+      // Process immediately
+      try {
+        await onFolderProcess(files);
+        setStatus(`✅ Processed ${files.length} files`);
+      } catch (error) {
+        setStatus('❌ Error processing folder');
+        console.error('Folder processing error:', error);
+      } finally {
+        setProcessing(false);
+      }
     }
+
+    // Reset the input to allow re-selection
+    e.target.value = '';
   };
 
   const handleProcess = async () => {
+    console.log('hiiiiiiii');
     if (!selectedFolder) return;
 
     setProcessing(true);
@@ -23,6 +45,7 @@ const FolderSelector = ({ onFolderProcess, disabled }) => {
 
     try {
       const input = document.querySelector('input[webkitdirectory]');
+      console.log('input', input);
       const files = Array.from(input.files);
 
       await onFolderProcess(files);
@@ -49,12 +72,6 @@ const FolderSelector = ({ onFolderProcess, disabled }) => {
       <label htmlFor="folder-input" className="folder-header-button">
         {processing ? '⏳' : '📁'}
       </label>
-
-      {selectedFolder && !processing && (
-        <button onClick={handleProcess} disabled={disabled} className="process-header-button">
-          ✓
-        </button>
-      )}
     </>
   );
 };
