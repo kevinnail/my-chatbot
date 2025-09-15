@@ -190,7 +190,13 @@ export class ChatManager {
     });
 
     try {
-      const data = await chatApi.sendChatMessage({ msg: userMsg, userId, coachOrChat, chatId });
+      const data = await chatApi.sendChatMessage({
+        msg: userMsg,
+        userId,
+        coachOrChat,
+        chatId,
+        messageId,
+      });
 
       if (data.stopped) {
         onBotMessageError(messageId, null, true); // isStopped = true
