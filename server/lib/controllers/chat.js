@@ -54,20 +54,30 @@ router.post('/', async (req, res) => {
     // Build messages array with relevant documents context
     const messages = [{ role: 'system', content: systemPrompt }, ...memories];
 
-    // Add relevant documents as context if any were found
+    // Add relevant documents as context if any were found - place BEFORE user message for better attention
     if (relevantDocs.length > 0) {
       const documentsContext = relevantDocs
         .map(
           (doc, index) =>
-            `Document ${index + 1} (similarity: ${doc.similarity.toFixed(3)}):\n${doc.content}`,
+            `=== Document ${index + 1} (relevance: ${doc.similarity.toFixed(3)}) ===
+${doc.content}
+=== End Document ${index + 1} ===`,
         )
-        .join('\n\n---\n\n');
+        .join('\n\n');
 
       messages.push({
         role: 'system',
-        content: `Here are some relevant documents that may help answer the user's 
-        question:\n\n${documentsContext}\n\nUse this information to provide more
-         accurate and helpful responses.`,
+        content: `🔍 IMPORTANT CONTEXT: The user has uploaded documents containing information that is directly relevant to their question. You MUST carefully read and use this information to answer their question.
+
+${documentsContext}
+
+🎯 CRITICAL INSTRUCTIONS: 
+1. READ the document content above carefully - it contains the answer to the user's question
+2. If the documents contain relevant information, use it directly in your response
+3. Quote or reference the specific information from the documents when answering
+4. Do not claim you don't have access to information that is clearly provided in the documents above
+5. The document content is part of your available knowledge for this conversation
+6. Pay special attention to any specific phrases, codes, or data mentioned in the documents`,
       });
     }
 
