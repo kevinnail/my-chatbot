@@ -64,7 +64,21 @@ export async function sendPrompt({
     },
     onBotMessageError: (messageId, error, isStopped) => {
       if (isStopped) {
-        setLog((l) => l.filter((msg) => !(msg.timestamp === messageId && msg.role === 'bot')));
+        // When stopped, preserve the message content but mark it as stopped
+        setLog((l) =>
+          l.map((msg) => {
+            if (msg.timestamp === messageId && msg.role === 'bot') {
+              return {
+                ...msg,
+                isStreaming: false,
+                isProcessing: false,
+                isStopped: true,
+                responseTime: Date.now() - messageId,
+              };
+            }
+            return msg;
+          }),
+        );
       } else {
         const errorTime = Date.now();
         setLog((l) => l.filter((msg) => !(msg.timestamp === messageId && msg.role === 'bot')));

@@ -232,6 +232,21 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                   ● {m.isProcessing ? 'Processing...' : 'Streaming...'}
                 </div>
               )}
+              {/* Show stopped indicator */}
+              {isBot && m.isStopped && (
+                <div
+                  style={{
+                    color: '#ff9500',
+                    fontSize: '0.8rem',
+                    marginTop: '8px',
+                    fontFamily: 'monospace',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                    paddingTop: '8px',
+                  }}
+                >
+                  ⏹ Response stopped
+                </div>
+              )}
               {isBot && m.isStreaming && callLLMStartTime && (
                 <div
                   style={{
