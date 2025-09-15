@@ -243,6 +243,7 @@ describe('chat routes', () => {
       // Should emit error event for empty response
       expect(mockIo.to).toHaveBeenCalledWith('chat-test_user_2');
       expect(mockIo.emit).toHaveBeenCalledWith('chat-error', {
+        messageId: expect.any(Number),
         error: 'No response content received from LLM',
       });
 
@@ -317,6 +318,7 @@ describe('chat routes', () => {
       // Should emit error event for malformed response (no valid content received)
       expect(mockIo.to).toHaveBeenCalledWith('chat-test_user_3');
       expect(mockIo.emit).toHaveBeenCalledWith('chat-error', {
+        messageId: expect.any(Number),
         error: 'No response content received from LLM',
       });
 
