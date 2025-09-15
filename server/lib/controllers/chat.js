@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { buildPromptWithMemory } from '../utils/buildPrompt.js';
 import ChatMemory from '../models/ChatMemory.js';
 import { careerCoach, codingAssistant } from '../utils/chatPrompts.js';
+import { retrieveRelevantDocuments } from './rag.js';
 
 const router = Router();
 
@@ -18,22 +19,59 @@ router.post('/', async (req, res) => {
     const { msg, userId, coachOrChat, chatId } = req.body;
     // Generate chatId if not provided (for new chats)
     const currentChatId = chatId || `${userId}_${Date.now()}`;
+    // messageId will be passed from frontend or generated if not provided
+    const messageId = req.body.messageId || Date.now();
 
     // Get memories BEFORE storing current message (to avoid including current message in context)
-    const memories = await buildPromptWithMemory({ chatId: currentChatId, userId, userInput: msg });
+    let memories, relevantDocs;
+    try {
+      memories = await buildPromptWithMemory({ chatId: currentChatId, userId, userInput: msg });
+      // Retrieve relevant documents based on user query
+      relevantDocs = await retrieveRelevantDocuments(userId, msg);
+      console.info(`Retrieved ${relevantDocs.length} relevant documents for query`);
+    } catch (memoryError) {
+      console.error('Error retrieving memories or documents:', memoryError);
+      return res.status(500).json({ error: 'Failed to retrieve context' });
+    }
 
     // Store the user message AFTER getting memories
-    await ChatMemory.storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
+    try {
+      await ChatMemory.storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
+    } catch (storageError) {
+      console.error('Error storing user message:', storageError);
+      const io = req.app.get('io');
+      io.to(`chat-${userId}`).emit('chat-error', {
+        messageId,
+        error: 'Failed to save message. Please try again.',
+      });
+      return res.status(500).json({ error: 'Failed to save message' });
+    }
     // Get Socket.IO instance
     const io = req.app.get('io');
 
     const systemPrompt = coachOrChat === 'coach' ? careerCoach : codingAssistant;
 
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...memories,
-      { role: 'user', content: msg },
-    ];
+    // Build messages array with relevant documents context
+    const messages = [{ role: 'system', content: systemPrompt }, ...memories];
+
+    // Add relevant documents as context if any were found
+    if (relevantDocs.length > 0) {
+      const documentsContext = relevantDocs
+        .map(
+          (doc, index) =>
+            `Document ${index + 1} (similarity: ${doc.similarity.toFixed(3)}):\n${doc.content}`,
+        )
+        .join('\n\n---\n\n');
+
+      messages.push({
+        role: 'system',
+        content: `Here are some relevant documents that may help answer the user's 
+        question:\n\n${documentsContext}\n\nUse this information to provide more
+         accurate and helpful responses.`,
+      });
+    }
+
+    messages.push({ role: 'user', content: msg });
 
     // Create AbortController for timeout handling - reduced to 5 minutes
     const controller = new AbortController();
@@ -80,7 +118,7 @@ router.post('/', async (req, res) => {
     });
     // Clear the timeout since we got a response
     clearTimeout(timeoutId);
-
+    console.log('LLM completed');
     // Check if response is ok before processing
     if (!response.ok) {
       const errorText = await response.text();
@@ -119,6 +157,7 @@ router.post('/', async (req, res) => {
             if (data.error) {
               console.error('LLM streaming error:', data.error);
               io.to(`chat-${userId}`).emit('chat-error', {
+                messageId,
                 error: `LLM error: ${data.error}`,
               });
               return;
@@ -131,6 +170,7 @@ router.post('/', async (req, res) => {
 
               // Emit streaming chunk via WebSocket
               io.to(`chat-${userId}`).emit('chat-chunk', {
+                messageId,
                 content,
                 fullResponse,
                 done: false,
@@ -142,18 +182,28 @@ router.post('/', async (req, res) => {
               if (!hasReceivedContent) {
                 console.error('Stream completed but no content received');
                 io.to(`chat-${userId}`).emit('chat-error', {
+                  messageId,
                   error: 'No response content received from LLM',
                 });
                 return;
               }
 
               // Store the complete response
-              await ChatMemory.storeMessage({
-                chatId: currentChatId,
-                userId,
-                role: 'bot',
-                content: fullResponse,
-              });
+              try {
+                await ChatMemory.storeMessage({
+                  chatId: currentChatId,
+                  userId,
+                  role: 'bot',
+                  content: fullResponse,
+                });
+              } catch (storageError) {
+                console.error('Error storing bot message:', storageError);
+                io.to(`chat-${userId}`).emit('chat-error', {
+                  messageId,
+                  error: 'Failed to save response. Please try again.',
+                });
+                return;
+              }
 
               // Calculate context percentage
               const allMessages = await ChatMemory.getAllMessages({
@@ -169,6 +219,7 @@ router.post('/', async (req, res) => {
 
               // Emit completion via WebSocket
               io.to(`chat-${userId}`).emit('chat-complete', {
+                messageId,
                 fullResponse,
                 contextPercent,
                 chatId: currentChatId,
@@ -190,17 +241,20 @@ router.post('/', async (req, res) => {
       if (chunkCount >= maxChunks) {
         console.error('Stream processing hit safety limit');
         io.to(`chat-${userId}`).emit('chat-error', {
+          messageId,
           error: 'Response too long - processing stopped for safety',
         });
       } else if (!hasReceivedContent) {
         console.error('Stream ended without content');
         io.to(`chat-${userId}`).emit('chat-error', {
+          messageId,
           error: 'No response content received from LLM',
         });
       }
     } catch (streamError) {
       console.error('Error reading stream:', streamError);
       io.to(`chat-${userId}`).emit('chat-error', {
+        messageId,
         error: 'Streaming error occurred',
       });
     } finally {
@@ -436,6 +490,7 @@ router.post('/stop', async (req, res) => {
 
     // Emit stop signal via WebSocket
     io.to(`chat-${userId}`).emit('chat-stopped', {
+      messageId: Date.now(),
       chatId,
       message: 'Generation stopped by user',
     });
