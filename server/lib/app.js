@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import chatRouter from './controllers/chat.js';
 import gmailMcpRouter from './controllers/gmail.js';
 import googleCalendarRouter from './controllers/googleCalendar.js';
+import ragRouter from './controllers/rag.js';
 import notFound from './middleware/not-found.js';
 import errorHandler from './middleware/error.js';
 import users from './controllers/users.js';
@@ -26,6 +27,7 @@ app.use('/api/users', users);
 app.use('/api/chatbot', authenticate, chatRouter);
 app.use('/api/gmail', gmailMcpRouter);
 app.use('/api/calendar', googleCalendarRouter);
+app.use('/api/rag', authenticate, ragRouter);
 
 app.use(notFound);
 app.use(errorHandler);
