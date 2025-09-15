@@ -44,8 +44,8 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.info(`🚀  Server started on ${API_URL}:${PORT}`);
-  console.info('📡  Socket.IO enabled for real-time updates');
+  console.info(`  Server started on ${API_URL}:${PORT}`);
+  console.info('  Socket.IO enabled for real-time updates');
 });
 
 // Placeholder for pool import and graceful shutdown
