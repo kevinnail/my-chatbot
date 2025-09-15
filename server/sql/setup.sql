@@ -107,7 +107,7 @@ CREATE INDEX IF NOT EXISTS idx_chat_memory_chunks_embedding ON chat_memory_chunk
 
 CREATE INDEX IF NOT EXISTS idx_gmail_sync_status_user_id ON gmail_sync_status(user_id);
 
-Create indexes for email_memory table
+-- Create indexes for email_memory table
 CREATE INDEX IF NOT EXISTS idx_email_memory_user_id ON email_memory(user_id);
 CREATE INDEX IF NOT EXISTS idx_email_memory_email_date ON email_memory(email_date);
 CREATE INDEX IF NOT EXISTS idx_email_memory_embedding ON email_memory USING ivfflat (embedding vector_cosine_ops);
