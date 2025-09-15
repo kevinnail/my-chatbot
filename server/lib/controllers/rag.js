@@ -115,17 +115,47 @@ export async function retrieveRelevantDocuments(userId, query, limit = 5) {
       `SELECT id, content, 1 - (embedding <=> $1::vector) as similarity 
        FROM files 
        WHERE user_id = $2 
-         AND 1 - (embedding <=> $1::vector) > 0.3
        ORDER BY embedding <=> $1::vector
        LIMIT $3`,
       [queryEmbedding, userId, limit],
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      content: row.content,
-      similarity: parseFloat(row.similarity),
-    }));
+    // Convert results and apply minimal filtering
+    let filteredResults = result.rows
+      .map((row) => ({
+        id: row.id,
+        content: row.content,
+        similarity: parseFloat(row.similarity),
+      }))
+      .filter((doc) => doc.similarity > 0.01); // Very low threshold - almost everything
+
+    // If no good semantic matches, try simple keyword matching as fallback
+    if (filteredResults.length === 0) {
+      console.log('🔄 No semantic matches found, trying keyword fallback...');
+      const keywordResult = await pool.query(
+        `SELECT id, content, 0.1 as similarity 
+         FROM files 
+         WHERE user_id = $1 
+           AND (LOWER(content) LIKE LOWER($2) OR LOWER(content) LIKE LOWER($3))
+         LIMIT $4`,
+        [userId, `%${query}%`, `%${query.split(' ').join('%')}%`, limit],
+      );
+
+      filteredResults = keywordResult.rows.map((row) => ({
+        id: row.id,
+        content: row.content,
+        similarity: parseFloat(row.similarity),
+      }));
+    }
+
+    console.log(
+      `📊 Document retrieval results for query "${query}":`,
+      filteredResults.map(
+        (doc) => `${doc.similarity.toFixed(3)}: "${doc.content.substring(0, 50)}..."`,
+      ),
+    );
+
+    return filteredResults;
   } catch (error) {
     console.error('Error retrieving relevant documents:', error);
     return [];
