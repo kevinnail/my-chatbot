@@ -4,12 +4,22 @@ import remarkGfm from 'remark-gfm';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import js from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript';
 import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { setStopPressed } from '../../services/fetch-chat';
+import { stopChat } from '../../services/fetch-utils';
 import CopyButton from '../CopyButton/CopyButton.js';
 
 // Register the language for syntax highlighting
 SyntaxHighlighter.registerLanguage('javascript', js);
 
-const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart }) => {
+const ChatMessages = ({
+  log,
+  loading,
+  callLLMStartTime,
+  calculateTimeSinceStart,
+  userId,
+  chatId,
+  setLoading,
+}) => {
   const formatResponseTime = (responseTime) => {
     if (!responseTime) return '';
     if (responseTime < 1000) {
@@ -23,6 +33,22 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
         const seconds = totalSeconds % 60;
         return `${minutes}m ${seconds}s`;
       }
+    }
+  };
+
+  const handleStop = async () => {
+    try {
+      // Set stop state immediately
+      setStopPressed(true);
+
+      const response = await stopChat(userId, chatId);
+
+      if (response.ok) {
+        setLoading(false);
+        // The chat-stopped event will handle removing the placeholder
+      }
+    } catch (error) {
+      console.error('Error stopping request:', error);
     }
   };
 
@@ -260,6 +286,48 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                     ? `Running for: ${calculateTimeSinceStart()}`
                     : 'Starting...'}
                 </div>
+              )}
+              {isBot && m.isStreaming && (
+                <button
+                  className="stop-button-inline"
+                  onClick={handleStop}
+                  style={{
+                    background: 'none',
+                    fontSize: '0.77rem',
+                    borderRadius: '15px',
+                    padding: '0.28rem 1.05rem',
+                    color: '#fff',
+                    border: '1px solid #4f62cb',
+                    fontWeight: 'bold',
+                    letterSpacing: '0.08em',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.7em',
+                    marginTop: '8px',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = '#4f62cb3e';
+                    e.target.style.borderColor = 'red';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = 'none';
+                    e.target.style.borderColor = '#4f62cb';
+                  }}
+                >
+                  <svg
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{ marginRight: '0.2em' }}
+                  >
+                    <rect x="6" y="6" width="12" height="12" fill="white" />
+                  </svg>
+                  Stop
+                </button>
               )}
             </div>
             {(isBot || isError) && m.responseTime && (

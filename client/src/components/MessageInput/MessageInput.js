@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
-import { sendPrompt, setStopPressed } from '../../services/fetch-chat';
-import { stopChat } from '../../services/fetch-utils';
+import { sendPrompt } from '../../services/fetch-chat';
 import './MessageInput.css';
 
 const MessageInput = ({
@@ -57,22 +56,6 @@ const MessageInput = ({
     sendPrompt(prompt);
   };
 
-  const handleStop = async () => {
-    try {
-      // Set stop state immediately
-      setStopPressed(true);
-
-      const response = await stopChat(userId, chatId);
-
-      if (response.ok) {
-        setLoading(false);
-        // The chat-stopped event will handle removing the placeholder
-      }
-    } catch (error) {
-      console.error('Error stopping request:', error);
-    }
-  };
-
   return (
     <div className="message-input-container">
       <textarea
@@ -99,22 +82,8 @@ const MessageInput = ({
       />
       {loading && (
         <div className="token-mode-send">
-          <div className="token-mode-wrapper">
-            <div className="tokens-in-prompt-display">Generating response...</div>
-          </div>
-          <button className="stop-button" onClick={handleStop}>
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              style={{ marginRight: '0.2em' }}
-            >
-              <rect x="6" y="6" width="12" height="12" fill="white" />
-            </svg>
-            Stop
-          </button>
+          <div className="token-mode-wrapper"></div>
+          <div className="tokens-in-prompt-display">Generating response...</div>
         </div>
       )}
       {!loading && (

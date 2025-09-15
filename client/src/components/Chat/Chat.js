@@ -265,6 +265,9 @@ const Chat = ({ userId }) => {
           callLLMStartTime={callLLMStartTime}
           setCallLLMStartTime={setCallLLMStartTime}
           calculateTimeSinceStart={calculateTimeSinceStart}
+          userId={userId}
+          chatId={currentChatId}
+          setLoading={setLoading}
         />
       )}
 
