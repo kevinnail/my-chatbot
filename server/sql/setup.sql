@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS gmail_tokens CASCADE;
 DROP TABLE IF EXISTS gmail_sync_status CASCADE;
 DROP TABLE IF EXISTS email_memory CASCADE;
 DROP TABLE IF EXISTS google_calendar_tokens CASCADE;
+DROP TABLE IF EXISTS files CASCADE;
 
 CREATE TABLE users (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -114,6 +115,15 @@ CREATE INDEX IF NOT EXISTS idx_email_memory_category ON email_memory(category);
 CREATE INDEX IF NOT EXISTS idx_email_memory_priority ON email_memory(priority);
 CREATE INDEX IF NOT EXISTS idx_email_memory_web_dev ON email_memory(is_web_dev_related);
 
+-- Create files table for chatbot intelligence
+CREATE TABLE files (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL, -- extracted text content for chatbot context
+    embedding VECTOR(1024), -- vector embedding for semantic search
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create google_calendar_tokens table
 CREATE TABLE google_calendar_tokens (
     id SERIAL PRIMARY KEY,
@@ -128,6 +138,10 @@ CREATE TABLE google_calendar_tokens (
 );
 
 
+
+-- Create indexes for files table
+CREATE INDEX IF NOT EXISTS idx_files_user_id ON files(user_id);
+CREATE INDEX IF NOT EXISTS idx_files_embedding ON files USING ivfflat (embedding vector_cosine_ops);
 
 -- Create indexes for Google Calendar tables
 CREATE INDEX IF NOT EXISTS idx_google_calendar_tokens_user_id ON google_calendar_tokens(user_id);

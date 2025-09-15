@@ -2,8 +2,12 @@ import { Router } from 'express';
 import { buildPromptWithMemory } from '../utils/buildPrompt.js';
 import ChatMemory from '../models/ChatMemory.js';
 import { careerCoach, codingAssistant } from '../utils/chatPrompts.js';
+import { retrieveRelevantDocuments } from './rag.js';
 
 const router = Router();
+
+// Store active AbortControllers for stop functionality
+const activeControllers = new Map();
 
 export function countTokens(messages) {
   // Very rough estimate: 1 token ≈ 4 characters in English
@@ -15,26 +19,78 @@ router.post('/', async (req, res) => {
     const { msg, userId, coachOrChat, chatId } = req.body;
     // Generate chatId if not provided (for new chats)
     const currentChatId = chatId || `${userId}_${Date.now()}`;
+    // messageId will be passed from frontend or generated if not provided
+    const messageId = req.body.messageId || Date.now();
 
     // Get memories BEFORE storing current message (to avoid including current message in context)
-    const memories = await buildPromptWithMemory({ chatId: currentChatId, userId, userInput: msg });
+    let memories, relevantDocs;
+    try {
+      memories = await buildPromptWithMemory({ chatId: currentChatId, userId, userInput: msg });
+      // Retrieve relevant documents based on user query
+      relevantDocs = await retrieveRelevantDocuments(userId, msg);
+      console.info(`Retrieved ${relevantDocs.length} relevant documents for query`);
+    } catch (memoryError) {
+      console.error('Error retrieving memories or documents:', memoryError);
+      return res.status(500).json({ error: 'Failed to retrieve context' });
+    }
 
     // Store the user message AFTER getting memories
-    await ChatMemory.storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
+    try {
+      await ChatMemory.storeMessage({ chatId: currentChatId, userId, role: 'user', content: msg });
+    } catch (storageError) {
+      console.error('Error storing user message:', storageError);
+      const io = req.app.get('io');
+      io.to(`chat-${userId}`).emit('chat-error', {
+        messageId,
+        error: 'Failed to save message. Please try again.',
+      });
+      return res.status(500).json({ error: 'Failed to save message' });
+    }
     // Get Socket.IO instance
     const io = req.app.get('io');
 
     const systemPrompt = coachOrChat === 'coach' ? careerCoach : codingAssistant;
 
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...memories,
-      { role: 'user', content: msg },
-    ];
+    // Build messages array with relevant documents context
+    const messages = [{ role: 'system', content: systemPrompt }, ...memories];
+
+    // Add relevant documents as context if any were found - place BEFORE user message for better attention
+    if (relevantDocs.length > 0) {
+      const documentsContext = relevantDocs
+        .map(
+          (doc, index) =>
+            `=== Document ${index + 1} (relevance: ${doc.similarity.toFixed(3)}) ===
+${doc.content}
+=== End Document ${index + 1} ===`,
+        )
+        .join('\n\n');
+
+      messages.push({
+        role: 'system',
+        content: `🔍 IMPORTANT CONTEXT: The user has uploaded documents containing information that is directly relevant to their question. You MUST carefully read and use this information to answer their question.
+
+${documentsContext}
+
+🎯 CRITICAL INSTRUCTIONS: 
+1. READ the document content above carefully - it contains the answer to the user's question
+2. If the documents contain relevant information, use it directly in your response
+3. Quote or reference the specific information from the documents when answering
+4. Do not claim you don't have access to information that is clearly provided in the documents above
+5. The document content is part of your available knowledge for this conversation
+6. Pay special attention to any specific phrases, codes, or data mentioned in the documents`,
+      });
+    }
+
+    messages.push({ role: 'user', content: msg });
 
     // Create AbortController for timeout handling - reduced to 5 minutes
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minute timeout
+
+    // Store controller for stop functionality
+    const controllerKey = `${userId}_${currentChatId}`;
+    activeControllers.set(controllerKey, controller);
+    console.log('Chat request - stored controller with key:', controllerKey);
     // eslint-disable-next-line no-console
     console.log('calling LLM...');
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
@@ -72,7 +128,7 @@ router.post('/', async (req, res) => {
     });
     // Clear the timeout since we got a response
     clearTimeout(timeoutId);
-
+    console.log('LLM completed');
     // Check if response is ok before processing
     if (!response.ok) {
       const errorText = await response.text();
@@ -111,6 +167,7 @@ router.post('/', async (req, res) => {
             if (data.error) {
               console.error('LLM streaming error:', data.error);
               io.to(`chat-${userId}`).emit('chat-error', {
+                messageId,
                 error: `LLM error: ${data.error}`,
               });
               return;
@@ -123,6 +180,7 @@ router.post('/', async (req, res) => {
 
               // Emit streaming chunk via WebSocket
               io.to(`chat-${userId}`).emit('chat-chunk', {
+                messageId,
                 content,
                 fullResponse,
                 done: false,
@@ -134,18 +192,28 @@ router.post('/', async (req, res) => {
               if (!hasReceivedContent) {
                 console.error('Stream completed but no content received');
                 io.to(`chat-${userId}`).emit('chat-error', {
+                  messageId,
                   error: 'No response content received from LLM',
                 });
                 return;
               }
 
               // Store the complete response
-              await ChatMemory.storeMessage({
-                chatId: currentChatId,
-                userId,
-                role: 'bot',
-                content: fullResponse,
-              });
+              try {
+                await ChatMemory.storeMessage({
+                  chatId: currentChatId,
+                  userId,
+                  role: 'bot',
+                  content: fullResponse,
+                });
+              } catch (storageError) {
+                console.error('Error storing bot message:', storageError);
+                io.to(`chat-${userId}`).emit('chat-error', {
+                  messageId,
+                  error: 'Failed to save response. Please try again.',
+                });
+                return;
+              }
 
               // Calculate context percentage
               const allMessages = await ChatMemory.getAllMessages({
@@ -161,12 +229,15 @@ router.post('/', async (req, res) => {
 
               // Emit completion via WebSocket
               io.to(`chat-${userId}`).emit('chat-complete', {
+                messageId,
                 fullResponse,
                 contextPercent,
                 chatId: currentChatId,
                 done: true,
               });
 
+              // Clean up controller
+              activeControllers.delete(controllerKey);
               return;
             }
           } catch (parseError) {
@@ -180,17 +251,20 @@ router.post('/', async (req, res) => {
       if (chunkCount >= maxChunks) {
         console.error('Stream processing hit safety limit');
         io.to(`chat-${userId}`).emit('chat-error', {
+          messageId,
           error: 'Response too long - processing stopped for safety',
         });
       } else if (!hasReceivedContent) {
         console.error('Stream ended without content');
         io.to(`chat-${userId}`).emit('chat-error', {
+          messageId,
           error: 'No response content received from LLM',
         });
       }
     } catch (streamError) {
       console.error('Error reading stream:', streamError);
       io.to(`chat-${userId}`).emit('chat-error', {
+        messageId,
         error: 'Streaming error occurred',
       });
     } finally {
@@ -207,6 +281,13 @@ router.post('/', async (req, res) => {
 
     // More comprehensive timeout error handling
     if (error.name === 'AbortError') {
+      // Check if this was a user-initiated stop (controller was deleted)
+      const { userId: errorUserId, chatId: errorChatId } = req.body;
+      const controllerKey = `${errorUserId}_${errorChatId || `${errorUserId}_${Date.now()}`}`;
+      if (!activeControllers.has(controllerKey)) {
+        // This was a user stop, don't show timeout error
+        return res.status(200).json({ stopped: true });
+      }
       return res.status(408).json({
         error: 'Request timed out - LLM is taking too long to respond. Please try again.',
       });
@@ -373,6 +454,60 @@ router.post('/summarize', async (req, res) => {
     res.json({ summary });
   } catch (error) {
     console.error('Error in summarize controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/stop', async (req, res) => {
+  try {
+    const { userId, chatId } = req.body;
+
+    if (!userId || !chatId) {
+      return res.status(400).json({ error: 'userId and chatId are required' });
+    }
+
+    // Get Socket.IO instance
+    const io = req.app.get('io');
+
+    // Find and abort the active controller
+    const controllerKey = `${userId}_${chatId}`;
+    const controller = activeControllers.get(controllerKey);
+
+    console.log('Stop request - controllerKey:', controllerKey);
+    console.log('Stop request - active controllers:', Array.from(activeControllers.keys()));
+    console.log('Stop request - found controller:', !!controller);
+
+    if (controller) {
+      controller.abort();
+      activeControllers.delete(controllerKey);
+    }
+
+    // Call Ollama stop endpoint
+    try {
+      await fetch(`${process.env.OLLAMA_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: process.env.OLLAMA_MODEL,
+          prompt: '',
+          stream: false,
+          options: { stop: true },
+        }),
+      });
+    } catch (ollamaError) {
+      console.error('Error calling Ollama stop:', ollamaError);
+    }
+
+    // Emit stop signal via WebSocket
+    io.to(`chat-${userId}`).emit('chat-stopped', {
+      messageId: Date.now(),
+      chatId,
+      message: 'Generation stopped by user',
+    });
+
+    res.json({ message: 'Stop signal sent successfully' });
+  } catch (error) {
+    console.error('Error in stop controller:', error);
     res.status(500).json({ error: error.message });
   }
 });

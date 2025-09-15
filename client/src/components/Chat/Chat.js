@@ -3,10 +3,12 @@ import { useNavigate, useParams, useMatch } from 'react-router-dom';
 import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
+import FolderSelector from '../FolderSelector/FolderSelector';
 import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import { useLoading } from '../../contexts/LoadingContext.js';
+import { processFolder } from '../../services/fetch-utils';
 
 const Chat = ({ userId }) => {
   const navigate = useNavigate();
@@ -193,20 +195,16 @@ const Chat = ({ userId }) => {
     });
   };
 
+  const handleFolderProcess = async (files) => {
+    return await processFolder(files, userId);
+  };
+
   const messageLabel = 'messages';
 
   return (
     <main className="chat-main-container">
       <div className="chat-header-container">
-        <div
-          style={{
-            margin: '8px auto',
-            display: 'flex',
-            gap: '15px',
-            justifyContent: 'space-around',
-            alignItems: 'center',
-          }}
-        >
+        <div className="chat-header-content">
           {
             <button
               onClick={() => navigate('/')}
@@ -224,7 +222,8 @@ const Chat = ({ userId }) => {
                 e.target.style.color = '#639cff';
               }}
             >
-              ← Back to Chats
+              ← <span className="back-text-full">Back to Chats</span>
+              <span className="back-text-short">Back</span>
             </button>
           }
           <span className="chat-header-title">
@@ -250,6 +249,10 @@ const Chat = ({ userId }) => {
           >
             Job Search
           </button>
+          <FolderSelector
+            onFolderProcess={handleFolderProcess}
+            disabled={loading || isAnyLoading}
+          />
         </div>
       </div>
 

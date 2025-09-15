@@ -26,6 +26,11 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
     }
   };
 
+  // Don't render anything if there are no messages
+  if (!log || log.length === 0) {
+    return null;
+  }
+
   return (
     <div
       style={{
@@ -45,24 +50,16 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
         return (
           <div
             key={i}
+            className="chat-message"
             style={{
-              display: 'flex',
               flexDirection: isUser ? 'row-reverse' : 'row',
-              alignItems: 'flex-start',
-              gap: '1rem',
-              position: 'relative',
             }}
           >
             <div
+              className="chat-message-content"
               style={{
                 alignSelf: isUser ? 'flex-end' : 'flex-start',
                 background: isUser ? '#4f62cb' : isError ? '#4a1a1a' : '#1f64a7',
-                color: '#ffffffd3',
-                borderRadius: '10px',
-                padding: '.75rem 1.25rem',
-                minWidth: '70%',
-                maxWidth: '70%',
-                wordBreak: 'break-word',
                 boxShadow: isUser
                   ? '0 2px 8px #1118'
                   : isError
@@ -107,14 +104,18 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                           return true;
                         });
                       }
-                      return <p style={{ margin: '1em 0' }}>{children}</p>;
+                      return <p style={{ margin: '.5em 0' }}>{children}</p>;
                     },
                     a: ({ node: _node, ...props }) => (
                       <a style={{ color: '#4af', textDecoration: 'underline' }} {...props}>
                         {props.children}
                       </a>
                     ),
-                    pre: ({ node: _node, ...props }) => <>{props.children}</>,
+                    pre: ({ node: _node, ...props }) => (
+                      <pre style={{ marginTop: '.5em', marginBottom: '1.5em' }}>
+                        {props.children}
+                      </pre>
+                    ),
                     code: ({ node, inline, className, children, ...props }) => {
                       const codeString = Array.isArray(children)
                         ? children.join('')
@@ -229,6 +230,21 @@ const ChatMessages = ({ log, loading, callLLMStartTime, calculateTimeSinceStart 
                   }}
                 >
                   ● {m.isProcessing ? 'Processing...' : 'Streaming...'}
+                </div>
+              )}
+              {/* Show stopped indicator */}
+              {isBot && m.isStopped && (
+                <div
+                  style={{
+                    color: '#ff9500',
+                    fontSize: '0.8rem',
+                    marginTop: '8px',
+                    fontFamily: 'monospace',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                    paddingTop: '8px',
+                  }}
+                >
+                  ⏹ Response stopped
                 </div>
               )}
               {isBot && m.isStreaming && callLLMStartTime && (

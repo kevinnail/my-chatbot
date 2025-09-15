@@ -4,6 +4,7 @@ import './ChatList.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import { useChatContext } from '../../contexts/ChatContext';
 import ConfirmationDialog from '../ConfirmationDialog/ConfirmationDialog';
+import { getChatList, deleteChat } from '../../services/fetch-utils';
 
 const ChatList = ({ userId }) => {
   const { chats, setChats, setRefreshChatList } = useChatContext();
@@ -61,11 +62,7 @@ const ChatList = ({ userId }) => {
 
     // Only make API calls when running locally
     try {
-      const response = await fetch(`/api/chatbot/list/${userId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch chat list');
-      }
-      const data = await response.json();
+      const data = await getChatList(userId);
       setChats(data);
     } catch (err) {
       setError(err.message);
@@ -103,12 +100,7 @@ const ChatList = ({ userId }) => {
         return;
       }
 
-      const response = await fetch(`/api/chatbot/${userId}/${chatToDelete}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete chat');
-      }
+      await deleteChat(userId, chatToDelete);
       fetchChatList(); // Refresh the list
       setChatToDelete(null);
     } catch (err) {

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import authenticate from '../middleware/authenticate.js';
 import EmailMemory from '../models/EmailMemory.js';
 import GmailSync from '../models/GmailSync.js';
 import { testImapConnection, getEmailsViaImap } from '../utils/gmailImap.js';
@@ -8,7 +9,7 @@ import { preFilterWebDevEmails } from '../utils/vectorSimilarity.js';
 const router = Router();
 
 // Get Gmail connection status
-router.get('/status/:userId', async (req, res) => {
+router.get('/status/:userId', authenticate, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -36,7 +37,7 @@ router.get('/status/:userId', async (req, res) => {
 });
 
 // Connect to Gmail (now just tests connection)
-router.post('/connect', async (req, res) => {
+router.post('/connect', authenticate, async (req, res) => {
   try {
     const { userId } = req.body;
 
@@ -59,7 +60,7 @@ router.get('/callback', async (req, res) => {
 });
 
 // Persistent vector-powered email sync - now with real-time updates
-router.post('/sync', async (req, res) => {
+router.post('/sync', authenticate, async (req, res) => {
   try {
     const { userId } = req.body;
 
@@ -338,7 +339,7 @@ router.post('/sync', async (req, res) => {
 });
 
 // Get stored web-dev emails from database
-router.get('/emails/:userId', async (req, res) => {
+router.get('/emails/:userId', authenticate, async (req, res) => {
   try {
     const { userId } = req.params;
     const { limit = 50 } = req.query;

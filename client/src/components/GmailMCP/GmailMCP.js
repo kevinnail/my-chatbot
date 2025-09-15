@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import './GmailMCP.css';
 import { useLoading } from '../../contexts/LoadingContext';
 import GoogleCalendar from '../GoogleCalendar/GoogleCalendar.js';
+import { checkCalendarConnection, checkGmailStatus, syncGmail } from '../../services/fetch-utils';
 
 const GmailMCP = ({ userId }) => {
   const [emails, setEmails] = useState([]);
@@ -99,8 +100,7 @@ const GmailMCP = ({ userId }) => {
       return;
     }
     try {
-      const response = await fetch(`/api/calendar/status/${userId}`);
-      const data = await response.json();
+      const data = await checkCalendarConnection(userId);
       setCalendarConnected(data.connected);
     } catch (err) {
       console.error('Error checking Calendar connection:', err);
@@ -260,8 +260,7 @@ const GmailMCP = ({ userId }) => {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/gmail/status/${userId}`);
-      const data = await response.json();
+      const data = await checkGmailStatus(userId);
 
       setIsConnected(data.connected);
       if (data.error) {
@@ -351,19 +350,7 @@ const GmailMCP = ({ userId }) => {
       setAnalysisInProgress(true);
       setAnalysisProgress({ analyzed: 0, total: 0 });
 
-      const response = await fetch('/api/gmail/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to sync emails');
-      }
-
-      const data = await response.json();
+      const data = await syncGmail(userId);
 
       // Set preliminary emails immediately
       if (data.emails) {
@@ -536,7 +523,9 @@ const GmailMCP = ({ userId }) => {
                     Analyzing emails<span className="elipsis"></span>
                   </span>
                   <span style={{ fontWeight: '500', fontSize: '.8rem' }}>
-                    ( #{analysisProgress.analyzed} out of {analysisProgress.total} )
+                    {analysisProgress.total > 0
+                      ? `( #${Math.min(analysisProgress.analyzed + 1, analysisProgress.total)} out of ${analysisProgress.total} )`
+                      : '( preparing... )'}
                   </span>
                 </div>
                 <div className="progress-bar">
