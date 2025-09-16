@@ -821,4 +821,90 @@ describe('chat routes', () => {
       ChatMemoryModule.default.deleteChatMessages = originalDeleteChatMessages;
     });
   });
+
+  describe('GET /api/chatbot/context/:userId/:chatId', () => {
+    it('should return context percentage for chat with messages', async () => {
+      const [agent] = await registerAndLogin();
+
+      const userId = 'test_user_context';
+      const chatId = 'test_chat_context';
+
+      // Import ChatMemory to properly store encrypted messages
+      const { default: ChatMemory } = await import('../../lib/models/ChatMemory.js');
+
+      // Add some messages to the chat using ChatMemory.storeMessage for proper encryption
+      await ChatMemory.storeMessage({
+        chatId,
+        userId,
+        role: 'user',
+        content: 'This is a test message for context calculation',
+      });
+
+      await ChatMemory.storeMessage({
+        chatId,
+        userId,
+        role: 'bot',
+        content: 'This is a test response for context calculation',
+      });
+
+      const response = await agent.get(`/api/chatbot/context/${userId}/${chatId}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        contextPercent: expect.any(Number),
+        totalTokens: expect.any(Number),
+        messageCount: expect.any(Number),
+      });
+      expect(response.body.contextPercent).toBeGreaterThan(0);
+      expect(response.body.totalTokens).toBeGreaterThan(0);
+      expect(response.body.messageCount).toBe(3); // system prompt + 2 messages
+    });
+
+    it('should return context for empty chat with just system prompt', async () => {
+      const [agent] = await registerAndLogin();
+
+      const userId = 'test_user_empty_context';
+      const chatId = 'test_chat_empty_context';
+
+      const response = await agent.get(`/api/chatbot/context/${userId}/${chatId}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        contextPercent: expect.any(Number),
+        totalTokens: expect.any(Number),
+        messageCount: 1, // Just system prompt
+      });
+      expect(response.body.contextPercent).toBeGreaterThan(0); // System prompt has tokens
+      expect(response.body.totalTokens).toBeGreaterThan(0);
+    });
+
+    it('should use coach mode when specified in query parameter', async () => {
+      const [agent] = await registerAndLogin();
+
+      const userId = 'test_user_coach_context';
+      const chatId = 'test_chat_coach_context';
+
+      // Import ChatMemory to properly store encrypted messages
+      const { default: ChatMemory } = await import('../../lib/models/ChatMemory.js');
+
+      // Add a message using ChatMemory.storeMessage for proper encryption
+      await ChatMemory.storeMessage({
+        chatId,
+        userId,
+        role: 'user',
+        content: 'Career advice question',
+      });
+
+      const response = await agent.get(`/api/chatbot/context/${userId}/${chatId}?mode=coach`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        contextPercent: expect.any(Number),
+        totalTokens: expect.any(Number),
+        messageCount: 2, // system prompt + 1 message
+      });
+      expect(response.body.contextPercent).toBeGreaterThan(0);
+      expect(response.body.totalTokens).toBeGreaterThan(0);
+    });
+  });
 });
