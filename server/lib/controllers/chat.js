@@ -167,6 +167,7 @@ ${documentsContext}
               },
             ],
             stream: true,
+            keep_alive: '60m', // Keep vision model loaded for 60 minutes
             options: {
               temperature: 0.2,
               top_p: 0.9,
@@ -267,6 +268,7 @@ ${documentsContext}
                     done: true,
                   });
 
+                  // Clean up controller after completion
                   activeControllers.delete(controllerKey);
                 });
                 return;
@@ -296,10 +298,11 @@ ${documentsContext}
         return; // Exit early for vision processing
       } else {
         // Use regular chat model for text only
-        response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+        response = await axios({
           method: 'POST',
+          url: `${process.env.OLLAMA_URL}/api/chat`,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          data: {
             model: process.env.OLLAMA_MODEL,
             messages,
             keep_alive: '60m',
@@ -320,19 +323,20 @@ ${documentsContext}
               // top_k: 40,
             },
             stream: true,
-          }),
+          },
           signal: controller.signal,
+          timeout: 0,
+          responseType: 'stream',
         });
       }
 
       clearTimeout(timeoutId);
 
       // Check if response is ok before processing
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('LLM API error:', response.status, errorText);
+      if (response.status < 200 || response.status >= 300) {
+        console.error('LLM API error:', response.status);
         io.to(`chat-${userId}`).emit('chat-error', {
-          error: `LLM server error: ${response.status} - ${errorText}`,
+          error: `LLM server error: ${response.status}`,
         });
 
         // Clean up controller and timeout on response error
@@ -365,37 +369,91 @@ ${documentsContext}
 
     // Handle streaming response via WebSocket
     let fullResponse = '';
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
     let chunkCount = 0;
     const maxChunks = 10000; // Safety limit to prevent infinite loops
     let hasReceivedContent = false;
+    let buffer = '';
 
     // Send initial response to confirm request received
     res.json({ streaming: true, message: 'Streaming response via WebSocket' });
 
-    try {
-      while (chunkCount < maxChunks) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    // Handle axios stream events
+    response.data.on('data', (chunk) => {
+      chunkCount++;
+      if (chunkCount >= maxChunks) {
+        console.error('Stream processing hit safety limit');
+        io.to(`chat-${userId}`).emit('chat-error', {
+          messageId,
+          error: 'Response too long - processing stopped for safety',
+        });
 
-        chunkCount++;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter((line) => line.trim());
+        // Clean up controller and timeout on max chunks exceeded
+        const controllerData = activeControllers.get(controllerKey);
+        if (controllerData) {
+          clearTimeout(controllerData.timeoutId);
+          activeControllers.delete(controllerKey);
+        }
+        return;
+      }
 
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line);
+      buffer += chunk.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
-            // Check for error responses from LLM
-            if (data.error) {
-              console.error('LLM streaming error:', data.error);
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        try {
+          const data = JSON.parse(line);
+
+          // Check for error responses from LLM
+          if (data.error) {
+            console.error('LLM streaming error:', data.error);
+            io.to(`chat-${userId}`).emit('chat-error', {
+              messageId,
+              error: `LLM error: ${data.error}`,
+            });
+
+            // Clean up controller and timeout on LLM error
+            const controllerData = activeControllers.get(controllerKey);
+            if (controllerData) {
+              clearTimeout(controllerData.timeoutId);
+              activeControllers.delete(controllerKey);
+            }
+            return;
+          }
+
+          // Handle both chat API format (data.message.content) and vision API format (data.response)
+          let content = '';
+          if (data.message && data.message.content) {
+            content = data.message.content; // Chat API format
+          } else if (data.response) {
+            content = data.response; // Vision API format
+          }
+
+          if (content) {
+            fullResponse += content;
+            hasReceivedContent = true;
+
+            // Emit streaming chunk via WebSocket
+            io.to(`chat-${userId}`).emit('chat-chunk', {
+              messageId,
+              content,
+              fullResponse,
+              done: false,
+            });
+          }
+
+          if (data.done) {
+            // Validate we received some content
+            if (!hasReceivedContent) {
+              console.error('Stream completed but no content received');
               io.to(`chat-${userId}`).emit('chat-error', {
                 messageId,
-                error: `LLM error: ${data.error}`,
+                error: 'No response content received from LLM',
               });
 
-              // Clean up controller and timeout on LLM error
+              // Clean up controller and timeout on no content
               const controllerData = activeControllers.get(controllerKey);
               if (controllerData) {
                 clearTimeout(controllerData.timeoutId);
@@ -404,54 +462,43 @@ ${documentsContext}
               return;
             }
 
-            // Handle both chat API format (data.message.content) and vision API format (data.response)
-            let content = '';
-            if (data.message && data.message.content) {
-              content = data.message.content; // Chat API format
-            } else if (data.response) {
-              content = data.response; // Vision API format
-            }
+            // Store the complete response
+            ChatMemory.storeMessage({
+              chatId: currentChatId,
+              userId,
+              role: 'bot',
+              content: fullResponse,
+            })
+              .then(async () => {
+                // Calculate context percentage
+                const allMessages = await ChatMemory.getAllMessages({
+                  chatId: currentChatId,
+                  userId,
+                });
+                const allMessagesWithSystem = [
+                  { role: 'system', content: systemPrompt },
+                  ...allMessages,
+                ];
+                const totalTokens = countTokens(allMessagesWithSystem);
+                const contextPercent = Math.min(100, (totalTokens / 8000) * 100).toFixed(4);
 
-            if (content) {
-              fullResponse += content;
-              hasReceivedContent = true;
-
-              // Emit streaming chunk via WebSocket
-              io.to(`chat-${userId}`).emit('chat-chunk', {
-                messageId,
-                content,
-                fullResponse,
-                done: false,
-              });
-            }
-
-            if (data.done) {
-              // Validate we received some content
-              if (!hasReceivedContent) {
-                console.error('Stream completed but no content received');
-                io.to(`chat-${userId}`).emit('chat-error', {
+                // Emit completion via WebSocket
+                io.to(`chat-${userId}`).emit('chat-complete', {
                   messageId,
-                  error: 'No response content received from LLM',
+                  fullResponse,
+                  contextPercent,
+                  chatId: currentChatId,
+                  done: true,
                 });
 
-                // Clean up controller and timeout on no content
+                // Clean up controller and timeout on successful completion
                 const controllerData = activeControllers.get(controllerKey);
                 if (controllerData) {
                   clearTimeout(controllerData.timeoutId);
                   activeControllers.delete(controllerKey);
                 }
-                return;
-              }
-
-              // Store the complete response
-              try {
-                await ChatMemory.storeMessage({
-                  chatId: currentChatId,
-                  userId,
-                  role: 'bot',
-                  content: fullResponse,
-                });
-              } catch (storageError) {
+              })
+              .catch((storageError) => {
                 console.error('Error storing bot message:', storageError);
                 io.to(`chat-${userId}`).emit('chat-error', {
                   messageId,
@@ -464,67 +511,34 @@ ${documentsContext}
                   clearTimeout(controllerData.timeoutId);
                   activeControllers.delete(controllerKey);
                 }
-                return;
-              }
-
-              // Calculate context percentage
-              const allMessages = await ChatMemory.getAllMessages({
-                chatId: currentChatId,
-                userId,
               });
-              const allMessagesWithSystem = [
-                { role: 'system', content: systemPrompt },
-                ...allMessages,
-              ];
-              const totalTokens = countTokens(allMessagesWithSystem);
-              const contextPercent = Math.min(100, (totalTokens / 8000) * 100).toFixed(4);
-
-              // Emit completion via WebSocket
-              io.to(`chat-${userId}`).emit('chat-complete', {
-                messageId,
-                fullResponse,
-                contextPercent,
-                chatId: currentChatId,
-                done: true,
-              });
-
-              // Clean up controller and timeout
-              const controllerData = activeControllers.get(controllerKey);
-              if (controllerData) {
-                clearTimeout(controllerData.timeoutId);
-                activeControllers.delete(controllerKey);
-              }
-              return;
-            }
-          } catch (parseError) {
-            console.error('Error parsing streaming chunk:', parseError, 'Line:', line);
-            // Continue processing other lines instead of failing completely
+            return;
           }
+        } catch (parseError) {
+          console.error('Error parsing streaming chunk:', parseError, 'Line:', line);
+          // Continue processing other lines instead of failing completely
         }
       }
+    });
 
-      // If we exit the loop without done=true, something went wrong
-      if (chunkCount >= maxChunks) {
-        console.error('Stream processing hit safety limit');
-        io.to(`chat-${userId}`).emit('chat-error', {
-          messageId,
-          error: 'Response too long - processing stopped for safety',
-        });
-      } else if (!hasReceivedContent) {
+    response.data.on('end', () => {
+      if (!hasReceivedContent) {
         console.error('Stream ended without content');
         io.to(`chat-${userId}`).emit('chat-error', {
           messageId,
           error: 'No response content received from LLM',
         });
-      }
 
-      // Clean up controller and timeout on stream end
-      const controllerData = activeControllers.get(controllerKey);
-      if (controllerData) {
-        clearTimeout(controllerData.timeoutId);
-        activeControllers.delete(controllerKey);
+        // Clean up controller and timeout on no content
+        const controllerData = activeControllers.get(controllerKey);
+        if (controllerData) {
+          clearTimeout(controllerData.timeoutId);
+          activeControllers.delete(controllerKey);
+        }
       }
-    } catch (streamError) {
+    });
+
+    response.data.on('error', (streamError) => {
       console.error('Error reading stream:', streamError);
       io.to(`chat-${userId}`).emit('chat-error', {
         messageId,
@@ -537,15 +551,7 @@ ${documentsContext}
         clearTimeout(controllerData.timeoutId);
         activeControllers.delete(controllerKey);
       }
-    } finally {
-      // Ensure reader is always closed
-      try {
-        reader.releaseLock();
-      } catch (e) {
-        console.error('Reader already closed', e);
-        // Reader might already be released
-      }
-    }
+    });
   } catch (error) {
     console.error('Error in chat controller:', error);
 
@@ -719,10 +725,11 @@ router.post('/summarize', async (req, res) => {
 
     let response;
     try {
-      response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+      response = await axios({
         method: 'POST',
+        url: `${process.env.OLLAMA_URL}/api/chat`,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        data: {
           model: process.env.OLLAMA_MODEL,
           messages: [
             {
@@ -751,14 +758,12 @@ router.post('/summarize', async (req, res) => {
             keep_alive: '10m',
           },
           stream: false,
-        }),
+        },
         signal: controller.signal,
-        // Configure undici timeouts
-        headersTimeout: 600000, // 10 minutes
-        bodyTimeout: 600000, // 10 minutes
+        timeout: 600000, // 10 minutes
       });
     } finally {
-      // Clear the timeout immediately after fetch completes (success or failure)
+      // Clear the timeout immediately after axios completes (success or failure)
       // eslint-disable-next-line no-console
       console.log('Clearing summarize timeout');
       clearTimeout(timeoutId);
@@ -773,11 +778,11 @@ router.post('/summarize', async (req, res) => {
       'summarize time',
       (performance.getEntriesByType('measure')[0].duration / 1000).toFixed(3) + ' seconds',
     );
-    if (!response.ok) {
+    if (response.status < 200 || response.status >= 300) {
       throw new Error(`Ollama API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = response.data;
     const summary = data.message.content;
     // Store the summary as title in the database
     if (chatId && userId) {
@@ -840,8 +845,9 @@ router.post('/stop', async (req, res) => {
     // Get Socket.IO instance
     const io = req.app.get('io');
 
-    // Find and abort the active controller
-    const controllerKey = `${userId}_${chatId}`;
+    // Find and abort the active controller - use same key format as storage
+    const currentChatId = chatId || `${userId}_${Date.now()}`;
+    const controllerKey = `${userId}_${currentChatId}`;
     const controllerData = activeControllers.get(controllerKey);
 
     // eslint-disable-next-line no-console
@@ -860,15 +866,16 @@ router.post('/stop', async (req, res) => {
 
     // Call Ollama stop endpoint
     try {
-      await fetch(`${process.env.OLLAMA_URL}/api/generate`, {
+      await axios({
         method: 'POST',
+        url: `${process.env.OLLAMA_URL}/api/generate`,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        data: {
           model: process.env.OLLAMA_MODEL,
           prompt: '',
           stream: false,
           options: { stop: true },
-        }),
+        },
       });
     } catch (ollamaError) {
       console.error('Error calling Ollama stop:', ollamaError);
