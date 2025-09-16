@@ -1,10 +1,27 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { buildPromptWithMemory } from '../utils/buildPrompt.js';
 import ChatMemory from '../models/ChatMemory.js';
 import { careerCoach, codingAssistant } from '../utils/chatPrompts.js';
 import { retrieveRelevantDocuments } from './rag.js';
 
 const router = Router();
+
+// Configure multer for image uploads (memory storage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept images only
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  },
+});
 
 // Store active AbortControllers and timeouts for stop functionality
 const activeControllers = new Map();
@@ -14,9 +31,66 @@ export function countTokens(messages) {
   return messages.reduce((acc, msg) => acc + Math.ceil(msg.content.length / 4), 0);
 }
 
-router.post('/', async (req, res) => {
+// Function to call Ollama vision API
+async function callOllamaVision(imageBuffer, textPrompt, controller) {
+  const base64Image = imageBuffer.toString('base64');
+  const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+
+  console.log(`Attempting to connect to Ollama at: ${ollamaUrl}`);
+
+  console.log('Vision processing can take several minutes for large images...');
+
+  try {
+    const response = await fetch(`${ollamaUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'granite3.2-vision:2b',
+        messages: [
+          {
+            role: 'user',
+            content: textPrompt,
+            images: [base64Image],
+          },
+        ],
+        stream: true,
+        options: {
+          temperature: 0.2,
+          top_p: 0.9,
+        },
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vision API error: ${response.status} ${response.statusText}`);
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Ollama connection error details:', {
+      url: `${ollamaUrl}/api/chat`,
+      errorType: error.constructor.name,
+      errorMessage: error.message,
+      errorCode: error.code,
+      errorCause: error.cause,
+    });
+
+    // Re-throw with more context
+    throw new Error(
+      `Vision API call failed - ${error.constructor.name}: ${error.message} (URL: ${ollamaUrl})`,
+    );
+  }
+}
+
+router.post('/', upload.single('image'), async (req, res) => {
+  // Disable request timeout for vision processing
+  req.setTimeout(0);
+  res.setTimeout(0);
+
   try {
     const { msg, userId, coachOrChat, chatId } = req.body;
+    const imageFile = req.file;
     // Generate chatId if not provided (for new chats)
     const currentChatId = chatId || `${userId}_${Date.now()}`;
     // messageId will be passed from frontend or generated if not provided
@@ -88,9 +162,9 @@ ${documentsContext}
     }
 
     messages.push({ role: 'user', content: msg });
-    // Create AbortController for timeout handling - 20 minutes
+    // Create AbortController for manual stop functionality only (no automatic timeout for vision)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minute timeout
+    const timeoutId = null; // No automatic timeout for vision processing
 
     // Store controller and timeout for stop functionality
     const controllerKey = `${userId}_${currentChatId}`;
@@ -127,54 +201,85 @@ ${documentsContext}
     console.log('=== END TOKEN ANALYSIS ===');
 
     // eslint-disable-next-line no-console
-    console.log('calling LLM...');
-    const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL,
-        messages,
-        keep_alive: '60m',
-        // tools: availableTools,  //^ maybe add a helper for questions on coding?
-        options: {
-          min_p: 0.05,
-          temperature: 0.2,
-          top_p: 0.9,
-          mirostat: 0,
-          repeat_penalty: 1.05,
-          top_k: 40,
-          // optional settings for coding
-          // min_p: 0.9,
-          // temperature: 0.2,
-          // top_p: 1,
-          // mirostat: 0,
-          // repeat_penalty: 1.05,
-          // top_k: 40,
-        },
-        stream: true,
-      }),
-      signal: controller.signal,
-      // Configure undici timeouts to prevent race condition
-      // Set headers timeout to match our AbortController timeout
+    console.log(imageFile ? 'calling Vision LLM...' : 'calling LLM...');
+    let response;
+    try {
+      if (imageFile) {
+        // Use vision model for image + text
+        console.log(`Processing image: ${imageFile.originalname}, size: ${imageFile.size} bytes`);
+        response = await callOllamaVision(imageFile.buffer, msg, controller);
+      } else {
+        // Use regular chat model for text only
+        response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: process.env.OLLAMA_MODEL,
+            messages,
+            keep_alive: '60m',
+            // tools: availableTools,  //^ maybe add a helper for questions on coding?
+            options: {
+              min_p: 0.05,
+              temperature: 0.2,
+              top_p: 0.9,
+              mirostat: 0,
+              repeat_penalty: 1.05,
+              top_k: 40,
+              // optional settings for coding
+              // min_p: 0.9,
+              // temperature: 0.2,
+              // top_p: 1,
+              // mirostat: 0,
+              // repeat_penalty: 1.05,
+              // top_k: 40,
+            },
+            stream: true,
+          }),
+          signal: controller.signal,
+          // Configure undici timeouts to prevent race condition
+          // Set headers timeout to match our AbortController timeout
 
-      // These are undici-specific options
-      headersTimeout: 1200000, // 20 minutes - same as AbortController
-      bodyTimeout: 1200000, // 20 minutes - same as AbortController
-    });
-    // Check if response is ok before processing
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('LLM API error:', response.status, errorText);
+          // These are undici-specific options
+          headersTimeout: 1200000, // 20 minutes - same as AbortController
+          bodyTimeout: 1200000, // 20 minutes - same as AbortController
+        });
+      }
+
+      clearTimeout(timeoutId);
+
+      // Check if response is ok before processing
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('LLM API error:', response.status, errorText);
+        io.to(`chat-${userId}`).emit('chat-error', {
+          error: `LLM server error: ${response.status} - ${errorText}`,
+        });
+
+        // Clean up controller and timeout on response error
+        const controllerData = activeControllers.get(controllerKey);
+        if (controllerData) {
+          clearTimeout(controllerData.timeoutId);
+          activeControllers.delete(controllerKey);
+        }
+        return;
+      }
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('Fetch error in chat controller:', fetchError);
+
+      // Emit error via websocket
       io.to(`chat-${userId}`).emit('chat-error', {
-        error: `LLM server error: ${response.status} - ${errorText}`,
+        error: `Connection failed: ${fetchError.message}`,
       });
 
-      // Clean up controller and timeout on response error
+      // Clean up controller on fetch error
       const controllerData = activeControllers.get(controllerKey);
       if (controllerData) {
         clearTimeout(controllerData.timeoutId);
         activeControllers.delete(controllerKey);
       }
+
+      // Return early - don't re-throw, we've already handled the error
       return;
     }
 
@@ -219,8 +324,15 @@ ${documentsContext}
               return;
             }
 
+            // Handle both chat API format (data.message.content) and vision API format (data.response)
+            let content = '';
             if (data.message && data.message.content) {
-              const content = data.message.content;
+              content = data.message.content; // Chat API format
+            } else if (data.response) {
+              content = data.response; // Vision API format
+            }
+
+            if (content) {
               fullResponse += content;
               hasReceivedContent = true;
 
