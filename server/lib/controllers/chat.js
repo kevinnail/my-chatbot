@@ -6,7 +6,7 @@ import { retrieveRelevantDocuments } from './rag.js';
 
 const router = Router();
 
-// Store active AbortControllers for stop functionality
+// Store active AbortControllers and timeouts for stop functionality
 const activeControllers = new Map();
 
 export function countTokens(messages) {
@@ -82,14 +82,13 @@ ${documentsContext}
     }
 
     messages.push({ role: 'user', content: msg });
-
-    // Create AbortController for timeout handling - reduced to 5 minutes
+    // Create AbortController for timeout handling - 20 minutes
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minute timeout
 
-    // Store controller for stop functionality
+    // Store controller and timeout for stop functionality
     const controllerKey = `${userId}_${currentChatId}`;
-    activeControllers.set(controllerKey, controller);
+    activeControllers.set(controllerKey, { controller, timeoutId });
     console.log('Chat request - stored controller with key:', controllerKey);
     // eslint-disable-next-line no-console
     console.log('calling LLM...');
@@ -123,12 +122,9 @@ ${documentsContext}
       // Set headers timeout to match our AbortController timeout
 
       // These are undici-specific options
-      headersTimeout: 12000000, // 20 minutes - same as AbortController
-      bodyTimeout: 12000000, // 20 minutes - same as AbortController
+      headersTimeout: 1200000, // 20 minutes - same as AbortController
+      bodyTimeout: 1200000, // 20 minutes - same as AbortController
     });
-    // Clear the timeout since we got a response
-    clearTimeout(timeoutId);
-    console.log('LLM completed');
     // Check if response is ok before processing
     if (!response.ok) {
       const errorText = await response.text();
@@ -136,6 +132,13 @@ ${documentsContext}
       io.to(`chat-${userId}`).emit('chat-error', {
         error: `LLM server error: ${response.status} - ${errorText}`,
       });
+
+      // Clean up controller and timeout on response error
+      const controllerData = activeControllers.get(controllerKey);
+      if (controllerData) {
+        clearTimeout(controllerData.timeoutId);
+        activeControllers.delete(controllerKey);
+      }
       return;
     }
 
@@ -170,6 +173,13 @@ ${documentsContext}
                 messageId,
                 error: `LLM error: ${data.error}`,
               });
+
+              // Clean up controller and timeout on LLM error
+              const controllerData = activeControllers.get(controllerKey);
+              if (controllerData) {
+                clearTimeout(controllerData.timeoutId);
+                activeControllers.delete(controllerKey);
+              }
               return;
             }
 
@@ -195,6 +205,13 @@ ${documentsContext}
                   messageId,
                   error: 'No response content received from LLM',
                 });
+
+                // Clean up controller and timeout on no content
+                const controllerData = activeControllers.get(controllerKey);
+                if (controllerData) {
+                  clearTimeout(controllerData.timeoutId);
+                  activeControllers.delete(controllerKey);
+                }
                 return;
               }
 
@@ -212,6 +229,13 @@ ${documentsContext}
                   messageId,
                   error: 'Failed to save response. Please try again.',
                 });
+
+                // Clean up controller and timeout on storage error
+                const controllerData = activeControllers.get(controllerKey);
+                if (controllerData) {
+                  clearTimeout(controllerData.timeoutId);
+                  activeControllers.delete(controllerKey);
+                }
                 return;
               }
 
@@ -236,8 +260,12 @@ ${documentsContext}
                 done: true,
               });
 
-              // Clean up controller
-              activeControllers.delete(controllerKey);
+              // Clean up controller and timeout
+              const controllerData = activeControllers.get(controllerKey);
+              if (controllerData) {
+                clearTimeout(controllerData.timeoutId);
+                activeControllers.delete(controllerKey);
+              }
               return;
             }
           } catch (parseError) {
@@ -261,12 +289,26 @@ ${documentsContext}
           error: 'No response content received from LLM',
         });
       }
+
+      // Clean up controller and timeout on stream end
+      const controllerData = activeControllers.get(controllerKey);
+      if (controllerData) {
+        clearTimeout(controllerData.timeoutId);
+        activeControllers.delete(controllerKey);
+      }
     } catch (streamError) {
       console.error('Error reading stream:', streamError);
       io.to(`chat-${userId}`).emit('chat-error', {
         messageId,
         error: 'Streaming error occurred',
       });
+
+      // Clean up controller and timeout on stream error
+      const controllerData = activeControllers.get(controllerKey);
+      if (controllerData) {
+        clearTimeout(controllerData.timeoutId);
+        activeControllers.delete(controllerKey);
+      }
     } finally {
       // Ensure reader is always closed
       try {
@@ -279,12 +321,23 @@ ${documentsContext}
   } catch (error) {
     console.error('Error in chat controller:', error);
 
+    // Get variables from req.body for error handling
+    const { userId, chatId } = req.body;
+    const currentChatId = chatId || `${userId}_${Date.now()}`;
+
+    // Clean up controller and timeout on error
+    const controllerKey = `${userId}_${currentChatId}`;
+    const controllerData = activeControllers.get(controllerKey);
+    if (controllerData) {
+      clearTimeout(controllerData.timeoutId);
+      activeControllers.delete(controllerKey);
+    }
+
     // More comprehensive timeout error handling
     if (error.name === 'AbortError') {
       // Check if this was a user-initiated stop (controller was deleted)
-      const { userId: errorUserId, chatId: errorChatId } = req.body;
-      const controllerKey = `${errorUserId}_${errorChatId || `${errorUserId}_${Date.now()}`}`;
-      if (!activeControllers.has(controllerKey)) {
+      const errorControllerKey = `${userId}_${currentChatId}`;
+      if (!activeControllers.has(errorControllerKey)) {
         // This was a user stop, don't show timeout error
         return res.status(200).json({ stopped: true });
       }
@@ -397,6 +450,11 @@ router.post('/summarize', async (req, res) => {
     performance.mark('summarize-start');
     // eslint-disable-next-line no-console
     console.log('summarizing title creation START ==============');
+
+    // Create AbortController for timeout handling - 5 minutes for summarize
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -408,7 +466,7 @@ router.post('/summarize', async (req, res) => {
             content: `
             Your goal is to summarize the user's prompt into a short title for the ensuing chat.
             You are a title generator. 
-            Return only ONE sentence, max 20 words, max 150 characters. 
+            Return only ONE sentence, max 15 words, max 150 characters. 
             Do not add explanations or commentary. 
             
             
@@ -430,7 +488,14 @@ router.post('/summarize', async (req, res) => {
         },
         stream: false,
       }),
+      signal: controller.signal,
+      // Configure undici timeouts
+      headersTimeout: 300000, // 5 minutes
+      bodyTimeout: 300000, // 5 minutes
     });
+
+    // Clear the timeout since we got a response
+    clearTimeout(timeoutId);
     performance.mark('summarize-end');
     // eslint-disable-next-line no-console
     console.log('summarizing title creation END ==============');
@@ -454,6 +519,44 @@ router.post('/summarize', async (req, res) => {
     res.json({ summary });
   } catch (error) {
     console.error('Error in summarize controller:', error);
+
+    // Handle timeout errors specifically
+    if (error.name === 'AbortError') {
+      return res.status(408).json({
+        error: 'Summarize request timed out - LLM is taking too long to respond. Please try again.',
+      });
+    }
+
+    // Handle various timeout-related errors
+    if (
+      error.cause &&
+      (error.cause.code === 'UND_ERR_HEADERS_TIMEOUT' ||
+        error.cause.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        error.cause.code === 'UND_ERR_RESPONSE_TIMEOUT')
+    ) {
+      return res.status(408).json({
+        error:
+          'Summarize connection timeout - LLM server is not responding quickly enough. Please try again.',
+      });
+    }
+
+    // Handle general fetch failures that might be timeout-related
+    if (error.message === 'fetch failed' && error.cause) {
+      return res.status(408).json({
+        error: 'Summarize connection failed - LLM server is not responding. Please try again.',
+      });
+    }
+
+    // Handle other timeout indicators
+    if (
+      error.message.toLowerCase().includes('timeout') ||
+      error.name.toLowerCase().includes('timeout')
+    ) {
+      return res.status(408).json({
+        error: 'Summarize request timed out. Please try again.',
+      });
+    }
+
     res.status(500).json({ error: error.message });
   }
 });
@@ -471,14 +574,16 @@ router.post('/stop', async (req, res) => {
 
     // Find and abort the active controller
     const controllerKey = `${userId}_${chatId}`;
-    const controller = activeControllers.get(controllerKey);
+    const controllerData = activeControllers.get(controllerKey);
 
     console.log('Stop request - controllerKey:', controllerKey);
     console.log('Stop request - active controllers:', Array.from(activeControllers.keys()));
-    console.log('Stop request - found controller:', !!controller);
+    console.log('Stop request - found controller:', !!controllerData);
 
-    if (controller) {
+    if (controllerData) {
+      const { controller, timeoutId } = controllerData;
       controller.abort();
+      clearTimeout(timeoutId); // Clear the timeout to prevent it from firing later
       activeControllers.delete(controllerKey);
     }
 
