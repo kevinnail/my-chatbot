@@ -54,30 +54,36 @@ router.post('/', async (req, res) => {
     // Build messages array with relevant documents context
     const messages = [{ role: 'system', content: systemPrompt }, ...memories];
 
-    // Add relevant documents as context if any were found - place BEFORE user message for better attention
+    // Add relevant document chunks as context if any were found - place BEFORE user message for better attention
     if (relevantDocs.length > 0) {
       const documentsContext = relevantDocs
-        .map(
-          (doc, index) =>
-            `=== Document ${index + 1} (relevance: ${doc.similarity.toFixed(3)}) ===
-${doc.content}
-=== End Document ${index + 1} ===`,
-        )
+        .map((chunk, index) => {
+          const locationInfo =
+            chunk.startLine && chunk.endLine ? ` (lines ${chunk.startLine}-${chunk.endLine})` : '';
+          return `=== Chunk ${index + 1}: ${chunk.filename}${locationInfo} (${chunk.chunkType}, relevance: ${chunk.similarity.toFixed(3)}) ===
+${chunk.content}
+=== End Chunk ${index + 1} ===`;
+        })
         .join('\n\n');
+
+      const totalTokens = relevantDocs.reduce((sum, chunk) => sum + chunk.tokenCount, 0);
 
       messages.push({
         role: 'system',
         content: `🔍 IMPORTANT CONTEXT: The user has uploaded documents containing information that is directly relevant to their question. You MUST carefully read and use this information to answer their question.
 
+Retrieved ${relevantDocs.length} relevant chunks (${totalTokens} tokens):
+
 ${documentsContext}
 
 🎯 CRITICAL INSTRUCTIONS: 
-1. READ the document content above carefully - it contains the answer to the user's question
-2. If the documents contain relevant information, use it directly in your response
-3. Quote or reference the specific information from the documents when answering
-4. Do not claim you don't have access to information that is clearly provided in the documents above
-5. The document content is part of your available knowledge for this conversation
-6. Pay special attention to any specific phrases, codes, or data mentioned in the documents`,
+1. READ the document chunks above carefully - they contain answers to the user's question
+2. If the chunks contain relevant information, use it directly in your response
+3. Quote or reference the specific information from the chunks when answering
+4. When referencing code, mention the filename and function/class if provided
+5. Do not claim you don't have access to information that is clearly provided in the chunks above
+6. The chunk content is part of your available knowledge for this conversation
+7. Pay special attention to any specific phrases, codes, or data mentioned in the chunks`,
       });
     }
 
@@ -249,7 +255,7 @@ ${documentsContext}
                 ...allMessages,
               ];
               const totalTokens = countTokens(allMessagesWithSystem);
-              const contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
+              const contextPercent = Math.min(100, (totalTokens / 8000) * 100).toFixed(4);
 
               // Emit completion via WebSocket
               io.to(`chat-${userId}`).emit('chat-complete', {
