@@ -74,7 +74,7 @@ describe('RAG routes', () => {
 
       console.info('response', response.body);
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Successfully processed 2 files');
+      expect(response.body.message).toBe('Successfully processed 2 files into 2 chunks');
       expect(response.body.filesProcessed).toBe(2);
       expect(mockGetEmbedding).toHaveBeenCalledTimes(2);
     });
@@ -118,21 +118,44 @@ describe('RAG routes', () => {
     it('should retrieve files for a user', async () => {
       const [agent, user] = await registerAndLogin();
 
-      // First, insert some test files
+      // First, insert some test files with the new schema
       const client = await pool.connect();
       try {
+        // Insert files into files table
+        const file1Result = await client.query(
+          'INSERT INTO files (user_id, filename, file_type, total_chunks) VALUES ($1, $2, $3, $4) RETURNING id',
+          [user.id, 'test1.txt', 'text', 1],
+        );
+        const file2Result = await client.query(
+          'INSERT INTO files (user_id, filename, file_type, total_chunks) VALUES ($1, $2, $3, $4) RETURNING id',
+          [user.id, 'test2.txt', 'text', 1],
+        );
+
+        // Insert file chunks
         const vector1 = new Array(1024).fill(0.1);
         const vector2 = new Array(1024).fill(0.2);
-        await client.query('INSERT INTO files (user_id, content, embedding) VALUES ($1, $2, $3)', [
-          user.id,
-          'Test file content 1',
-          `[${vector1.join(',')}]`,
-        ]);
-        await client.query('INSERT INTO files (user_id, content, embedding) VALUES ($1, $2, $3)', [
-          user.id,
-          'Test file content 2',
-          `[${vector2.join(',')}]`,
-        ]);
+        await client.query(
+          'INSERT INTO file_chunks (file_id, user_id, chunk_index, content, embedding, chunk_type) VALUES ($1, $2, $3, $4, $5, $6)',
+          [
+            file1Result.rows[0].id,
+            user.id,
+            0,
+            'Test file content 1',
+            `[${vector1.join(',')}]`,
+            'paragraph',
+          ],
+        );
+        await client.query(
+          'INSERT INTO file_chunks (file_id, user_id, chunk_index, content, embedding, chunk_type) VALUES ($1, $2, $3, $4, $5, $6)',
+          [
+            file2Result.rows[0].id,
+            user.id,
+            0,
+            'Test file content 2',
+            `[${vector2.join(',')}]`,
+            'paragraph',
+          ],
+        );
       } finally {
         client.release();
       }
@@ -144,7 +167,9 @@ describe('RAG routes', () => {
       expect(response.body.files).toHaveLength(2);
       expect(response.body.files[0]).toHaveProperty('id');
       expect(response.body.files[0]).toHaveProperty('user_id');
-      expect(response.body.files[0]).toHaveProperty('content_preview');
+      expect(response.body.files[0]).toHaveProperty('filename');
+      expect(response.body.files[0]).toHaveProperty('file_type');
+      expect(response.body.files[0]).toHaveProperty('total_chunks');
       expect(response.body.files[0]).toHaveProperty('created_at');
     });
 
@@ -174,21 +199,44 @@ describe('RAG routes', () => {
     it('should retrieve relevant documents with semantic search', async () => {
       const [, user] = await registerAndLogin();
 
-      // Insert test documents
+      // Insert test documents with new schema
       const client = await pool.connect();
       try {
+        // Insert files
+        const file1Result = await client.query(
+          'INSERT INTO files (user_id, filename, file_type, total_chunks) VALUES ($1, $2, $3, $4) RETURNING id',
+          [user.id, 'javascript.txt', 'text', 1],
+        );
+        const file2Result = await client.query(
+          'INSERT INTO files (user_id, filename, file_type, total_chunks) VALUES ($1, $2, $3, $4) RETURNING id',
+          [user.id, 'python.txt', 'text', 1],
+        );
+
+        // Insert file chunks
         const vector1 = new Array(1024).fill(0.9);
         const vector2 = new Array(1024).fill(0.1);
-        await client.query('INSERT INTO files (user_id, content, embedding) VALUES ($1, $2, $3)', [
-          user.id,
-          'This is about JavaScript programming',
-          `[${vector1.join(',')}]`,
-        ]);
-        await client.query('INSERT INTO files (user_id, content, embedding) VALUES ($1, $2, $3)', [
-          user.id,
-          'This is about Python development',
-          `[${vector2.join(',')}]`,
-        ]);
+        await client.query(
+          'INSERT INTO file_chunks (file_id, user_id, chunk_index, content, embedding, chunk_type) VALUES ($1, $2, $3, $4, $5, $6)',
+          [
+            file1Result.rows[0].id,
+            user.id,
+            0,
+            'This is about JavaScript programming',
+            `[${vector1.join(',')}]`,
+            'paragraph',
+          ],
+        );
+        await client.query(
+          'INSERT INTO file_chunks (file_id, user_id, chunk_index, content, embedding, chunk_type) VALUES ($1, $2, $3, $4, $5, $6)',
+          [
+            file2Result.rows[0].id,
+            user.id,
+            0,
+            'This is about Python development',
+            `[${vector2.join(',')}]`,
+            'paragraph',
+          ],
+        );
       } finally {
         client.release();
       }
@@ -209,17 +257,29 @@ describe('RAG routes', () => {
     it('should fallback to keyword search when no semantic matches', async () => {
       const [, user] = await registerAndLogin();
 
-      // Insert test documents
+      // Insert test documents with new schema
       const client = await pool.connect();
       try {
+        // Insert file
+        const fileResult = await client.query(
+          'INSERT INTO files (user_id, filename, file_type, total_chunks) VALUES ($1, $2, $3, $4) RETURNING id',
+          [user.id, 'keyword.txt', 'text', 1],
+        );
+
         // Use vectors that will create negative/very low cosine similarity
         // Create a vector with alternating positive and negative values
         const vector = new Array(1024).fill(0).map((_, i) => (i % 2 === 0 ? 1 : -1));
-        await client.query('INSERT INTO files (user_id, content, embedding) VALUES ($1, $2, $3)', [
-          user.id,
-          'This document contains the word JavaScript',
-          `[${vector.join(',')}]`,
-        ]);
+        await client.query(
+          'INSERT INTO file_chunks (file_id, user_id, chunk_index, content, embedding, chunk_type) VALUES ($1, $2, $3, $4, $5, $6)',
+          [
+            fileResult.rows[0].id,
+            user.id,
+            0,
+            'This document contains the word JavaScript',
+            `[${vector.join(',')}]`,
+            'paragraph',
+          ],
+        );
       } finally {
         client.release();
       }
