@@ -451,19 +451,24 @@ router.post('/summarize', async (req, res) => {
     // eslint-disable-next-line no-console
     console.log('summarizing title creation START ==============');
 
-    // Create AbortController for timeout handling - 5 minutes for summarize
+    // Create AbortController for timeout handling - 10 minutes for summarize
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+    const timeoutId = setTimeout(() => {
+      console.log('Summarize timeout fired - aborting request');
+      controller.abort();
+    }, 600000); // 10 minute timeout
 
-    const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: `
+    let response;
+    try {
+      response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: process.env.OLLAMA_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `
             Your goal is to summarize the user's prompt into a short title for the ensuing chat.
             You are a title generator. 
             Return only ONE sentence, max 15 words, max 150 characters. 
@@ -471,31 +476,34 @@ router.post('/summarize', async (req, res) => {
             
             
             `,
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          options: {
+            min_p: 0,
+            temperature: 0.2,
+            top_p: 0.7,
+            mirostat: 0,
+            repeat_penalty: 1.05,
+            top_k: 20,
+            keep_alive: '10m',
           },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        options: {
-          min_p: 0,
-          temperature: 0.2,
-          top_p: 0.7,
-          mirostat: 0,
-          repeat_penalty: 1.05,
-          top_k: 20,
-          keep_alive: '10m',
-        },
-        stream: false,
-      }),
-      signal: controller.signal,
-      // Configure undici timeouts
-      headersTimeout: 300000, // 5 minutes
-      bodyTimeout: 300000, // 5 minutes
-    });
+          stream: false,
+        }),
+        signal: controller.signal,
+        // Configure undici timeouts
+        headersTimeout: 600000, // 10 minutes
+        bodyTimeout: 600000, // 10 minutes
+      });
+    } finally {
+      // Clear the timeout immediately after fetch completes (success or failure)
+      console.log('Clearing summarize timeout');
+      clearTimeout(timeoutId);
+    }
 
-    // Clear the timeout since we got a response
-    clearTimeout(timeoutId);
     performance.mark('summarize-end');
     // eslint-disable-next-line no-console
     console.log('summarizing title creation END ==============');
