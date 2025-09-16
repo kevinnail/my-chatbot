@@ -15,6 +15,9 @@ const io = new Server(server, {
     origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:4000'],
     credentials: true,
   },
+  // Increase timeouts for long-running vision processing
+  pingTimeout: 3600000, // 1 hour
+  pingInterval: 25000, // 25 seconds
 });
 
 // Make Socket.IO available to the app
