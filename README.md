@@ -1,4 +1,4 @@
-# Coding & Office Assistant
+# Coding & Office Assistant with MCP Server
 
 A full-stack AI-powered chatbot & office assistant RAG application with an MCP server built with React, Express.js, PostgreSQL, WSL/ Linux, and Ollama. Features dual-mode operation (coding assistant and career coach), semantic search capabilities using vector embeddings for intelligent conversation memory, and AI agentic capabilities that automatically create Google Calendar events from analyzed emails via MCP server tool calls.
 
