@@ -85,6 +85,7 @@ export class ChatManager {
   async sendMessage({
     userId,
     input,
+    image,
     coachOrChat,
     chatId,
     onUserMessage,
@@ -196,6 +197,7 @@ export class ChatManager {
         coachOrChat,
         chatId,
         messageId,
+        image,
       });
 
       if (data.stopped) {
