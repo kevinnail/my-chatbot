@@ -96,6 +96,24 @@ ${documentsContext}
     const controllerKey = `${userId}_${currentChatId}`;
     activeControllers.set(controllerKey, { controller, timeoutId });
     console.log('Chat request - stored controller with key:', controllerKey);
+
+    // Calculate and log actual token usage for LLM call
+    const totalTokensForLLM = countTokens(messages);
+    const actualContextPercent = Math.min(100, (totalTokensForLLM / 8000) * 100);
+
+    console.log('=== LLM CALL TOKEN ANALYSIS ===');
+    console.log(`Total messages in LLM call: ${messages.length}`);
+    console.log(`System prompt tokens: ${Math.ceil(messages[0].content.length / 4)}`);
+    console.log(`Memory/conversation tokens: ${countTokens(messages.slice(1, -1))}`);
+    console.log(`Current user message tokens: ${Math.ceil(msg.length / 4)}`);
+    if (relevantDocs.length > 0) {
+      const docTokens = relevantDocs.reduce((sum, chunk) => sum + chunk.tokenCount, 0);
+      console.log(`RAG document tokens: ${docTokens}`);
+    }
+    console.log(`TOTAL TOKENS SENT TO LLM: ${totalTokensForLLM}`);
+    console.log(`ACTUAL CONTEXT USAGE: ${actualContextPercent.toFixed(2)}%`);
+    console.log('=== END TOKEN ANALYSIS ===');
+
     // eslint-disable-next-line no-console
     console.log('calling LLM...');
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
@@ -405,6 +423,36 @@ router.get('/messages/:userId/:chatId', async (req, res) => {
     res.json(messages);
   } catch (error) {
     console.error('Error in get chat messages controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/context/:userId/:chatId', async (req, res) => {
+  try {
+    const { userId, chatId } = req.params;
+    const { mode = 'chat' } = req.query;
+
+    // Get all messages for this chat
+    const messages = await ChatMemory.getAllMessages({ chatId, userId });
+
+    // Build the same messages array that would be sent to LLM
+    const systemPrompt = mode === 'coach' ? careerCoach : codingAssistant;
+    const allMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((msg) => ({ role: msg.role, content: msg.content })),
+    ];
+
+    // Calculate context percentage
+    const totalTokens = countTokens(allMessages);
+    const contextPercent = Math.min(100, (totalTokens / 8000) * 100);
+
+    res.json({
+      contextPercent: Number(contextPercent.toFixed(4)),
+      totalTokens,
+      messageCount: allMessages.length,
+    });
+  } catch (error) {
+    console.error('Error in get context percentage controller:', error);
     res.status(500).json({ error: error.message });
   }
 });
