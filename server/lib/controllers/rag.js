@@ -22,7 +22,8 @@ const upload = multer({
 function getFileType(filename) {
   const ext = path.extname(filename).toLowerCase();
   if (['.js', '.jsx', '.ts', '.tsx'].includes(ext)) return 'code';
-  if (['.md', '.txt', '.doc', '.docx'].includes(ext)) return 'text';
+  if (['.md'].includes(ext)) return 'markdown';
+  if (['.txt', '.doc', '.docx'].includes(ext)) return 'text';
   return 'text'; // Default to text chunking
 }
 
@@ -69,8 +70,8 @@ router.post('/process-folder', upload.array('files'), async (req, res) => {
         const fileId = fileResult.id;
 
         let chunks;
-        if (fileType === 'code') {
-          // Use tree-sitter for code files
+        if (fileType === 'code' || fileType === 'markdown') {
+          // Use tree-sitter for code files and hybrid chunking for markdown
           chunks = chunkCodeFile(file.originalname, content);
         } else {
           // Use recursive chunking for text files

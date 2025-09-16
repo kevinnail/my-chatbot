@@ -313,8 +313,8 @@ class ChatMemory {
       await client.query('BEGIN');
 
       await client.query(
-        `UPDATE chat_memory SET title = $1 
-         WHERE chat_id = $2 AND user_id = $3 AND role = 'user'`,
+        `UPDATE chats SET title = $1 
+         WHERE chat_id = $2 AND user_id = $3`,
         [encrypt(title), chatId, userId],
       );
 
@@ -335,7 +335,10 @@ class ChatMemory {
 
   static async hasTitle({ chatId, userId }) {
     const { rows } = await pool.query(
-      "SELECT title FROM chat_memory WHERE chat_id = $1 AND user_id = $2 AND role = 'user' ORDER BY created_at ASC LIMIT 1",
+      `
+      SELECT title FROM chats 
+      WHERE chat_id = $1 AND user_id = $2 
+      ORDER BY created_at ASC LIMIT 1`,
       [chatId, userId],
     );
     return rows.length > 0 && rows[0].title !== null;
