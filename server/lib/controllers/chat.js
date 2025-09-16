@@ -39,7 +39,7 @@ router.post('/', upload.single('image'), async (req, res) => {
     // Generate chatId if not provided (for new chats)
     const currentChatId = chatId || `${userId}_${Date.now()}`;
     // messageId will be passed from frontend or generated if not provided
-    const messageId = req.body.messageId || Date.now();
+    const messageId = Number(req.body.messageId) || Date.now();
 
     // Get memories BEFORE storing current message (to avoid including current message in context)
     let memories, relevantDocs;
@@ -225,6 +225,7 @@ ${documentsContext}
                 console.log('Emitting vision chunk to frontend, content length:', content.length);
 
                 io.to(`chat-${userId}`).emit('chat-chunk', {
+                  messageId,
                   content,
                   fullResponse,
                   done: false,
@@ -262,6 +263,7 @@ ${documentsContext}
 
                   console.log('Emitting vision chat-complete to frontend');
                   io.to(`chat-${userId}`).emit('chat-complete', {
+                    messageId,
                     fullResponse,
                     contextPercent,
                     chatId: currentChatId,
