@@ -114,8 +114,6 @@ ${documentsContext}
     // Store controller and timeout for stop functionality
     const controllerKey = `${userId}_${currentChatId}`;
     activeControllers.set(controllerKey, { controller, timeoutId });
-    // eslint-disable-next-line no-console
-    console.log('Chat request - stored controller with key:', controllerKey);
 
     // Calculate and log actual token usage for LLM call
     const totalTokensForLLM = countTokens(messages);
@@ -168,7 +166,7 @@ ${documentsContext}
               },
             ],
             stream: true,
-            keep_alive: '60m', // Keep vision model loaded for 60 minutes
+            keep_alive: '60m',
             options: {
               temperature: 0.2,
               top_p: 0.9,
@@ -242,6 +240,7 @@ ${documentsContext}
                 }
 
                 // Store and complete
+                // eslint-disable-next-line no-console
                 console.log('Storing vision message and completing...');
                 ChatMemory.storeMessage({
                   chatId: currentChatId,

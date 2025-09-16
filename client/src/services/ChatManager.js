@@ -11,19 +11,13 @@ export class ChatManager {
   getSocket() {
     if (!this.socket) {
       if (window.isLocal) {
-        console.log('Creating new WebSocket connection to http://localhost:4000');
         this.socket = io('http://localhost:4000');
-        this.socket.on('connect', () => {
-          console.log('WebSocket connected successfully');
-        });
-        this.socket.on('disconnect', () => {
-          console.log('WebSocket disconnected');
-        });
+        this.socket.on('connect', () => {});
+        this.socket.on('disconnect', () => {});
         this.socket.on('connect_error', (error) => {
           console.error('WebSocket connection error:', error);
         });
       } else {
-        console.log('Using mock socket for demo mode');
         // Mock socket for demo
         this.socket = {
           on: () => {},
@@ -59,61 +53,47 @@ export class ChatManager {
 
     const handlers = {
       chunk: (data) => {
-        console.log('Frontend received chat-chunk:', data);
-        console.log('Expected messageId:', messageId, 'Received messageId:', data.messageId);
         if (data.messageId === messageId) {
-          console.log('MessageId matches, calling onChunk');
           onChunk(data);
         } else {
-          console.log('MessageId mismatch, ignoring chunk');
+          console.info('messageId mismatch, ignoring chunk');
         }
       },
       complete: (data) => {
-        console.log('Frontend received chat-complete:', data);
-        console.log('Expected messageId:', messageId, 'Received messageId:', data.messageId);
         if (data.messageId === messageId) {
-          console.log('MessageId matches, calling onComplete');
           onComplete(data);
           this.cleanupListeners(messageId);
         } else {
-          console.log('MessageId mismatch, ignoring complete');
+          console.info('messageId mismatch, ignoring complete');
         }
       },
       error: (data) => {
-        console.log('Frontend received chat-error:', data);
-        console.log('Expected messageId:', messageId, 'Received messageId:', data.messageId);
         if (data.messageId === messageId) {
-          console.log('MessageId matches, calling onError');
           onError(data);
           this.cleanupListeners(messageId);
         } else {
-          console.log('MessageId mismatch, ignoring error');
+          console.info('messageId mismatch, ignoring error');
         }
       },
       stopped: (data) => {
-        console.log('Frontend received chat-stopped:', data);
-        console.log('Expected messageId:', messageId, 'Received messageId:', data.messageId);
         if (data.messageId === messageId) {
-          console.log('MessageId matches, calling onStopped');
           onStopped(data);
           this.cleanupListeners(messageId);
         } else {
-          console.log('MessageId mismatch, ignoring stopped');
+          console.info('messageId mismatch, ignoring stopped');
         }
       },
     };
 
     this.eventHandlers.set(messageId, handlers);
 
-    console.log('Setting up WebSocket listeners for messageId:', messageId, 'userId:', userId);
     socket.emit('join-sync-updates', userId);
     socket.emit('join-chat', userId);
-    console.log('Emitted join events, setting up event listeners...');
     socket.on('chat-chunk', handlers.chunk);
     socket.on('chat-complete', handlers.complete);
     socket.on('chat-error', handlers.error);
     socket.on('chat-stopped', handlers.stopped);
-    console.log('WebSocket event listeners set up successfully');
+    console.info('WebSocket event listeners set up successfully');
   }
 
   async sendMessage({

@@ -129,12 +129,10 @@ const GmailMCP = ({ userId }) => {
     });
 
     socket.on('sync-progress', (data) => {
-      console.log(' Sync progress:', data);
       setAnalysisProgress(data);
     });
 
     socket.on('email-analyzed', (data) => {
-      console.log(' Email analyzed:', data.emailId);
       setEmails((prevEmails) => {
         const updatedEmails = prevEmails.map((email) => {
           if (email.id === data.emailId) {

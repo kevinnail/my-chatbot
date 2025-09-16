@@ -135,8 +135,7 @@ export function chunkMarkdownFile(content) {
               });
             });
           } catch (error) {
-            // eslint-disable-next-line no-console
-            console.log('Error parsing code block:', error);
+            console.error('Error parsing code block:', error);
             // Fallback to treating as single code block
             chunks.push({
               type: 'code_block',

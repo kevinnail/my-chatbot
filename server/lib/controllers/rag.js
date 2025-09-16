@@ -52,14 +52,6 @@ router.post('/process-folder', upload.array('files'), async (req, res) => {
       const content = file.buffer.toString('utf-8');
       const fileType = getFileType(file.originalname);
 
-      // DEBUG: Log content length and preview
-      // eslint-disable-next-line no-console
-      console.log(`File: ${file.originalname}`);
-      // eslint-disable-next-line no-console
-      console.log(`Original content length: ${content.length} characters`);
-      // eslint-disable-next-line no-console
-      console.log(`File type: ${fileType}`);
-
       // Use transaction for file and chunk operations
       const client = await pool.connect();
       try {
@@ -236,7 +228,7 @@ export async function retrieveRelevantDocuments(userId, query, limit = 5, tokenB
       `📊 RAG retrieval for "${query}": ${selectedChunks.length} chunks, ${usedTokens}/${tokenBudget} tokens`,
       selectedChunks.map(
         (chunk) =>
-          `${chunk.similarity.toFixed(3)} (${chunk.filename}:${chunk.chunkType}): "${chunk.content.substring(0, 50)}..."`,
+          `${chunk.similarity.toFixed(3)} (${chunk.filename}:${chunk.chunkType}): "${chunk.content.substring(0, 25)}..."`,
       ),
     );
 
