@@ -95,7 +95,37 @@ ${documentsContext}
     // Store controller and timeout for stop functionality
     const controllerKey = `${userId}_${currentChatId}`;
     activeControllers.set(controllerKey, { controller, timeoutId });
+    // eslint-disable-next-line no-console
     console.log('Chat request - stored controller with key:', controllerKey);
+
+    // Calculate and log actual token usage for LLM call
+    const totalTokensForLLM = countTokens(messages);
+    const actualContextPercent = Math.min(100, (totalTokensForLLM / 8000) * 100);
+
+    // eslint-disable-next-line no-console
+    console.log('=== LLM CALL TOKEN ANALYSIS ===');
+    // eslint-disable-next-line no-console
+    console.log(`Total messages in LLM call: ${messages.length}`);
+    // eslint-disable-next-line no-console
+    console.log(`System prompt tokens: ${Math.ceil(messages[0].content.length / 4)}`);
+    // eslint-disable-next-line no-console
+    console.log(`Memory/conversation tokens: ${countTokens(messages.slice(1, -1))}`);
+    // eslint-disable-next-line no-console
+    console.log(`Current user message tokens: ${Math.ceil(msg.length / 4)}`);
+    // eslint-disable-next-line no-console
+    console.log(`Current user message tokens: ${Math.ceil(msg.length / 4)}`);
+    if (relevantDocs.length > 0) {
+      const docTokens = relevantDocs.reduce((sum, chunk) => sum + chunk.tokenCount, 0);
+      // eslint-disable-next-line no-console
+      console.log(`RAG document tokens: ${docTokens}`);
+    }
+    // eslint-disable-next-line no-console
+    console.log(`TOTAL TOKENS SENT TO LLM: ${totalTokensForLLM}`);
+    // eslint-disable-next-line no-console
+    console.log(`ACTUAL CONTEXT USAGE: ${actualContextPercent.toFixed(2)}%`);
+    // eslint-disable-next-line no-console
+    console.log('=== END TOKEN ANALYSIS ===');
+
     // eslint-disable-next-line no-console
     console.log('calling LLM...');
     const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
@@ -409,6 +439,36 @@ router.get('/messages/:userId/:chatId', async (req, res) => {
   }
 });
 
+router.get('/context/:userId/:chatId', async (req, res) => {
+  try {
+    const { userId, chatId } = req.params;
+    const { mode = 'chat' } = req.query;
+
+    // Get all messages for this chat
+    const messages = await ChatMemory.getAllMessages({ chatId, userId });
+
+    // Build the same messages array that would be sent to LLM
+    const systemPrompt = mode === 'coach' ? careerCoach : codingAssistant;
+    const allMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((msg) => ({ role: msg.role, content: msg.content })),
+    ];
+
+    // Calculate context percentage
+    const totalTokens = countTokens(allMessages);
+    const contextPercent = Math.min(100, (totalTokens / 8000) * 100);
+
+    res.json({
+      contextPercent: Number(contextPercent.toFixed(4)),
+      totalTokens,
+      messageCount: allMessages.length,
+    });
+  } catch (error) {
+    console.error('Error in get context percentage controller:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.delete('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -460,6 +520,7 @@ router.post('/summarize', async (req, res) => {
     // Create AbortController for timeout handling - 10 minutes for summarize
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
+      // eslint-disable-next-line no-console
       console.log('Summarize timeout fired - aborting request');
       controller.abort();
     }, 600000); // 10 minute timeout
@@ -506,6 +567,7 @@ router.post('/summarize', async (req, res) => {
       });
     } finally {
       // Clear the timeout immediately after fetch completes (success or failure)
+      // eslint-disable-next-line no-console
       console.log('Clearing summarize timeout');
       clearTimeout(timeoutId);
     }
@@ -590,8 +652,11 @@ router.post('/stop', async (req, res) => {
     const controllerKey = `${userId}_${chatId}`;
     const controllerData = activeControllers.get(controllerKey);
 
+    // eslint-disable-next-line no-console
     console.log('Stop request - controllerKey:', controllerKey);
+    // eslint-disable-next-line no-console
     console.log('Stop request - active controllers:', Array.from(activeControllers.keys()));
+    // eslint-disable-next-line no-console
     console.log('Stop request - found controller:', !!controllerData);
 
     if (controllerData) {

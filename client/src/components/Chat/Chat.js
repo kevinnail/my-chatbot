@@ -31,8 +31,23 @@ const Chat = ({ userId }) => {
 
   const [currentChatId, setCurrentChatId] = useState(null);
   const [isNewChat, setIsNewChat] = useState(false);
+  const [coachOrChat, setCoachOrChat] = useState('chat');
 
   const [initialChatLoad, setInitialChatLoad] = useState(false);
+
+  // Fetch context percentage from backend
+  const fetchContextPercent = async (chatId, userId, mode) => {
+    try {
+      const response = await fetch(`/api/chatbot/context/${userId}/${chatId}?mode=${mode}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.contextPercent || 0;
+      }
+    } catch (error) {
+      console.error('Error fetching context percentage:', error);
+    }
+    return 0;
+  };
 
   useEffect(() => {
     if (urlChatId) {
@@ -40,14 +55,18 @@ const Chat = ({ userId }) => {
       setCurrentChatId(urlChatId);
       setIsNewChat(false);
       setLog([]);
+      // Reset context percentage when switching to existing chat
+      setContextPercent(0);
     } else if (isNewChatPage) {
       // New chat - generate a new chatId and clear log
       const newChatId = `${userId}_${Date.now()}`;
       setCurrentChatId(newChatId);
       setIsNewChat(true);
       setLog([]);
+      // Reset context percentage for new chat
+      setContextPercent(0);
     }
-  }, [urlChatId, isNewChatPage, userId, setLog]);
+  }, [urlChatId, isNewChatPage, userId, setLog, setContextPercent]);
 
   // Load existing chat messages when viewing an existing chat
   useEffect(() => {
@@ -82,6 +101,9 @@ const Chat = ({ userId }) => {
               },
             ];
             setLog(fakeMessages);
+            // Fetch context percentage for fake messages
+            const contextPercent = await fetchContextPercent(currentChatId, userId, coachOrChat);
+            setContextPercent(contextPercent);
             setInitialChatLoad(false);
             return;
           }
@@ -97,10 +119,16 @@ const Chat = ({ userId }) => {
                 timestamp: Date.now() + index, // Simple timestamp for display
               }));
               setLog(formattedMessages);
+
+              // Fetch context percentage for loaded messages
+              const contextPercent = await fetchContextPercent(currentChatId, userId, coachOrChat);
+              setContextPercent(contextPercent);
+
               setInitialChatLoad(false);
             } else {
               console.info('No messages found for this chat');
               setLog([]);
+              setContextPercent(0); // No messages = 0% context
             }
           } else {
             console.error('Failed to load messages:', response.status, response.statusText);
@@ -114,7 +142,7 @@ const Chat = ({ userId }) => {
     };
 
     loadChatMessages();
-  }, [urlChatId, currentChatId, userId, setLog, isNewChat]);
+  }, [urlChatId, currentChatId, userId, setLog, isNewChat, coachOrChat, setContextPercent]);
 
   // Update URL when first message is sent in a new chat
   useEffect(() => {
@@ -127,7 +155,6 @@ const Chat = ({ userId }) => {
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [callLLMStartTime, setCallLLMStartTime] = useState(null);
-  const [coachOrChat, setCoachOrChat] = useState('chat');
 
   const [showScrollButton, setShowScrollButton] = useState(false);
   const bottomSentinelRef = useRef(null);
