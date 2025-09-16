@@ -151,6 +151,7 @@ ${documentsContext}
     try {
       if (imageFile) {
         // Use vision model for image + text - handle with axios directly
+        // eslint-disable-next-line no-console
         console.log(`Processing image: ${imageFile.originalname}, size: ${imageFile.size} bytes`);
 
         const axiosResponse = await axios({
@@ -198,18 +199,15 @@ ${documentsContext}
         res.json({ streaming: true, message: 'Streaming response via WebSocket' });
 
         axiosResponse.data.on('data', (chunk) => {
-          console.log('Vision chunk received, size:', chunk.length);
           buffer += chunk.toString();
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
 
           for (const line of lines) {
             if (!line.trim()) continue;
-            console.log('Processing vision line:', line);
 
             try {
               const data = JSON.parse(line);
-              console.log('Vision parsed data:', data);
 
               if (data.error) {
                 console.error('Vision streaming error:', data.error);
@@ -224,7 +222,6 @@ ${documentsContext}
                 const content = data.message.content;
                 fullResponse += content;
                 hasReceivedContent = true;
-                console.log('Emitting vision chunk to frontend, content length:', content.length);
 
                 io.to(`chat-${userId}`).emit('chat-chunk', {
                   messageId,
@@ -235,7 +232,6 @@ ${documentsContext}
               }
 
               if (data.done) {
-                console.log('Vision stream done, full response length:', fullResponse.length);
                 if (!hasReceivedContent) {
                   console.error('Vision stream completed but no content received');
                   io.to(`chat-${userId}`).emit('chat-error', {
@@ -264,7 +260,6 @@ ${documentsContext}
                   const totalTokens = countTokens(allMessagesWithSystem);
                   const contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
 
-                  console.log('Emitting vision chat-complete to frontend');
                   io.to(`chat-${userId}`).emit('chat-complete', {
                     messageId,
                     fullResponse,
