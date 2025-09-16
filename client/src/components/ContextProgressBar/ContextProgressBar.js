@@ -32,7 +32,7 @@ const ContextProgressBar = ({ contextPercent = 0 }) => {
           pointerEvents: 'none',
         }}
       >
-        ~{(128000 * (1 - safeContextPercent / 100)).toFixed(0)} tokens left{' '}
+        ~{(8000 * (1 - safeContextPercent / 100)).toFixed(0)} tokens left{' '}
       </span>
       <div
         style={{
