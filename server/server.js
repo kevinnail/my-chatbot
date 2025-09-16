@@ -9,11 +9,6 @@ const PORT = process.env.PORT || 4000;
 // Create HTTP server
 const server = createServer(app);
 
-// Disable server timeout for long-running vision processing
-server.timeout = 0;
-server.keepAliveTimeout = 0;
-server.headersTimeout = 0;
-
 // Setup Socket.IO
 const io = new Server(server, {
   cors: {
