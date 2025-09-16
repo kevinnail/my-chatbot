@@ -183,6 +183,7 @@ ${documentsContext}
         if (axiosResponse.status < 200 || axiosResponse.status >= 300) {
           console.error('Vision API error:', axiosResponse.status);
           io.to(`chat-${userId}`).emit('chat-error', {
+            messageId,
             error: `Vision API error: ${axiosResponse.status}`,
           });
           return;
@@ -213,6 +214,7 @@ ${documentsContext}
               if (data.error) {
                 console.error('Vision streaming error:', data.error);
                 io.to(`chat-${userId}`).emit('chat-error', {
+                  messageId,
                   error: `Vision error: ${data.error}`,
                 });
                 return;
@@ -237,6 +239,7 @@ ${documentsContext}
                 if (!hasReceivedContent) {
                   console.error('Vision stream completed but no content received');
                   io.to(`chat-${userId}`).emit('chat-error', {
+                    messageId,
                     error: 'No response content received from vision model',
                   });
                   return;
@@ -285,6 +288,7 @@ ${documentsContext}
           if (!hasReceivedContent) {
             console.error('Vision stream ended without content');
             io.to(`chat-${userId}`).emit('chat-error', {
+              messageId,
               error: 'No response content received from vision model',
             });
           }
@@ -293,6 +297,7 @@ ${documentsContext}
         axiosResponse.data.on('error', (error) => {
           console.error('Vision stream error:', error);
           io.to(`chat-${userId}`).emit('chat-error', {
+            messageId,
             error: 'Vision streaming error occurred',
           });
         });
@@ -338,6 +343,7 @@ ${documentsContext}
       if (response.status < 200 || response.status >= 300) {
         console.error('LLM API error:', response.status);
         io.to(`chat-${userId}`).emit('chat-error', {
+          messageId,
           error: `LLM server error: ${response.status}`,
         });
 
@@ -355,6 +361,7 @@ ${documentsContext}
 
       // Emit error via websocket
       io.to(`chat-${userId}`).emit('chat-error', {
+        messageId,
         error: `Connection failed: ${fetchError.message}`,
       });
 
