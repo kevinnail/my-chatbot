@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import axios from 'axios';
 import { buildPromptWithMemory } from '../utils/buildPrompt.js';
 import ChatMemory from '../models/ChatMemory.js';
 import { careerCoach, codingAssistant } from '../utils/chatPrompts.js';
@@ -31,63 +32,7 @@ export function countTokens(messages) {
   return messages.reduce((acc, msg) => acc + Math.ceil(msg.content.length / 4), 0);
 }
 
-// Function to call Ollama vision API
-async function callOllamaVision(imageBuffer, textPrompt, controller) {
-  const base64Image = imageBuffer.toString('base64');
-  const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-
-  console.log(`Attempting to connect to Ollama at: ${ollamaUrl}`);
-
-  console.log('Vision processing can take several minutes for large images...');
-
-  try {
-    const response = await fetch(`${ollamaUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'granite3.2-vision:2b',
-        messages: [
-          {
-            role: 'user',
-            content: textPrompt,
-            images: [base64Image],
-          },
-        ],
-        stream: true,
-        options: {
-          temperature: 0.2,
-          top_p: 0.9,
-        },
-      }),
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Vision API error: ${response.status} ${response.statusText}`);
-    }
-
-    return response;
-  } catch (error) {
-    console.error('Ollama connection error details:', {
-      url: `${ollamaUrl}/api/chat`,
-      errorType: error.constructor.name,
-      errorMessage: error.message,
-      errorCode: error.code,
-      errorCause: error.cause,
-    });
-
-    // Re-throw with more context
-    throw new Error(
-      `Vision API call failed - ${error.constructor.name}: ${error.message} (URL: ${ollamaUrl})`,
-    );
-  }
-}
-
 router.post('/', upload.single('image'), async (req, res) => {
-  // Disable request timeout for vision processing
-  req.setTimeout(0);
-  res.setTimeout(0);
-
   try {
     const { msg, userId, coachOrChat, chatId } = req.body;
     const imageFile = req.file;
@@ -205,9 +150,150 @@ ${documentsContext}
     let response;
     try {
       if (imageFile) {
-        // Use vision model for image + text
+        // Use vision model for image + text - handle with axios directly
         console.log(`Processing image: ${imageFile.originalname}, size: ${imageFile.size} bytes`);
-        response = await callOllamaVision(imageFile.buffer, msg, controller);
+
+        const axiosResponse = await axios({
+          method: 'POST',
+          url: `${process.env.OLLAMA_URL}/api/chat`,
+          headers: { 'Content-Type': 'application/json' },
+          data: {
+            model: 'granite3.2-vision:2b',
+            messages: [
+              {
+                role: 'user',
+                content: msg,
+                images: [imageFile.buffer.toString('base64')],
+              },
+            ],
+            stream: true,
+            options: {
+              temperature: 0.2,
+              top_p: 0.9,
+            },
+          },
+          signal: controller.signal,
+          timeout: 0,
+          responseType: 'stream',
+        });
+
+        clearTimeout(timeoutId);
+
+        if (axiosResponse.status < 200 || axiosResponse.status >= 300) {
+          console.error('Vision API error:', axiosResponse.status);
+          io.to(`chat-${userId}`).emit('chat-error', {
+            error: `Vision API error: ${axiosResponse.status}`,
+          });
+          return;
+        }
+
+        // Handle axios stream directly for vision
+        let fullResponse = '';
+        let hasReceivedContent = false;
+        let buffer = '';
+
+        // Send initial response
+        res.json({ streaming: true, message: 'Streaming response via WebSocket' });
+
+        axiosResponse.data.on('data', (chunk) => {
+          console.log('Vision chunk received, size:', chunk.length);
+          buffer += chunk.toString();
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            console.log('Processing vision line:', line);
+
+            try {
+              const data = JSON.parse(line);
+              console.log('Vision parsed data:', data);
+
+              if (data.error) {
+                console.error('Vision streaming error:', data.error);
+                io.to(`chat-${userId}`).emit('chat-error', {
+                  error: `Vision error: ${data.error}`,
+                });
+                return;
+              }
+
+              if (data.message && data.message.content) {
+                const content = data.message.content;
+                fullResponse += content;
+                hasReceivedContent = true;
+                console.log('Emitting vision chunk to frontend, content length:', content.length);
+
+                io.to(`chat-${userId}`).emit('chat-chunk', {
+                  content,
+                  fullResponse,
+                  done: false,
+                });
+              }
+
+              if (data.done) {
+                console.log('Vision stream done, full response length:', fullResponse.length);
+                if (!hasReceivedContent) {
+                  console.error('Vision stream completed but no content received');
+                  io.to(`chat-${userId}`).emit('chat-error', {
+                    error: 'No response content received from vision model',
+                  });
+                  return;
+                }
+
+                // Store and complete
+                console.log('Storing vision message and completing...');
+                ChatMemory.storeMessage({
+                  chatId: currentChatId,
+                  userId,
+                  role: 'bot',
+                  content: fullResponse,
+                }).then(async () => {
+                  const allMessages = await ChatMemory.getAllMessages({
+                    chatId: currentChatId,
+                    userId,
+                  });
+                  const allMessagesWithSystem = [
+                    { role: 'system', content: systemPrompt },
+                    ...allMessages,
+                  ];
+                  const totalTokens = countTokens(allMessagesWithSystem);
+                  const contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
+
+                  console.log('Emitting vision chat-complete to frontend');
+                  io.to(`chat-${userId}`).emit('chat-complete', {
+                    fullResponse,
+                    contextPercent,
+                    chatId: currentChatId,
+                    done: true,
+                  });
+
+                  activeControllers.delete(controllerKey);
+                });
+                return;
+              }
+            } catch (parseError) {
+              console.error('Error parsing vision chunk:', parseError, 'Line:', line);
+            }
+          }
+        });
+
+        axiosResponse.data.on('end', () => {
+          if (!hasReceivedContent) {
+            console.error('Vision stream ended without content');
+            io.to(`chat-${userId}`).emit('chat-error', {
+              error: 'No response content received from vision model',
+            });
+          }
+        });
+
+        axiosResponse.data.on('error', (error) => {
+          console.error('Vision stream error:', error);
+          io.to(`chat-${userId}`).emit('chat-error', {
+            error: 'Vision streaming error occurred',
+          });
+        });
+
+        return; // Exit early for vision processing
       } else {
         // Use regular chat model for text only
         response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
@@ -236,12 +322,6 @@ ${documentsContext}
             stream: true,
           }),
           signal: controller.signal,
-          // Configure undici timeouts to prevent race condition
-          // Set headers timeout to match our AbortController timeout
-
-          // These are undici-specific options
-          headersTimeout: 1200000, // 20 minutes - same as AbortController
-          bodyTimeout: 1200000, // 20 minutes - same as AbortController
         });
       }
 
