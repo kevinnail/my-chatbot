@@ -873,23 +873,6 @@ router.post('/stop', async (req, res) => {
       activeControllers.delete(controllerKey);
     }
 
-    // Call Ollama stop endpoint
-    try {
-      await axios({
-        method: 'POST',
-        url: `${process.env.OLLAMA_URL}/api/generate`,
-        headers: { 'Content-Type': 'application/json' },
-        data: {
-          model: process.env.OLLAMA_MODEL,
-          prompt: '',
-          stream: false,
-          options: { stop: true },
-        },
-      });
-    } catch (ollamaError) {
-      console.error('Error calling Ollama stop:', ollamaError);
-    }
-
     // Emit stop signal via WebSocket
     io.to(`chat-${userId}`).emit('chat-stopped', {
       messageId: Date.now(),
