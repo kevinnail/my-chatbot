@@ -1,6 +1,6 @@
-# DevFlow Assistant
+# Coding & Office Assistant
 
-A full-stack AI-powered chatbot application built with React, Express.js, PostgreSQL, WSL/ Linux, and Ollama. Features dual-mode operation (coding assistant and career coach), semantic search capabilities using vector embeddings for intelligent conversation memory, and AI agentic capabilities that automatically create Google Calendar events from analyzed emails via MCP server tool calls.
+A full-stack AI-powered chatbot & office assistant RAG application with an MCP server built with React, Express.js, PostgreSQL, WSL/ Linux, and Ollama. Features dual-mode operation (coding assistant and career coach), semantic search capabilities using vector embeddings for intelligent conversation memory, and AI agentic capabilities that automatically create Google Calendar events from analyzed emails via MCP server tool calls.
 
 ## Quick Start
 
@@ -74,7 +74,7 @@ The application includes powerful Gmail sync and Google Calendar integration fea
 - **Automatic Event Creation**: LLM analyzes emails and creates calendar appointments when it detects scheduling information
 - **Conflict Detection**: Checks for existing calendar conflicts before creating events
 - **Smart Parsing**: Extracts date, time, and location information from email content
-- **Tool Call Integration**: Uses Ollama's function calling capabilities to trigger calendar actions
+- **Tool Call Integration**: Uses Ollama's tool calling capabilities to trigger calendar actions
 
 ### How It Works
 
@@ -229,6 +229,12 @@ touch server/.env
 Add the following to `server/.env`:
 
 ```env
+# Auth Configuration
+SALT_ROUNDS=10
+COOKIE_NAME=cookie_name
+JWT_SECRET=secret
+SECURE_COOKIES=false
+
 # PostgreSQL Configuration
 PG_USER=your_username
 PG_HOST=localhost
@@ -236,13 +242,32 @@ PG_DATABASE=my_chatbot_db
 PG_PASSWORD=your_password
 PG_PORT=5432
 
-# Ollama Configuration
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1:8b
+#^ Encryption Key
+ENCRYPTION_KEY=your_encryption_key
 
 # Server Configuration
 PORT=4000
 API_URL=http://localhost
+
+# Ollama Configuration (try your own mix of models)
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=Llama3.2:3b
+OLLAMA_SMALL_MODEL=Llama3.2:3b-instruct-q4_K_M
+
+#^ Gmail IMAP Configuration (instead of OAuth)
+GMAIL_USER=your_name@email.com
+GMAIL_APP_PASSWORD=abcdefghijklmnopqrstuvwxyz
+GMAIL_IMAP_HOST=imap.gmail.com
+GMAIL_IMAP_PORT=993
+
+# Client URL (for OAuth redirects)
+CLIENT_URL=http://localhost:3000
+
+# Google Calendar API Configuration
+GOOGLE_CLIENT_ID=1234567891011-pasdfpoiuasdfpoiuasdfpoiuasdf.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:4000/api/calendar/callback
+
 ```
 
 Create environment file for the client:
@@ -491,14 +516,6 @@ my-chatbot/
 ## License
 
 This project is licensed under the ISC License.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
 
 ## Support
 
