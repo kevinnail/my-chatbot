@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { pool } from '../utils/db.js';
+import RAG from '../models/RAG.js';
 import { getEmbedding } from '../utils/ollamaEmbed.js';
 import { recursiveChunk } from '../utils/textChunking.js';
 import { chunkCodeFile } from '../utils/codeChunking.js';
 import { countTokens } from './chat.js';
+import { pool } from '../utils/db.js';
 import path from 'path';
 
 const router = Router();
@@ -41,33 +42,31 @@ router.post('/process-folder', upload.array('files'), async (req, res) => {
 
     console.info(`Processing ${files.length} files for user ${userId}`);
 
-    const client = await pool.connect();
     let totalChunks = 0;
 
-    try {
-      await client.query('BEGIN');
+    for (const file of files) {
+      console.info(`Processing file: ${file.originalname}`);
 
-      for (const file of files) {
-        console.info(`Processing file: ${file.originalname}`);
+      // Convert buffer to string
+      const content = file.buffer.toString('utf-8');
+      const fileType = getFileType(file.originalname);
 
-        // Convert buffer to string
-        const content = file.buffer.toString('utf-8');
-        const fileType = getFileType(file.originalname);
+      // DEBUG: Log content length and preview
+      // eslint-disable-next-line no-console
+      console.log(`File: ${file.originalname}`);
+      // eslint-disable-next-line no-console
+      console.log(`Original content length: ${content.length} characters`);
+      // eslint-disable-next-line no-console
+      console.log(`File type: ${fileType}`);
 
-        // DEBUG: Log content length and preview
-        // eslint-disable-next-line no-console
-        console.log(`File: ${file.originalname}`);
-        // eslint-disable-next-line no-console
-        console.log(`Original content length: ${content.length} characters`);
-        // eslint-disable-next-line no-console
-        console.log(`File type: ${fileType}`);
+      // Use transaction for file and chunk operations
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
 
         // Create file record first
-        const fileResult = await client.query(
-          'INSERT INTO files (user_id, filename, file_type) VALUES ($1, $2, $3) RETURNING id',
-          [userId, file.originalname, fileType],
-        );
-        const fileId = fileResult.rows[0].id;
+        const fileResult = await RAG.insertFile({ userId, filename: file.originalname, fileType });
+        const fileId = fileResult.id;
 
         let chunks;
         if (fileType === 'code') {
@@ -104,48 +103,42 @@ router.post('/process-folder', upload.array('files'), async (req, res) => {
           const embedding = await getEmbedding(chunkContent);
 
           // Store chunk in database
-          await client.query(
-            `INSERT INTO file_chunks (file_id, user_id, chunk_index, content, embedding, chunk_type, token_count, start_line, end_line)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-            [
-              fileId,
-              userId,
-              i,
-              chunkContent,
-              embedding,
-              chunk.type || 'paragraph',
-              tokenCount,
-              chunk.startLine || null,
-              chunk.endLine || null,
-            ],
-          );
+          await RAG.insertFileChunk({
+            fileId,
+            userId,
+            chunkIndex: i,
+            content: chunkContent,
+            embedding,
+            chunkType: chunk.type || 'paragraph',
+            tokenCount,
+            startLine: chunk.startLine || null,
+            endLine: chunk.endLine || null,
+          });
 
           totalChunks++;
         }
 
         // Update file with total chunk count
-        await client.query('UPDATE files SET total_chunks = $1 WHERE id = $2', [
-          chunks.length,
-          fileId,
-        ]);
+        await RAG.updateFileChunkCount({ fileId, totalChunks: chunks.length });
 
+        await client.query('COMMIT');
         console.info(`✅ Stored ${chunks.length} chunks for file: ${file.originalname}`);
+      } catch (fileError) {
+        await client.query('ROLLBACK');
+        console.error(`Error processing file ${file.originalname}:`, fileError);
+        throw fileError;
+      } finally {
+        client.release();
       }
-
-      await client.query('COMMIT');
-      console.info(`✅ Successfully processed ${files.length} files into ${totalChunks} chunks`);
-
-      res.json({
-        message: `Successfully processed ${files.length} files into ${totalChunks} chunks`,
-        filesProcessed: files.length,
-        totalChunks,
-      });
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
     }
+
+    console.info(`✅ Successfully processed ${files.length} files into ${totalChunks} chunks`);
+
+    res.json({
+      message: `Successfully processed ${files.length} files into ${totalChunks} chunks`,
+      filesProcessed: files.length,
+      totalChunks,
+    });
   } catch (error) {
     console.error('Error processing files:', error);
     res.status(500).json({ error: error.message });
@@ -157,28 +150,18 @@ router.get('/files/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const result = await pool.query(
-      `SELECT f.id, f.user_id, f.filename, f.file_type, f.total_chunks, f.created_at,
-              COUNT(fc.id) as actual_chunks,
-              SUM(fc.token_count) as total_tokens
-       FROM files f
-       LEFT JOIN file_chunks fc ON f.id = fc.file_id
-       WHERE f.user_id = $1 
-       GROUP BY f.id, f.user_id, f.filename, f.file_type, f.total_chunks, f.created_at
-       ORDER BY f.created_at DESC`,
-      [userId],
-    );
+    const files = await RAG.getFilesByUserId(userId);
 
-    console.info(`📁 Found ${result.rows.length} files for user ${userId}:`);
-    result.rows.forEach((row, index) => {
+    console.info(`📁 Found ${files.length} files for user ${userId}:`);
+    files.forEach((row, index) => {
       console.info(
         `  ${index + 1}. ${row.filename} (${row.file_type}): ${row.actual_chunks} chunks, ${row.total_tokens || 'unknown'} tokens, Created: ${row.created_at}`,
       );
     });
 
     res.json({
-      message: `Found ${result.rows.length} files`,
-      files: result.rows,
+      message: `Found ${files.length} files`,
+      files,
     });
   } catch (error) {
     console.error('Error retrieving files:', error);
@@ -193,19 +176,10 @@ export async function retrieveRelevantDocuments(userId, query, limit = 5, tokenB
     const queryEmbedding = await getEmbedding(query);
 
     // Use PostgreSQL's vector similarity search with cosine distance on chunks
-    const result = await pool.query(
-      `SELECT fc.id, fc.content, fc.chunk_type, fc.token_count, f.filename,
-              fc.start_line, fc.end_line, 1 - (fc.embedding <=> $1::vector) as similarity 
-       FROM file_chunks fc
-       JOIN files f ON fc.file_id = f.id
-       WHERE fc.user_id = $2 
-       ORDER BY fc.embedding <=> $1::vector
-       LIMIT $3`,
-      [queryEmbedding, userId, limit * 2], // Get more candidates for budget selection
-    );
+    const result = await RAG.getRelevantChunks({ queryEmbedding, userId, limit: limit * 2 }); // Get more candidates for budget selection
 
     // Convert results and apply similarity filtering
-    const candidateChunks = result.rows
+    const candidateChunks = result
       .map((row) => ({
         id: row.id,
         content: row.content,
@@ -234,18 +208,9 @@ export async function retrieveRelevantDocuments(userId, query, limit = 5, tokenB
     if (selectedChunks.length === 0) {
       // eslint-disable-next-line no-console
       console.log('🔄 No semantic matches found, trying keyword fallback...');
-      const keywordResult = await pool.query(
-        `SELECT fc.id, fc.content, fc.chunk_type, fc.token_count, f.filename,
-                fc.start_line, fc.end_line, 0.1 as similarity 
-         FROM file_chunks fc
-         JOIN files f ON fc.file_id = f.id
-         WHERE fc.user_id = $1 
-           AND (LOWER(fc.content) LIKE LOWER($2) OR LOWER(fc.content) LIKE LOWER($3))
-         LIMIT $4`,
-        [userId, `%${query}%`, `%${query.split(' ').join('%')}%`, limit],
-      );
+      const keywordResult = await RAG.getKeywordChunks({ userId, query, limit });
 
-      const keywordChunks = keywordResult.rows.map((row) => ({
+      const keywordChunks = keywordResult.map((row) => ({
         id: row.id,
         content: row.content,
         chunkType: row.chunk_type,
