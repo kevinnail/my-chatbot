@@ -36,28 +36,6 @@ const FolderSelector = ({ onFolderProcess, disabled }) => {
     e.target.value = '';
   };
 
-  const handleProcess = async () => {
-    console.log('hiiiiiiii');
-    if (!selectedFolder) return;
-
-    setProcessing(true);
-    setStatus('Processing folder...');
-
-    try {
-      const input = document.querySelector('input[webkitdirectory]');
-      console.log('input', input);
-      const files = Array.from(input.files);
-
-      await onFolderProcess(files);
-      setStatus(`✅ Processed ${files.length} files`);
-    } catch (error) {
-      setStatus('❌ Error processing folder');
-      console.error('Folder processing error:', error);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   return (
     <>
       <input
