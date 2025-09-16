@@ -41,7 +41,7 @@ describe('user routes', () => {
     const res = await request(app).post('/api/users').send(mockUser);
     const { email } = mockUser;
     expect(res.body).toEqual({
-      id: expect.any(String),
+      id: expect.any(String), // BIGINT is returned as string in JavaScript
       email,
     });
   });

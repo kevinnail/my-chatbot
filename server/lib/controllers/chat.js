@@ -6,7 +6,7 @@ import { retrieveRelevantDocuments } from './rag.js';
 
 const router = Router();
 
-// Store active AbortControllers for stop functionality
+// Store active AbortControllers and timeouts for stop functionality
 const activeControllers = new Map();
 
 export function countTokens(messages) {
@@ -54,42 +54,47 @@ router.post('/', async (req, res) => {
     // Build messages array with relevant documents context
     const messages = [{ role: 'system', content: systemPrompt }, ...memories];
 
-    // Add relevant documents as context if any were found - place BEFORE user message for better attention
+    // Add relevant document chunks as context if any were found - place BEFORE user message for better attention
     if (relevantDocs.length > 0) {
       const documentsContext = relevantDocs
-        .map(
-          (doc, index) =>
-            `=== Document ${index + 1} (relevance: ${doc.similarity.toFixed(3)}) ===
-${doc.content}
-=== End Document ${index + 1} ===`,
-        )
+        .map((chunk, index) => {
+          const locationInfo =
+            chunk.startLine && chunk.endLine ? ` (lines ${chunk.startLine}-${chunk.endLine})` : '';
+          return `=== Chunk ${index + 1}: ${chunk.filename}${locationInfo} (${chunk.chunkType}, relevance: ${chunk.similarity.toFixed(3)}) ===
+${chunk.content}
+=== End Chunk ${index + 1} ===`;
+        })
         .join('\n\n');
+
+      const totalTokens = relevantDocs.reduce((sum, chunk) => sum + chunk.tokenCount, 0);
 
       messages.push({
         role: 'system',
         content: `🔍 IMPORTANT CONTEXT: The user has uploaded documents containing information that is directly relevant to their question. You MUST carefully read and use this information to answer their question.
 
+Retrieved ${relevantDocs.length} relevant chunks (${totalTokens} tokens):
+
 ${documentsContext}
 
 🎯 CRITICAL INSTRUCTIONS: 
-1. READ the document content above carefully - it contains the answer to the user's question
-2. If the documents contain relevant information, use it directly in your response
-3. Quote or reference the specific information from the documents when answering
-4. Do not claim you don't have access to information that is clearly provided in the documents above
-5. The document content is part of your available knowledge for this conversation
-6. Pay special attention to any specific phrases, codes, or data mentioned in the documents`,
+1. READ the document chunks above carefully - they contain answers to the user's question
+2. If the chunks contain relevant information, use it directly in your response
+3. Quote or reference the specific information from the chunks when answering
+4. When referencing code, mention the filename and function/class if provided
+5. Do not claim you don't have access to information that is clearly provided in the chunks above
+6. The chunk content is part of your available knowledge for this conversation
+7. Pay special attention to any specific phrases, codes, or data mentioned in the chunks`,
       });
     }
 
     messages.push({ role: 'user', content: msg });
-
-    // Create AbortController for timeout handling - reduced to 5 minutes
+    // Create AbortController for timeout handling - 20 minutes
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 1200000); // 20 minute timeout
 
-    // Store controller for stop functionality
+    // Store controller and timeout for stop functionality
     const controllerKey = `${userId}_${currentChatId}`;
-    activeControllers.set(controllerKey, controller);
+    activeControllers.set(controllerKey, { controller, timeoutId });
     console.log('Chat request - stored controller with key:', controllerKey);
     // eslint-disable-next-line no-console
     console.log('calling LLM...');
@@ -123,12 +128,9 @@ ${documentsContext}
       // Set headers timeout to match our AbortController timeout
 
       // These are undici-specific options
-      headersTimeout: 12000000, // 20 minutes - same as AbortController
-      bodyTimeout: 12000000, // 20 minutes - same as AbortController
+      headersTimeout: 1200000, // 20 minutes - same as AbortController
+      bodyTimeout: 1200000, // 20 minutes - same as AbortController
     });
-    // Clear the timeout since we got a response
-    clearTimeout(timeoutId);
-    console.log('LLM completed');
     // Check if response is ok before processing
     if (!response.ok) {
       const errorText = await response.text();
@@ -136,6 +138,13 @@ ${documentsContext}
       io.to(`chat-${userId}`).emit('chat-error', {
         error: `LLM server error: ${response.status} - ${errorText}`,
       });
+
+      // Clean up controller and timeout on response error
+      const controllerData = activeControllers.get(controllerKey);
+      if (controllerData) {
+        clearTimeout(controllerData.timeoutId);
+        activeControllers.delete(controllerKey);
+      }
       return;
     }
 
@@ -170,6 +179,13 @@ ${documentsContext}
                 messageId,
                 error: `LLM error: ${data.error}`,
               });
+
+              // Clean up controller and timeout on LLM error
+              const controllerData = activeControllers.get(controllerKey);
+              if (controllerData) {
+                clearTimeout(controllerData.timeoutId);
+                activeControllers.delete(controllerKey);
+              }
               return;
             }
 
@@ -195,6 +211,13 @@ ${documentsContext}
                   messageId,
                   error: 'No response content received from LLM',
                 });
+
+                // Clean up controller and timeout on no content
+                const controllerData = activeControllers.get(controllerKey);
+                if (controllerData) {
+                  clearTimeout(controllerData.timeoutId);
+                  activeControllers.delete(controllerKey);
+                }
                 return;
               }
 
@@ -212,6 +235,13 @@ ${documentsContext}
                   messageId,
                   error: 'Failed to save response. Please try again.',
                 });
+
+                // Clean up controller and timeout on storage error
+                const controllerData = activeControllers.get(controllerKey);
+                if (controllerData) {
+                  clearTimeout(controllerData.timeoutId);
+                  activeControllers.delete(controllerKey);
+                }
                 return;
               }
 
@@ -225,7 +255,7 @@ ${documentsContext}
                 ...allMessages,
               ];
               const totalTokens = countTokens(allMessagesWithSystem);
-              const contextPercent = Math.min(100, (totalTokens / 128000) * 100).toFixed(4);
+              const contextPercent = Math.min(100, (totalTokens / 8000) * 100).toFixed(4);
 
               // Emit completion via WebSocket
               io.to(`chat-${userId}`).emit('chat-complete', {
@@ -236,8 +266,12 @@ ${documentsContext}
                 done: true,
               });
 
-              // Clean up controller
-              activeControllers.delete(controllerKey);
+              // Clean up controller and timeout
+              const controllerData = activeControllers.get(controllerKey);
+              if (controllerData) {
+                clearTimeout(controllerData.timeoutId);
+                activeControllers.delete(controllerKey);
+              }
               return;
             }
           } catch (parseError) {
@@ -261,12 +295,26 @@ ${documentsContext}
           error: 'No response content received from LLM',
         });
       }
+
+      // Clean up controller and timeout on stream end
+      const controllerData = activeControllers.get(controllerKey);
+      if (controllerData) {
+        clearTimeout(controllerData.timeoutId);
+        activeControllers.delete(controllerKey);
+      }
     } catch (streamError) {
       console.error('Error reading stream:', streamError);
       io.to(`chat-${userId}`).emit('chat-error', {
         messageId,
         error: 'Streaming error occurred',
       });
+
+      // Clean up controller and timeout on stream error
+      const controllerData = activeControllers.get(controllerKey);
+      if (controllerData) {
+        clearTimeout(controllerData.timeoutId);
+        activeControllers.delete(controllerKey);
+      }
     } finally {
       // Ensure reader is always closed
       try {
@@ -279,12 +327,23 @@ ${documentsContext}
   } catch (error) {
     console.error('Error in chat controller:', error);
 
+    // Get variables from req.body for error handling
+    const { userId, chatId } = req.body;
+    const currentChatId = chatId || `${userId}_${Date.now()}`;
+
+    // Clean up controller and timeout on error
+    const controllerKey = `${userId}_${currentChatId}`;
+    const controllerData = activeControllers.get(controllerKey);
+    if (controllerData) {
+      clearTimeout(controllerData.timeoutId);
+      activeControllers.delete(controllerKey);
+    }
+
     // More comprehensive timeout error handling
     if (error.name === 'AbortError') {
       // Check if this was a user-initiated stop (controller was deleted)
-      const { userId: errorUserId, chatId: errorChatId } = req.body;
-      const controllerKey = `${errorUserId}_${errorChatId || `${errorUserId}_${Date.now()}`}`;
-      if (!activeControllers.has(controllerKey)) {
+      const errorControllerKey = `${userId}_${currentChatId}`;
+      if (!activeControllers.has(errorControllerKey)) {
         // This was a user stop, don't show timeout error
         return res.status(200).json({ stopped: true });
       }
@@ -397,40 +456,60 @@ router.post('/summarize', async (req, res) => {
     performance.mark('summarize-start');
     // eslint-disable-next-line no-console
     console.log('summarizing title creation START ==============');
-    const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: `
+
+    // Create AbortController for timeout handling - 10 minutes for summarize
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.log('Summarize timeout fired - aborting request');
+      controller.abort();
+    }, 600000); // 10 minute timeout
+
+    let response;
+    try {
+      response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: process.env.OLLAMA_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `
             Your goal is to summarize the user's prompt into a short title for the ensuing chat.
             You are a title generator. 
-            Return only ONE sentence, max 20 words, max 150 characters. 
+            Return only ONE sentence, max 15 words, max 150 characters. 
             Do not add explanations or commentary. 
             
             
             `,
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          options: {
+            min_p: 0,
+            temperature: 0.2,
+            top_p: 0.7,
+            mirostat: 0,
+            repeat_penalty: 1.05,
+            top_k: 20,
+            keep_alive: '10m',
           },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        options: {
-          min_p: 0,
-          temperature: 0.2,
-          top_p: 0.7,
-          mirostat: 0,
-          repeat_penalty: 1.05,
-          top_k: 20,
-          keep_alive: '10m',
-        },
-        stream: false,
-      }),
-    });
+          stream: false,
+        }),
+        signal: controller.signal,
+        // Configure undici timeouts
+        headersTimeout: 600000, // 10 minutes
+        bodyTimeout: 600000, // 10 minutes
+      });
+    } finally {
+      // Clear the timeout immediately after fetch completes (success or failure)
+      console.log('Clearing summarize timeout');
+      clearTimeout(timeoutId);
+    }
+
     performance.mark('summarize-end');
     // eslint-disable-next-line no-console
     console.log('summarizing title creation END ==============');
@@ -438,7 +517,7 @@ router.post('/summarize', async (req, res) => {
     // eslint-disable-next-line no-console
     console.log(
       'summarize time',
-      performance.getEntriesByType('measure')[0].duration / 1000 + ' seconds',
+      (performance.getEntriesByType('measure')[0].duration / 1000).toFixed(3) + ' seconds',
     );
     if (!response.ok) {
       throw new Error(`Ollama API error: ${response.status}`);
@@ -454,6 +533,44 @@ router.post('/summarize', async (req, res) => {
     res.json({ summary });
   } catch (error) {
     console.error('Error in summarize controller:', error);
+
+    // Handle timeout errors specifically
+    if (error.name === 'AbortError') {
+      return res.status(408).json({
+        error: 'Summarize request timed out - LLM is taking too long to respond. Please try again.',
+      });
+    }
+
+    // Handle various timeout-related errors
+    if (
+      error.cause &&
+      (error.cause.code === 'UND_ERR_HEADERS_TIMEOUT' ||
+        error.cause.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        error.cause.code === 'UND_ERR_RESPONSE_TIMEOUT')
+    ) {
+      return res.status(408).json({
+        error:
+          'Summarize connection timeout - LLM server is not responding quickly enough. Please try again.',
+      });
+    }
+
+    // Handle general fetch failures that might be timeout-related
+    if (error.message === 'fetch failed' && error.cause) {
+      return res.status(408).json({
+        error: 'Summarize connection failed - LLM server is not responding. Please try again.',
+      });
+    }
+
+    // Handle other timeout indicators
+    if (
+      error.message.toLowerCase().includes('timeout') ||
+      error.name.toLowerCase().includes('timeout')
+    ) {
+      return res.status(408).json({
+        error: 'Summarize request timed out. Please try again.',
+      });
+    }
+
     res.status(500).json({ error: error.message });
   }
 });
@@ -471,14 +588,16 @@ router.post('/stop', async (req, res) => {
 
     // Find and abort the active controller
     const controllerKey = `${userId}_${chatId}`;
-    const controller = activeControllers.get(controllerKey);
+    const controllerData = activeControllers.get(controllerKey);
 
     console.log('Stop request - controllerKey:', controllerKey);
     console.log('Stop request - active controllers:', Array.from(activeControllers.keys()));
-    console.log('Stop request - found controller:', !!controller);
+    console.log('Stop request - found controller:', !!controllerData);
 
-    if (controller) {
+    if (controllerData) {
+      const { controller, timeoutId } = controllerData;
       controller.abort();
+      clearTimeout(timeoutId); // Clear the timeout to prevent it from firing later
       activeControllers.delete(controllerKey);
     }
 

@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS gmail_tokens CASCADE;
 DROP TABLE IF EXISTS gmail_sync_status CASCADE;
 DROP TABLE IF EXISTS email_memory CASCADE;
 DROP TABLE IF EXISTS google_calendar_tokens CASCADE;
+DROP TABLE IF EXISTS file_chunks CASCADE;
 DROP TABLE IF EXISTS files CASCADE;
 
 CREATE TABLE users (
@@ -119,8 +120,24 @@ CREATE INDEX IF NOT EXISTS idx_email_memory_web_dev ON email_memory(is_web_dev_r
 CREATE TABLE files (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL, -- extracted text content for chatbot context
-    embedding VECTOR(1024), -- vector embedding for semantic search
+    filename VARCHAR(255) NOT NULL,
+    file_type VARCHAR(50),
+    total_chunks INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create file_chunks table for chunked file content
+CREATE TABLE file_chunks (
+    id SERIAL PRIMARY KEY,
+    file_id INTEGER REFERENCES files(id) ON DELETE CASCADE,
+    user_id VARCHAR(255) NOT NULL,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    embedding VECTOR(1024),
+    chunk_type VARCHAR(50), -- 'paragraph', 'function', 'class', etc.
+    token_count INTEGER,
+    start_line INTEGER,
+    end_line INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -141,7 +158,12 @@ CREATE TABLE google_calendar_tokens (
 
 -- Create indexes for files table
 CREATE INDEX IF NOT EXISTS idx_files_user_id ON files(user_id);
-CREATE INDEX IF NOT EXISTS idx_files_embedding ON files USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_files_filename ON files(filename);
+
+-- Create indexes for file_chunks table  
+CREATE INDEX IF NOT EXISTS idx_file_chunks_file_id ON file_chunks(file_id);
+CREATE INDEX IF NOT EXISTS idx_file_chunks_user_id ON file_chunks(user_id);
+CREATE INDEX IF NOT EXISTS idx_file_chunks_embedding ON file_chunks USING ivfflat (embedding vector_cosine_ops);
 
 -- Create indexes for Google Calendar tables
 CREATE INDEX IF NOT EXISTS idx_google_calendar_tokens_user_id ON google_calendar_tokens(user_id);
