@@ -511,7 +511,7 @@ router.post('/summarize', async (req, res) => {
     // eslint-disable-next-line no-console
     console.log(
       'summarize time',
-      performance.getEntriesByType('measure')[0].duration / 1000 + ' seconds',
+      (performance.getEntriesByType('measure')[0].duration / 1000).toFixed(3) + ' seconds',
     );
     if (!response.ok) {
       throw new Error(`Ollama API error: ${response.status}`);
