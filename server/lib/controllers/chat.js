@@ -152,11 +152,9 @@ ${documentsContext}
         // eslint-disable-next-line no-console
         console.log(`Processing image: ${imageFile.originalname}, size: ${imageFile.size} bytes`);
 
-        const axiosResponse = await axios({
-          method: 'POST',
-          url: `${process.env.OLLAMA_URL}/api/chat`,
-          headers: { 'Content-Type': 'application/json' },
-          data: {
+        const axiosResponse = await axios.post(
+          `${process.env.OLLAMA_URL}/api/chat`,
+          {
             model: 'granite3.2-vision:2b',
             messages: [
               {
@@ -172,10 +170,13 @@ ${documentsContext}
               top_p: 0.9,
             },
           },
-          signal: controller.signal,
-          timeout: 0,
-          responseType: 'stream',
-        });
+          {
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            timeout: 0,
+            responseType: 'stream',
+          },
+        );
 
         clearTimeout(timeoutId);
 
@@ -299,11 +300,9 @@ ${documentsContext}
         return; // Exit early for vision processing
       } else {
         // Use regular chat model for text only
-        response = await axios({
-          method: 'POST',
-          url: `${process.env.OLLAMA_URL}/api/chat`,
-          headers: { 'Content-Type': 'application/json' },
-          data: {
+        response = await axios.post(
+          `${process.env.OLLAMA_URL}/api/chat`,
+          {
             model: process.env.OLLAMA_MODEL,
             messages,
             keep_alive: '60m',
@@ -325,10 +324,13 @@ ${documentsContext}
             },
             stream: true,
           },
-          signal: controller.signal,
-          timeout: 0,
-          responseType: 'stream',
-        });
+          {
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            timeout: 0,
+            responseType: 'stream',
+          },
+        );
       }
 
       clearTimeout(timeoutId);
@@ -728,11 +730,9 @@ router.post('/summarize', async (req, res) => {
 
     let response;
     try {
-      response = await axios({
-        method: 'POST',
-        url: `${process.env.OLLAMA_URL}/api/chat`,
-        headers: { 'Content-Type': 'application/json' },
-        data: {
+      response = await axios.post(
+        `${process.env.OLLAMA_URL}/api/chat`,
+        {
           model: process.env.OLLAMA_MODEL,
           messages: [
             {
@@ -762,9 +762,12 @@ router.post('/summarize', async (req, res) => {
           },
           stream: false,
         },
-        signal: controller.signal,
-        timeout: 600000, // 10 minutes
-      });
+        {
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          timeout: 600000, // 10 minutes
+        },
+      );
     } finally {
       // Clear the timeout immediately after axios completes (success or failure)
       // eslint-disable-next-line no-console
