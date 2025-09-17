@@ -3,7 +3,6 @@ import request from 'supertest';
 import app from '../../lib/app.js';
 import UserService from '../../lib/services/UserService.js';
 import { jest, describe, beforeEach, afterAll, it, expect } from '@jest/globals';
-import axios from 'axios';
 import { EventEmitter } from 'events';
 
 // Mock Socket.IO
@@ -759,7 +758,7 @@ describe('chat routes', () => {
 
         // Verify all calls had correct parameters
         const calls = axiosModule.default.post.mock.calls;
-        calls.forEach((call, index) => {
+        calls.forEach((call) => {
           expect(call[0]).toBe(`${process.env.OLLAMA_URL}/api/chat`);
           expect(call[1]).toMatchObject({
             model: process.env.OLLAMA_MODEL,
