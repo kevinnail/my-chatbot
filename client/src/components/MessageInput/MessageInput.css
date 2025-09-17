@@ -99,6 +99,79 @@
   width: 85%;
 }
 
+.input-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.image-upload-button {
+  background: #666;
+  font-size: 0.77rem;
+  border-radius: 15px;
+  padding: 0.28rem 0.7rem;
+  color: #fff;
+  border: 1px solid #4f62cb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition:
+    background 0.25s,
+    transform 0.25s,
+    border 0.25s;
+}
+
+.image-upload-button:hover {
+  background: #4f62cb3e;
+  color: #fff;
+}
+
+.image-upload-button:active {
+  transform: scale(0.98);
+}
+
+.image-preview-container {
+  width: 70%;
+  margin-bottom: 1rem;
+}
+
+.image-preview {
+  position: relative;
+  display: inline-block;
+  border: 1px solid #4f62cb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #222;
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 200px;
+  display: block;
+}
+
+.remove-image-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.remove-image-button:hover {
+  background: rgba(255, 0, 0, 0.7);
+}
+
 @media (max-width: 1000px) {
   .tokens-in-prompt-display {
     font-size: 0.8rem;
@@ -116,6 +189,10 @@
   }
 
   .token-mode-send {
+    width: 100%;
+  }
+
+  .image-preview-container {
     width: 100%;
   }
 }

@@ -378,7 +378,7 @@ const ChatMessages = ({
 
       {loading && (
         <p className="loading-button" style={{ fontSize: '1rem' }}>
-          Loading your response...
+          Generating your response...
         </p>
       )}
     </div>

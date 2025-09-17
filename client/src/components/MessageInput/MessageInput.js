@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { sendPrompt } from '../../services/fetch-chat';
 import './MessageInput.css';
 
@@ -18,6 +18,9 @@ const MessageInput = ({
   refreshChatList,
 }) => {
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Auto-resize textarea based on content
   const handleTextareaChange = (e) => {
@@ -38,11 +41,32 @@ const MessageInput = ({
     }
   };
 
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSend = () => {
     setCallLLMStartTime(new Date());
     const prompt = {
       userId,
       input,
+      image: selectedImage,
       setLog,
       setInput,
       setLoading,
@@ -54,10 +78,24 @@ const MessageInput = ({
     };
 
     sendPrompt(prompt);
+
+    // Clear image after sending
+    handleRemoveImage();
   };
 
   return (
     <div className="message-input-container">
+      {imagePreview && (
+        <div className="image-preview-container">
+          <div className="image-preview">
+            <img src={imagePreview} alt="Selected" className="preview-image" />
+            <button className="remove-image-button" onClick={handleRemoveImage}>
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <textarea
         ref={textareaRef}
         className="message-input"
@@ -80,10 +118,18 @@ const MessageInput = ({
           // If Shift+Enter is pressed, allow default behavior (new line)
         }}
       />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageSelect}
+        style={{ display: 'none' }}
+      />
       {loading && (
         <div className="token-mode-send">
           <div className="token-mode-wrapper"></div>
-          <div className="tokens-in-prompt-display">Generating response...</div>
+          {/* <div className="tokens-in-prompt-display">Generating response...</div> */}
         </div>
       )}
       {!loading && (
@@ -91,19 +137,39 @@ const MessageInput = ({
           <div className="token-mode-wrapper">
             <div className="tokens-in-prompt-display">~{tokenCount} tokens in prompt</div>
           </div>
-          <button className="send-button" disabled={loading} onClick={handleSend}>
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              style={{ marginRight: '0.2em' }}
+          <div className="input-buttons">
+            <button
+              className="image-upload-button"
+              onClick={() => fileInputRef.current?.click()}
+              title="Upload image"
             >
-              <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white" />
-            </svg>
-            Send
-          </button>
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+                  fill="white"
+                />
+              </svg>
+            </button>
+            <button className="send-button" disabled={loading} onClick={handleSend}>
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ marginRight: '0.2em' }}
+              >
+                <path d="M3 20L21 12L3 4V10L17 12L3 14V20Z" fill="white" />
+              </svg>
+              Send
+            </button>
+          </div>
         </div>
       )}
     </div>

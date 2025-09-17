@@ -166,16 +166,18 @@ export function getMemoryStats(memories) {
     return ageHours <= MEMORY_CONFIG.RECENCY_BIAS_HOURS;
   }).length;
 
+  let timeSpan = null;
+  if (memories.length > 0) {
+    timeSpan = {
+      oldest: memories[0].timestamp,
+      newest: memories[memories.length - 1].timestamp,
+    };
+  }
+
   return {
     totalMessages: memories.length,
     recentMessages: recentCount,
     oldMessages: memories.length - recentCount,
-    timeSpan:
-      memories.length > 0
-        ? {
-            oldest: memories[0].timestamp,
-            newest: memories[memories.length - 1].timestamp,
-          }
-        : null,
+    timeSpan,
   };
 }

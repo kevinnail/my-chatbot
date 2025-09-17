@@ -8,7 +8,7 @@ const FolderSelector = ({ onFolderProcess, disabled }) => {
 
   const handleFolderSelect = async (e) => {
     if (!e.target.files || e.target.files.length === 0) {
-      console.log('No files selected');
+      console.info('No files selected');
       return;
     }
 

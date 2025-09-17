@@ -12,6 +12,11 @@ export class ChatManager {
     if (!this.socket) {
       if (window.isLocal) {
         this.socket = io('http://localhost:4000');
+        this.socket.on('connect', () => {});
+        this.socket.on('disconnect', () => {});
+        this.socket.on('connect_error', (error) => {
+          console.error('WebSocket connection error:', error);
+        });
       } else {
         // Mock socket for demo
         this.socket = {
@@ -50,24 +55,32 @@ export class ChatManager {
       chunk: (data) => {
         if (data.messageId === messageId) {
           onChunk(data);
+        } else {
+          console.info('messageId mismatch, ignoring chunk');
         }
       },
       complete: (data) => {
         if (data.messageId === messageId) {
           onComplete(data);
           this.cleanupListeners(messageId);
+        } else {
+          console.info('messageId mismatch, ignoring complete');
         }
       },
       error: (data) => {
         if (data.messageId === messageId) {
           onError(data);
           this.cleanupListeners(messageId);
+        } else {
+          console.info('messageId mismatch, ignoring error');
         }
       },
       stopped: (data) => {
         if (data.messageId === messageId) {
           onStopped(data);
           this.cleanupListeners(messageId);
+        } else {
+          console.info('messageId mismatch, ignoring stopped');
         }
       },
     };
@@ -80,11 +93,13 @@ export class ChatManager {
     socket.on('chat-complete', handlers.complete);
     socket.on('chat-error', handlers.error);
     socket.on('chat-stopped', handlers.stopped);
+    console.info('WebSocket event listeners set up successfully');
   }
 
   async sendMessage({
     userId,
     input,
+    image,
     coachOrChat,
     chatId,
     onUserMessage,
@@ -196,6 +211,7 @@ export class ChatManager {
         coachOrChat,
         chatId,
         messageId,
+        image,
       });
 
       if (data.stopped) {
