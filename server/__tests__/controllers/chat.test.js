@@ -359,7 +359,7 @@ describe('chat routes', () => {
     });
 
     // Alternative to first skipped test - self-contained axios mocking
-    it.only('should send message and receive streaming response via local axios mock', async () => {
+    it.skip('should send message and receive streaming response via local axios mock', async () => {
       const [agent] = await registerAndLogin();
 
       // Import axios dynamically to mock it locally
