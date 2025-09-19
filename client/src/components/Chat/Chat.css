@@ -13,18 +13,17 @@
   display: flex;
   flex-direction: column;
   width: 90%;
-  top: 100px;
 }
 
 .chat-header-container {
   position: fixed;
-  /* top: 45px; */
+  top: 60px;
   left: 0;
   right: 0;
-  z-index: 800;
+  z-index: 999;
   background: black;
   border-bottom: 1px solid #444;
-  /* padding-top: 40px; */
+  padding-top: 8px;
 }
 .chat-header-content {
   margin: 8px auto;
@@ -94,9 +93,9 @@
 }
 
 .coding-button {
-  font-size: 9;
+  font-size: 0.9rem;
   border-radius: 8px;
-  padding: 5px;
+  padding: 8px 12px;
   background: none;
   font-weight: bold;
   letter-spacing: 0.08em;
@@ -104,15 +103,20 @@
   transition:
     background 0.3s,
     transform 0.15s;
-  display: inline;
+  display: inline-flex;
   align-items: center;
   gap: 0.7em;
+  border: 1px solid transparent;
+}
+
+.coding-button:hover {
+  background: rgba(99, 156, 255, 0.1);
 }
 
 .job-search-button {
-  font-size: 9;
+  font-size: 0.9rem;
   border-radius: 8px;
-  padding: 5px;
+  padding: 8px 12px;
   background: none;
   font-weight: bold;
   letter-spacing: 0.08em;
@@ -120,9 +124,14 @@
   transition:
     background 0.3s,
     transform 0.15s;
-  display: inline;
+  display: inline-flex;
   align-items: center;
   gap: 0.7em;
+  border: 1px solid transparent;
+}
+
+.job-search-button:hover {
+  background: rgba(99, 156, 255, 0.1);
 }
 
 .back-to-chats-button {

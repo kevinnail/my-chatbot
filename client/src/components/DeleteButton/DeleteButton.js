@@ -37,14 +37,15 @@ export default function DeleteMessagesButton({ userId, loading, setMobileMenuOpe
         disabled={loading}
         style={{
           fontSize: '.7em',
-          padding: '0.14em 0.49em',
+          padding: '.5rem 1rem',
           borderRadius: '6px',
-          background: mouseDown ? 'darkred' : hover ? 'red' : 'black',
+          background: mouseDown ? 'darkred' : hover ? 'red' : '#222',
           fontWeight: 'bold',
           color: '#fff',
           cursor: 'pointer',
           zIndex: 2,
           transition: 'background 0.1s',
+          width: '100%',
         }}
         onClick={handleDeleteClick}
         onMouseEnter={() => setHover(true)}

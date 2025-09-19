@@ -3,7 +3,6 @@ import { useNavigate, useParams, useMatch } from 'react-router-dom';
 import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
-import FolderSelector from '../FolderSelector/FolderSelector';
 import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
@@ -208,10 +207,6 @@ const Chat = ({ userId }) => {
     });
   };
 
-  const handleFolderProcess = async (files) => {
-    return await processFolder(files, userId);
-  };
-
   const messageLabel = 'messages';
 
   return (
@@ -262,10 +257,6 @@ const Chat = ({ userId }) => {
           >
             Job Search
           </button>
-          <FolderSelector
-            onFolderProcess={handleFolderProcess}
-            disabled={loading || isAnyLoading}
-          />
         </div>
       </div>
 
