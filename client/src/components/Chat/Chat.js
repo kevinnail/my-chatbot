@@ -8,7 +8,7 @@ import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import { useLoading } from '../../contexts/LoadingContext.js';
-import { processFolder } from '../../services/fetch-utils';
+import { processFolder, fetchContextPercent } from '../../services/fetch-utils';
 
 const Chat = ({ userId }) => {
   const navigate = useNavigate();
@@ -34,20 +34,6 @@ const Chat = ({ userId }) => {
   const [coachOrChat, setCoachOrChat] = useState('chat');
 
   const [initialChatLoad, setInitialChatLoad] = useState(false);
-
-  // Fetch context percentage from backend
-  const fetchContextPercent = async (chatId, userId, mode) => {
-    try {
-      const response = await fetch(`/api/chatbot/context/${userId}/${chatId}?mode=${mode}`);
-      if (response.ok) {
-        const data = await response.json();
-        return data.contextPercent || 0;
-      }
-    } catch (error) {
-      console.error('Error fetching context percentage:', error);
-    }
-    return 0;
-  };
 
   useEffect(() => {
     if (urlChatId) {
