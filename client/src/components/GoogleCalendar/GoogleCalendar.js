@@ -93,7 +93,7 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
     }
   };
 
-  const connectCalendar = async () => {
+  const handleConnectCalendar = async () => {
     if (!window.isLocal) {
       // Fake OAuth popup for netlify deploy
       setLoading(true);
@@ -245,7 +245,7 @@ const GoogleCalendar = ({ userId, onConnectionChange }) => {
       {!isConnected ? (
         <div className="connect-section">
           <button
-            onClick={connectCalendar}
+            onClick={handleConnectCalendar}
             disabled={loading}
             className="connect-button"
             style={{
