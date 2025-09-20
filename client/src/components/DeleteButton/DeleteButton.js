@@ -31,7 +31,7 @@ export default function DeleteMessagesButton({ userId, loading, setMobileMenuOpe
 
   return (
     <>
-      <button disabled={loading} className="menu-item logout-item" onClick={handleDeleteClick}>
+      <button disabled={loading} className="menu-item delete-item" onClick={handleDeleteClick}>
         Delete ALL Messages
       </button>
 

@@ -80,7 +80,7 @@ const Menu = ({ userId, isOnChatPage }) => {
       {isMenuOpen && (
         <div className="menu-dropdown">
           <div className="menu-header">
-            <span className="menu-title">Navigation</span>
+            <span className="menu-title">{userId}</span>
             <button className="menu-close" onClick={() => setIsMenuOpen(false)}>
               ×
             </button>
@@ -123,16 +123,16 @@ const Menu = ({ userId, isOnChatPage }) => {
                 />
               </div>
             )}
-            {user && window.isLocal && (
-              <button
-                onClick={handleLogout}
-                className="menu-item logout-item"
-                disabled={isAnyLoading}
-              >
-                Logout
-              </button>
-            )}
           </div>
+          {user && window.isLocal && (
+            <button
+              onClick={handleLogout}
+              className="menu-item logout-item"
+              disabled={isAnyLoading}
+            >
+              Logout
+            </button>
+          )}
         </div>
       )}
 

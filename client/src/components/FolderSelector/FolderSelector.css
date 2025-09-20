@@ -28,11 +28,6 @@
   font-weight: normal;
 }
 
-.folder-header-button:hover {
-  background: #639cff;
-  color: white;
-}
-
 .process-header-button {
   background: #28a745;
   border: 1px solid #28a745;
