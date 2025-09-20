@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import './GmailMCP.css';
 import { useLoading } from '../../contexts/LoadingContext';
 import GoogleCalendar from '../GoogleCalendar/GoogleCalendar.js';
-import { checkCalendarConnection, checkGmailStatus, syncGmail } from '../../services/fetch-utils';
+import { checkGmailStatus, syncGmail, checkCalendarStatus } from '../../services/fetch-utils';
 
 const GmailMCP = ({ userId }) => {
   const [emails, setEmails] = useState([]);
@@ -100,7 +100,7 @@ const GmailMCP = ({ userId }) => {
       return;
     }
     try {
-      const data = await checkCalendarConnection(userId);
+      const data = await checkCalendarStatus(userId);
       setCalendarConnected(data.connected);
     } catch (err) {
       console.error('Error checking Calendar connection:', err);
