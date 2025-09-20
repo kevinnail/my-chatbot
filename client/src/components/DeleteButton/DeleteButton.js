@@ -4,8 +4,6 @@ import { useChatContext } from '../../contexts/ChatContext';
 import ConfirmationDialog from '../ConfirmationDialog/ConfirmationDialog';
 
 export default function DeleteMessagesButton({ userId, loading, setMobileMenuOpen }) {
-  const [hover, setHover] = useState(false);
-  const [mouseDown, setMouseDown] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { setContextPercent, setLog } = useChatContext();
   const { setChats } = useChatContext();
@@ -33,29 +31,7 @@ export default function DeleteMessagesButton({ userId, loading, setMobileMenuOpe
 
   return (
     <>
-      <button
-        disabled={loading}
-        style={{
-          fontSize: '.7em',
-          padding: '.5rem 1rem',
-          borderRadius: '6px',
-          background: mouseDown ? 'darkred' : hover ? 'red' : '#222',
-          fontWeight: 'bold',
-          color: '#fff',
-          cursor: 'pointer',
-          zIndex: 2,
-          transition: 'background 0.1s',
-          width: '100%',
-        }}
-        onClick={handleDeleteClick}
-        onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => {
-          setHover(false);
-          setMouseDown(false);
-        }}
-        onMouseDown={() => setMouseDown(true)}
-        onMouseUp={() => setMouseDown(false)}
-      >
+      <button disabled={loading} className="menu-item logout-item" onClick={handleDeleteClick}>
         Delete ALL Messages
       </button>
 
