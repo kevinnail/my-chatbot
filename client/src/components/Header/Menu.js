@@ -108,7 +108,6 @@ const Menu = ({ userId, isOnChatPage }) => {
                 disabled={isAnyLoading}
                 compact={true}
               />
-              <div className="menu-item">File Upload</div>
             </div>
           </div>
 
