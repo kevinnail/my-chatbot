@@ -48,9 +48,10 @@ const FolderSelector = ({ onFolderProcess, disabled, compact = false }) => {
         style={{ display: 'none' }}
       />
       <label htmlFor="folder-input" className={`folder-header-button ${compact ? 'compact' : ''}`}>
-        {processing ? '⏳' : '📁'}
+        {processing ? '⏳' : 'File Upload'}
         {!compact && <span className="folder-text">Upload Files</span>}
       </label>
+      {/* <div className="menu-item">File Upload</div> */}
     </>
   );
 };
