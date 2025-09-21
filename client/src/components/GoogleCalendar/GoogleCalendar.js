@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import './GoogleCalendar.css';
 import { checkCalendarStatus, connectCalendar } from '../../services/fetch-utils';
+import { useUser } from '../../hooks/useUser.js';
 
-const GoogleCalendar = ({ userId, onConnectionChange }) => {
+const GoogleCalendar = ({ onConnectionChange }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [connectionError, setConnectionError] = useState(null);
   const [oauthPopup, setOauthPopup] = useState(null);
+  const { userId } = useUser();
 
   // Check if Google Calendar is connected on component mount
   useEffect(() => {

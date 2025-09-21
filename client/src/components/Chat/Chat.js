@@ -7,9 +7,11 @@ import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import { useLoading } from '../../contexts/LoadingContext.js';
-import { processFolder, fetchContextPercent } from '../../services/fetch-utils';
+import { fetchContextPercent } from '../../services/fetch-utils';
+import { useUser } from '../../hooks/useUser.js';
 
-const Chat = ({ userId }) => {
+const Chat = () => {
+  const { userId } = useUser();
   const navigate = useNavigate();
   const { chatId: urlChatId } = useParams();
   const isNewChatPage = useMatch('/chat');

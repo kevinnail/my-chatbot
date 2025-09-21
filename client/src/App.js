@@ -16,10 +16,6 @@ window.isLocal =
   window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 export default function App() {
-  const googleId = process.env.REACT_APP_GOOGLE_USER_ID;
-  // Use a fallback userId for demo mode when the environment variable is not set
-  const [userId, setUserId] = useState(googleId || 'demo-user');
-
   return (
     <UserProvider>
       <LoadingProvider>
@@ -33,14 +29,14 @@ export default function App() {
                 background: 'black',
               }}
             >
-              <Header userId={userId} setUserId={setUserId} />
+              <Header />
               <Routes>
-                <Route path="/auth/:type" element={<Auth userId={userId} />} />
+                <Route path="/auth/:type" element={<Auth />} />
                 <Route
                   path="/"
                   element={
                     <ProtectedRoute>
-                      <ChatList userId={userId} />
+                      <ChatList />
                     </ProtectedRoute>
                   }
                 />
@@ -48,7 +44,7 @@ export default function App() {
                   path="/chat"
                   element={
                     <ProtectedRoute>
-                      <Chat userId={userId} />
+                      <Chat />
                     </ProtectedRoute>
                   }
                 />
@@ -56,7 +52,7 @@ export default function App() {
                   path="/chat/:chatId"
                   element={
                     <ProtectedRoute>
-                      <Chat userId={userId} />
+                      <Chat />
                     </ProtectedRoute>
                   }
                 />
@@ -64,7 +60,7 @@ export default function App() {
                   path="/gmail-mcp"
                   element={
                     <ProtectedRoute>
-                      <GmailMCP userId={userId} />
+                      <GmailMCP />
                     </ProtectedRoute>
                   }
                 />

@@ -156,8 +156,8 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
         eventArgs.description ||
         `Created from email: ${emailSubject}\n\nOriginal email from: ${emailFrom}`,
       location: eventArgs.location,
-      start: { dateTime: eventArgs.startDateTime, timeZone: 'America/Los_Angeles' },
-      end: { dateTime: eventArgs.endDateTime, timeZone: 'America/Los_Angeles' },
+      start: { dateTime: startTime.toISOString(), timeZone: 'America/Los_Angeles' },
+      end: { dateTime: endTime.toISOString(), timeZone: 'America/Los_Angeles' },
       attendees: eventArgs.attendees?.map((email) => ({ email })) || [],
     };
 

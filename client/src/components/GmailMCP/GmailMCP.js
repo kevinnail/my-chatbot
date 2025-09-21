@@ -4,8 +4,10 @@ import './GmailMCP.css';
 import { useLoading } from '../../contexts/LoadingContext';
 import GoogleCalendar from '../GoogleCalendar/GoogleCalendar.js';
 import { checkGmailStatus, syncGmail, checkCalendarStatus } from '../../services/fetch-utils';
+import { useUser } from '../../hooks/useUser.js';
 
-const GmailMCP = ({ userId }) => {
+const GmailMCP = () => {
+  const { userId } = useUser();
   const [emails, setEmails] = useState([]);
   const { gmailLoading, setGmailLoading } = useLoading();
   const loading = gmailLoading;
