@@ -3,7 +3,6 @@ import GoogleCalendar from '../models/GoogleCalendar.js';
 
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
 
-// Helper function to create calendar event
 export async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
   // Clean and validate event arguments
   try {
@@ -61,44 +60,21 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
       console.log(' Final attendees array:', attendees);
     }
 
-    // Validate and fix dates
-    const currentYear = new Date().getFullYear();
-    const currentDate = new Date();
-
-    let startDateTime = cleanArgs.startDateTime;
-    let endDateTime = cleanArgs.endDateTime;
-
-    // Fix year if it's in the past (assume next year)
-    if (startDateTime) {
-      const startDate = new Date(startDateTime);
-      if (startDate < currentDate && startDate.getFullYear() === currentYear) {
-        startDate.setFullYear(currentYear + 1);
-        startDateTime = startDate.toISOString();
-        // eslint-disable-next-line no-console
-        console.log(' Fixed start date to next year:', startDateTime);
-      }
+    // Validate dates - only check for required fields, don't modify them
+    if (!cleanArgs.startDateTime) {
+      console.error('❌ Cannot create event without start time');
+      return;
     }
 
-    // Fix empty or invalid end date
-    if (!endDateTime || endDateTime === '' || endDateTime === 'null') {
-      if (startDateTime) {
-        const start = new Date(startDateTime);
-        const end = new Date(start.getTime() + 60 * 60 * 1000); // Add 1 hour
-        endDateTime = end.toISOString();
-        // eslint-disable-next-line no-console
-        console.log(' Generated end date (1 hour after start):', endDateTime);
-      } else {
-        console.error('❌ Cannot create event without valid start/end times');
-        return;
-      }
+    if (!cleanArgs.endDateTime) {
+      console.error('❌ Cannot create event without end time');
+      return;
     }
 
-    // Update the cleaned args
+    // Update the cleaned args with attendees only
     eventArgs = {
       ...cleanArgs,
       attendees,
-      startDateTime,
-      endDateTime,
     };
 
     // eslint-disable-next-line no-console
@@ -113,7 +89,9 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
     if (!hasValidTokens) {
       // eslint-disable-next-line no-console
       console.log('User does not have valid Google Calendar tokens, skipping event creation');
-      return;
+      throw new Error(
+        'User does not have valid Google Calendar tokens. Please reconnect your Google Calendar account.',
+      );
     }
 
     const oauth2Client = new google.auth.OAuth2(
@@ -559,6 +537,15 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
             }
           } catch (error) {
             console.error('❌ Error invoking tool call:', error);
+
+            // Check if this is a token expiration error
+            if (
+              error.message &&
+              error.message.includes('User does not have valid Google Calendar tokens')
+            ) {
+              console.info('🔑 Google Calendar token expired - this will be handled by the UI');
+              // Don't throw here, just log and continue - the UI will handle the token refresh
+            }
           }
         }
       }
