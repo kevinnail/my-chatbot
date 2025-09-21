@@ -14,5 +14,5 @@ export function useUser() {
     setLoading(false);
   };
 
-  return { user, setUser, error, setError, logInUser, loading, userId, setUserId };
+  return { user, setUser, error, setError, logInUser, loading, setLoading, userId, setUserId };
 }

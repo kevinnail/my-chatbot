@@ -15,7 +15,7 @@ const Menu = ({ isOnChatPage }) => {
   const isGmailPage = useMatch('/gmail-mcp');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isAnyLoading } = useLoading();
-  const { user, setUser, userId, setUserId } = useUser();
+  const { user, setUser, userId, setUserId, setLoading } = useUser();
   const navigate = useNavigate();
 
   const handleChat = (e) => {
@@ -40,15 +40,17 @@ const Menu = ({ isOnChatPage }) => {
 
   const handleLogout = async () => {
     try {
+      setIsMenuOpen(false);
+      setLoading(true);
       await signOut();
       setUser(null);
       setUserId(null);
-      setLoading(true);
       navigate('/auth/sign-in');
     } catch (error) {
       console.error('Logout failed:', error);
+    } finally {
+      setLoading(false);
     }
-    setIsMenuOpen(false);
   };
 
   const handleFolderProcess = async (files) => {

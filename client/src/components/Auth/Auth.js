@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { NavLink, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../../hooks/useUser.js';
-
+import { useLoading } from '../../contexts/LoadingContext.js';
+import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import './Auth.css';
 
 export default function Auth() {
@@ -9,9 +10,11 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [isSignIn, setIsSignIn] = useState(true);
   const { user, logInUser } = useUser();
+  const { authLoading } = useLoading();
   const { type } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [loading, setLoading] = useState(false);
 
   if (!window.isLocal && user.id === 'demo-user' && user.email === 'demo@example.com') {
     navigate('/');
@@ -19,14 +22,25 @@ export default function Auth() {
 
   const submitAuth = async () => {
     try {
+      setLoading(true);
       await logInUser(email, password, type);
       // Redirect to the page they were trying to access, or home
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="auth-container">
+        <ChatLoadingInline props="authentication" />
+      </div>
+    );
+  }
 
   return (
     <div className="auth-container">
@@ -46,6 +60,7 @@ export default function Auth() {
           placeholder="email@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          disabled={authLoading}
         />
 
         <input
@@ -54,8 +69,11 @@ export default function Auth() {
           placeholder="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          disabled={authLoading}
         />
-        <button onClick={submitAuth}>{isSignIn ? 'Sign In' : 'Sign Up'}</button>
+        <button onClick={submitAuth} disabled={authLoading}>
+          {isSignIn ? 'Sign In' : 'Sign Up'}
+        </button>
       </div>
     </div>
   );
