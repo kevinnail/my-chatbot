@@ -48,6 +48,52 @@ router.post('/process-folder', upload.array('files'), async (req, res) => {
     for (const file of files) {
       console.info(`Processing file: ${file.originalname}`);
 
+      // Skip binary/problematic file types
+      const skipExtensions = [
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.gif',
+        '.bmp',
+        '.ico',
+        '.svg',
+        '.webp',
+        '.mp4',
+        '.avi',
+        '.mov',
+        '.wmv',
+        '.flv',
+        '.webm',
+        '.mp3',
+        '.wav',
+        '.flac',
+        '.aac',
+        '.ogg',
+        '.zip',
+        '.rar',
+        '.7z',
+        '.tar',
+        '.gz',
+        '.exe',
+        '.dll',
+        '.so',
+        '.dylib',
+        '.bin',
+        '.pdf',
+        '.doc',
+        '.docx',
+        '.xls',
+        '.xlsx',
+        '.ppt',
+        '.pptx',
+      ];
+
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (skipExtensions.includes(ext)) {
+        console.info(`⚠️ Skipping binary file: ${file.originalname}`);
+        continue;
+      }
+
       // Convert buffer to string
       const content = file.buffer.toString('utf-8');
       const fileType = getFileType(file.originalname);
