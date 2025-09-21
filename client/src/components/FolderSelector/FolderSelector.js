@@ -38,17 +38,24 @@ const FolderSelector = ({ onFolderProcess, disabled, compact = false }) => {
 
   return (
     <>
+      {' '}
       <input
         type="file"
         webkitdirectory=""
         multiple
         onChange={handleFolderSelect}
         disabled={disabled || processing}
+        // disabled={true}
+
         id="folder-input"
         style={{ display: 'none' }}
       />
-      <label htmlFor="folder-input" className={`folder-header-button ${compact ? 'compact' : ''}`}>
-        {processing ? '⏳' : 'File Upload'}
+      <label
+        style={{ cursor: processing ? 'wait' : 'pointer' }}
+        htmlFor="folder-input"
+        className={`folder-header-button ${compact ? 'compact' : ''}`}
+      >
+        {processing ? 'Uploading...⏳' : 'File Upload 📂'}
         {!compact && <span className="folder-text">Upload Files</span>}
       </label>
     </>
