@@ -128,16 +128,32 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
       console.error('Error checking conflicts:', err);
     }
 
+    // Check if this should be an all-day event (no time specified)
+    const isAllDay = !eventArgs.startDateTime.includes('T') && !eventArgs.endDateTime.includes('T');
+
     const event = {
       summary: eventArgs.title,
       description:
         eventArgs.description ||
         `Created from email: ${emailSubject}\n\nOriginal email from: ${emailFrom}`,
       location: eventArgs.location,
-      start: { dateTime: startTime.toISOString(), timeZone: 'America/Los_Angeles' },
-      end: { dateTime: endTime.toISOString(), timeZone: 'America/Los_Angeles' },
       attendees: eventArgs.attendees?.map((email) => ({ email })) || [],
     };
+
+    if (isAllDay) {
+      // All-day event: use date format, end date is next day
+      const startDate = eventArgs.startDateTime.split('T')[0]; // Get YYYY-MM-DD part
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      event.start = { date: startDate };
+      event.end = { date: endDateStr };
+    } else {
+      // Regular event with time
+      event.start = { dateTime: startTime.toISOString(), timeZone: 'America/Los_Angeles' };
+      event.end = { dateTime: endTime.toISOString(), timeZone: 'America/Los_Angeles' };
+    }
 
     const res = await calendar.events.insert({ calendarId: 'primary', resource: event });
     // eslint-disable-next-line no-console
@@ -352,12 +368,15 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
 
 CALENDAR EVENTS: Only create calendar events for emails with:
 1. Clear appointment keywords (appointment, meeting, interview, doctor, dentist, call scheduled)
-2. Specific date AND time mentioned (not copyright dates)
+2. Specific date mentioned (time is optional)
 3. Actual scheduling context (not newsletters/job listings)
 
 NEVER create events for: job newsletters, marketing emails, general announcements, or notifications.
 
-When creating calendar events, use current year ${currentYear}. If a date appears to be in the past, assume next year.
+When creating calendar events:
+- If date AND time are specified: create regular timed event
+- If only date is specified: create all-day event (use date format like "2025-09-26" for startDateTime and "2025-09-27" for endDateTime)
+- Use current year ${currentYear}. If a date appears to be in the past, assume next year.
 
 Focus on web development emails: jobs, interviews, tech events, learning platforms, tools, developer community content.`;
 
