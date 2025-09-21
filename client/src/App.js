@@ -18,7 +18,7 @@ window.isLocal =
 export default function App() {
   const googleId = process.env.REACT_APP_GOOGLE_USER_ID;
   // Use a fallback userId for demo mode when the environment variable is not set
-  const [userId] = useState(googleId || 'demo-user');
+  const [userId, setUserId] = useState(googleId || 'demo-user');
 
   return (
     <UserProvider>
@@ -33,7 +33,7 @@ export default function App() {
                 background: 'black',
               }}
             >
-              <Header userId={userId} />
+              <Header userId={userId} setUserId={setUserId} />
               <Routes>
                 <Route path="/auth/:type" element={<Auth userId={userId} />} />
                 <Route

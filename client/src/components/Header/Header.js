@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { useMatch } from 'react-router-dom';
 import Menu from './Menu';
 import './Header.css';
+import { UserContext } from '../../contexts/UserContext.js';
 
-const Header = ({ userId }) => {
+const Header = ({ userId, setUserId }) => {
+  const { user } = useContext(UserContext);
   const isHomePage = useMatch('/');
   const isChatPage = useMatch('/chat');
   const isExistingChat = useMatch('/chat/:chatId');
@@ -24,7 +26,7 @@ const Header = ({ userId }) => {
         </span>
       </div>
 
-      <Menu userId={userId} isOnChatPage={isOnChatPage} />
+      {user && <Menu userId={userId} isOnChatPage={isOnChatPage} setUserId={setUserId} />}
     </header>
   );
 };

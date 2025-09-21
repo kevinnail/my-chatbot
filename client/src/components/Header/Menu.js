@@ -8,7 +8,7 @@ import DeleteMessagesButton from '../DeleteButton/DeleteButton.js';
 import { processFolder } from '../../services/fetch-utils';
 import './Menu.css';
 
-const Menu = ({ userId, isOnChatPage }) => {
+const Menu = ({ userId, setUserId, isOnChatPage }) => {
   const isHomePage = useMatch('/');
   const isChatPage = useMatch('/chat');
   const isExistingChat = useMatch('/chat/:chatId');
@@ -42,6 +42,7 @@ const Menu = ({ userId, isOnChatPage }) => {
     try {
       await signOut();
       setUser(null);
+      setUserId(null);
       navigate('/auth/sign-in');
     } catch (error) {
       console.error('Logout failed:', error);
