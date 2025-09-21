@@ -205,7 +205,7 @@ const GmailMCP = () => {
 
       // Check if this is a token expiration error
       if (data.error && data.error.includes('Google Calendar tokens')) {
-        console.log('🔑 Calendar token expiration detected during sync');
+        console.log('Calendar token expiration detected during sync');
         setCalendarConnected(false);
         setError(
           'Google Calendar token has expired. Please reconnect your calendar account to continue creating events.',
@@ -236,7 +236,7 @@ const GmailMCP = () => {
         const data = await checkCalendarStatus(userId);
         if (!data.connected && calendarConnected) {
           // Token has expired, update UI state
-          console.log('🔑 Google Calendar token expired - updating GmailMCP state');
+          console.log('Google Calendar token expired - updating GmailMCP state');
           setCalendarConnected(false);
         }
       } catch (err) {

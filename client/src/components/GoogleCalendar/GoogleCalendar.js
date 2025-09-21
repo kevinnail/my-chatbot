@@ -25,7 +25,7 @@ const GoogleCalendar = ({ onConnectionChange }) => {
         const data = await checkCalendarStatus(userId);
         if (!data.connected && isConnected) {
           // Token has expired, update UI state
-          console.log('🔑 Google Calendar token expired - updating UI state');
+          console.log('Google Calendar token expired - updating UI state');
           setIsConnected(false);
           setConnectionError('Google Calendar token has expired. Please reconnect.');
           if (onConnectionChange) {

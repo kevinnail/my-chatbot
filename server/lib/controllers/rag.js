@@ -246,7 +246,7 @@ export async function retrieveRelevantDocuments(userId, query, limit = 5, tokenB
     // If no good semantic matches, try simple keyword matching as fallback
     if (selectedChunks.length === 0) {
       // eslint-disable-next-line no-console
-      console.log('🔄 No semantic matches found, trying keyword fallback...');
+      console.log('No semantic matches found, trying keyword fallback...');
       const keywordResult = await RAG.getKeywordChunks({ userId, query, limit });
 
       const keywordChunks = keywordResult.map((row) => ({
@@ -271,7 +271,7 @@ export async function retrieveRelevantDocuments(userId, query, limit = 5, tokenB
 
     // eslint-disable-next-line no-console
     console.log(
-      `📊 RAG retrieval for "${query}": ${selectedChunks.length} chunks, ${usedTokens}/${tokenBudget} tokens`,
+      ` RAG retrieval for "${query}": ${selectedChunks.length} chunks, ${usedTokens}/${tokenBudget} tokens`,
       selectedChunks.map(
         (chunk) =>
           `${chunk.similarity.toFixed(3)} (${chunk.filename}:${chunk.chunkType}): "${chunk.content.substring(0, 25)}..."`,

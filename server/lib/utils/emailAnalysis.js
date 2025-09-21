@@ -78,7 +78,7 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
     };
 
     // eslint-disable-next-line no-console
-    console.log('🗓️ Cleaned event args:', eventArgs);
+    console.log('Cleaned event args:', eventArgs);
   } catch (cleanupError) {
     console.error('❌ Error cleaning event args:', cleanupError);
     return;

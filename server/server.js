@@ -37,7 +37,7 @@ io.on('connection', (socket) => {
   socket.on('join-chat', (userId) => {
     socket.join(`chat-${userId}`);
     // eslint-disable-next-line no-console
-    console.log(`💬 Client joined chat for user ${userId}`);
+    console.log(`Client joined chat for user ${userId}`);
   });
 
   socket.on('disconnect', () => {
