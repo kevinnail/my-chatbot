@@ -8,14 +8,14 @@ import DeleteMessagesButton from '../DeleteButton/DeleteButton.js';
 import { processFolder } from '../../services/fetch-utils';
 import './Menu.css';
 
-const Menu = ({ userId, setUserId, isOnChatPage }) => {
+const Menu = ({ isOnChatPage }) => {
   const isHomePage = useMatch('/');
   const isChatPage = useMatch('/chat');
   const isExistingChat = useMatch('/chat/:chatId');
   const isGmailPage = useMatch('/gmail-mcp');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { isAnyLoading } = useLoading();
-  const { user, setUser } = useUser();
+  const { user, setUser, userId, setUserId, setLoading } = useUser();
   const navigate = useNavigate();
 
   const handleChat = (e) => {
@@ -40,14 +40,17 @@ const Menu = ({ userId, setUserId, isOnChatPage }) => {
 
   const handleLogout = async () => {
     try {
+      setIsMenuOpen(false);
+      setLoading(true);
       await signOut();
       setUser(null);
       setUserId(null);
       navigate('/auth/sign-in');
     } catch (error) {
       console.error('Logout failed:', error);
+    } finally {
+      setLoading(false);
     }
-    setIsMenuOpen(false);
   };
 
   const handleFolderProcess = async (files) => {

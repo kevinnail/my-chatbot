@@ -27,19 +27,17 @@ const UserProvider = ({ children }) => {
       }
 
       try {
-        console.log('setting user');
         const user = await getUser();
-        console.log('fetched user: ', user);
         // Only set user if we get valid user data from the server
         if (user && user.id && user.email) {
           setUser(user);
-          console.log('googleId', googleId);
           setUserId(googleId);
         } else {
           setUser(null);
         }
         setLoading(false);
       } catch (error) {
+        console.log('Error in fetchUser:', error);
         setError(error);
         setUser(null);
         setLoading(false);
@@ -49,6 +47,7 @@ const UserProvider = ({ children }) => {
         }
       }
     };
+
     fetchUser();
   }, []);
 
