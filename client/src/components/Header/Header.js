@@ -5,7 +5,7 @@ import './Header.css';
 import { useUser } from '../../hooks/useUser.js';
 
 const Header = () => {
-  const { user, userId, setUserId } = useUser();
+  const { user } = useUser();
   const isHomePage = useMatch('/');
   const isChatPage = useMatch('/chat');
   const isExistingChat = useMatch('/chat/:chatId');
@@ -26,7 +26,7 @@ const Header = () => {
         </span>
       </div>
 
-      {user && <Menu userId={userId} isOnChatPage={isOnChatPage} setUserId={setUserId} />}
+      {user && <Menu isOnChatPage={isOnChatPage} />}
     </header>
   );
 };
