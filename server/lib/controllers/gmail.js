@@ -232,7 +232,7 @@ router.post('/sync', authenticate, async (req, res) => {
 
         // eslint-disable-next-line no-console
         console.log(
-          `🤖 Background analysis starting for ${emailsNeedingAnalysis.length} emails from preliminary results`,
+          `Background analysis starting for ${emailsNeedingAnalysis.length} emails from preliminary results`,
         );
 
         // Run LLM analysis on emails shown to user that need analysis
