@@ -19,7 +19,23 @@ export async function processFolder(folderPath, options = {}) {
       '.html',
     ],
     maxDepth = 10,
-    ignore = ['node_modules', '.git', 'dist', 'build', '.next'],
+    ignore = [
+      'node_modules',
+      '.git',
+      'dist',
+      'build',
+      '.next',
+      '.env',
+      '.env.local',
+      '.env.development',
+      '.env.test',
+      '.env.production',
+      'coverage',
+      '.DS_Store',
+      'logs',
+      'tmp',
+      'temp',
+    ],
   } = options;
 
   const files = [];
