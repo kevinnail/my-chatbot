@@ -71,7 +71,13 @@ export default function Auth() {
         </NavLink>
       </div>
 
-      <div className="email-container">
+      <form
+        className="email-container"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submitAuth();
+        }}
+      >
         <input
           className="input"
           type="email"
@@ -79,6 +85,7 @@ export default function Auth() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={authLoading}
+          required
         />
 
         <input
@@ -88,11 +95,12 @@ export default function Auth() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           disabled={authLoading}
+          required
         />
-        <button onClick={submitAuth} disabled={authLoading}>
+        <button type="submit" disabled={authLoading}>
           {isSignIn ? 'Sign In' : 'Sign Up'}
         </button>
-      </div>
+      </form>
     </div>
   );
 }
