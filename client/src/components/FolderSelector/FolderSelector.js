@@ -44,9 +44,7 @@ const FolderSelector = ({ onFolderProcess, disabled, compact = false }) => {
         webkitdirectory=""
         multiple
         onChange={handleFolderSelect}
-        disabled={disabled || processing}
-        // disabled={true}
-
+        disabled={disabled || processing || window.isLocal === true}
         id="folder-input"
         style={{ display: 'none' }}
       />
