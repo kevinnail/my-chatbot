@@ -4,6 +4,8 @@ import { useUser } from '../../hooks/useUser.js';
 import { useLoading } from '../../contexts/LoadingContext.js';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import './Auth.css';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -24,11 +26,27 @@ export default function Auth() {
     try {
       setLoading(true);
       await logInUser(email, password, type);
+
+      toast.success('Successfully signed in!', {
+        theme: 'colored',
+        draggable: true,
+        draggablePercent: 60,
+        toastId: 'auth-success',
+        autoClose: 3000,
+      });
+
       // Redirect to the page they were trying to access, or home
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
     } catch (e) {
       console.error(e);
+      toast.error('Sign in failed. Please check your credentials.', {
+        theme: 'colored',
+        draggable: true,
+        draggablePercent: 60,
+        toastId: 'auth-error',
+        autoClose: 5000,
+      });
     } finally {
       setLoading(false);
     }
@@ -53,7 +71,13 @@ export default function Auth() {
         </NavLink>
       </div>
 
-      <div className="email-container">
+      <form
+        className="email-container"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submitAuth();
+        }}
+      >
         <input
           className="input"
           type="email"
@@ -61,6 +85,7 @@ export default function Auth() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={authLoading}
+          required
         />
 
         <input
@@ -70,11 +95,12 @@ export default function Auth() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           disabled={authLoading}
+          required
         />
-        <button onClick={submitAuth} disabled={authLoading}>
+        <button type="submit" disabled={authLoading}>
           {isSignIn ? 'Sign In' : 'Sign Up'}
         </button>
-      </div>
+      </form>
     </div>
   );
 }

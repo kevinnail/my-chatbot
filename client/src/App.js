@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import Auth from './components/Auth/Auth.js';
@@ -11,6 +11,7 @@ import ProtectedRoute from './components/ProtectedRoute.js';
 import { LoadingProvider } from './contexts/LoadingContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { UserProvider } from './contexts/UserContext';
+import { ToastContainer } from 'react-toastify';
 
 window.isLocal =
   window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -21,6 +22,8 @@ export default function App() {
       <LoadingProvider>
         <ChatProvider>
           <Router>
+            <ToastContainer position="top-center" />
+
             <div
               style={{
                 minHeight: '100vh',

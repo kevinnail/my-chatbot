@@ -11,6 +11,12 @@ export async function processFolder(files, userId) {
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       throw new Error('Failed to process folder');
     }
 
@@ -33,6 +39,12 @@ export async function getChatList(userId) {
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       throw new Error('Failed to fetch chat list');
     }
 
@@ -55,6 +67,12 @@ export async function deleteChat(userId, chatId) {
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       throw new Error('Failed to delete chat');
     }
 
@@ -76,6 +94,12 @@ export async function checkCalendarConnection(userId) {
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       throw new Error('Failed to check calendar connection');
     }
 
@@ -97,6 +121,12 @@ export async function checkGmailStatus(userId) {
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       throw new Error('Failed to check Gmail status');
     }
 
@@ -119,6 +149,12 @@ export async function syncGmail(userId) {
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       throw new Error('Failed to sync Gmail');
     }
 
@@ -201,6 +237,12 @@ export async function stopChat(userId, chatId) {
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       throw new Error('Failed to stop chat');
     }
 

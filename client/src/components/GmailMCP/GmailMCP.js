@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import './GmailMCP.css';
 import { useLoading } from '../../contexts/LoadingContext';
@@ -7,6 +8,7 @@ import { checkGmailStatus, syncGmail, checkCalendarStatus } from '../../services
 import { useUser } from '../../hooks/useUser.js';
 
 const GmailMCP = () => {
+  const navigate = useNavigate();
   const { userId } = useUser();
   const [emails, setEmails] = useState([]);
   const { gmailLoading, setGmailLoading } = useLoading();
@@ -400,6 +402,12 @@ const GmailMCP = () => {
         });
       }
     } catch (err) {
+      // Handle auth errors properly
+      if (err.message === 'AUTHENTICATION_REQUIRED') {
+        navigate('/auth/signin');
+        return;
+      }
+
       setError(err.message);
       setLoading(false);
       setAnalysisInProgress(false);
