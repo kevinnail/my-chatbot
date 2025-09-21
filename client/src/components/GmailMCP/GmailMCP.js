@@ -200,6 +200,15 @@ const GmailMCP = () => {
       setLoading(false);
       setSyncStartTime(null);
       setCurrentlyAnalyzing(null);
+
+      // Check if this is a token expiration error
+      if (data.error && data.error.includes('Google Calendar tokens')) {
+        console.log('🔑 Calendar token expiration detected during sync');
+        setCalendarConnected(false);
+        setError(
+          'Google Calendar token has expired. Please reconnect your calendar account to continue creating events.',
+        );
+      }
     });
 
     socket.on('disconnect', () => {
@@ -215,6 +224,27 @@ const GmailMCP = () => {
   useEffect(() => {
     checkCalendarConnection();
   }, [userId]);
+
+  // Add periodic calendar token validation check
+  useEffect(() => {
+    if (!calendarConnected || !userId) return;
+
+    const checkInterval = setInterval(async () => {
+      try {
+        const data = await checkCalendarStatus(userId);
+        if (!data.connected && calendarConnected) {
+          // Token has expired, update UI state
+          console.log('🔑 Google Calendar token expired - updating GmailMCP state');
+          setCalendarConnected(false);
+        }
+      } catch (err) {
+        console.error('Error checking calendar token status in GmailMCP:', err);
+        setCalendarConnected(false);
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(checkInterval);
+  }, [calendarConnected, userId]);
 
   const calculateTimeSinceSync = () => {
     if (!syncStartTime) return null;
@@ -344,6 +374,14 @@ const GmailMCP = () => {
     }
 
     try {
+      // Double-check calendar connection before starting sync
+      const calendarStatus = await checkCalendarStatus(userId);
+      if (!calendarStatus.connected) {
+        setCalendarConnected(false);
+        setError('Google Calendar connection lost. Please reconnect your calendar account.');
+        return;
+      }
+
       setLoading(true);
       setError(null);
       setSyncStartTime(new Date());
@@ -426,6 +464,24 @@ const GmailMCP = () => {
       {error && (
         <div className="error-message">
           <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Calendar Token Expiration Warning */}
+      {!calendarConnected && isConnected && (
+        <div
+          className="warning-message"
+          style={{
+            backgroundColor: '#ff6b35',
+            color: 'white',
+            padding: '10px',
+            margin: '10px 0',
+            borderRadius: '4px',
+            textAlign: 'center',
+            fontWeight: 'bold',
+          }}
+        >
+          ⚠️ Google Calendar connection lost! Please reconnect to continue creating calendar events.
         </div>
       )}
 
