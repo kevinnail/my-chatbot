@@ -94,7 +94,7 @@ router.post('/sync', authenticate, async (req, res) => {
       }
     } // eslint-disable-next-line no-console
     console.log(
-      `✨ Found ${newEmails.length} new emails (${rawEmails.length - newEmails.length} already stored)`,
+      `Found ${newEmails.length} new emails (${rawEmails.length - newEmails.length} already stored)`,
     );
 
     let newEmailsStored = 0;
