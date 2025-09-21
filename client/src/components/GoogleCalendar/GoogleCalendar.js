@@ -16,6 +16,30 @@ const GoogleCalendar = ({ onConnectionChange }) => {
     checkCalendarConnection();
   }, [userId]);
 
+  // Add periodic token validation check
+  useEffect(() => {
+    if (!isConnected || !userId) return;
+
+    const checkInterval = setInterval(async () => {
+      try {
+        const data = await checkCalendarStatus(userId);
+        if (!data.connected && isConnected) {
+          // Token has expired, update UI state
+          console.log('🔑 Google Calendar token expired - updating UI state');
+          setIsConnected(false);
+          setConnectionError('Google Calendar token has expired. Please reconnect.');
+          if (onConnectionChange) {
+            onConnectionChange(false);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking calendar token status:', err);
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(checkInterval);
+  }, [isConnected, userId, onConnectionChange]);
+
   // Handle OAuth popup messages
   useEffect(() => {
     const handleMessage = (event) => {
