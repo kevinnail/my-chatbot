@@ -3,7 +3,6 @@ import GoogleCalendar from '../models/GoogleCalendar.js';
 
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
 
-// Helper function to create calendar event
 export async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
   // Clean and validate event arguments
   try {
@@ -61,44 +60,21 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
       console.log(' Final attendees array:', attendees);
     }
 
-    // Validate and fix dates
-    const currentYear = new Date().getFullYear();
-    const currentDate = new Date();
-
-    let startDateTime = cleanArgs.startDateTime;
-    let endDateTime = cleanArgs.endDateTime;
-
-    // Fix year if it's in the past (assume next year)
-    if (startDateTime) {
-      const startDate = new Date(startDateTime);
-      if (startDate < currentDate && startDate.getFullYear() === currentYear) {
-        startDate.setFullYear(currentYear + 1);
-        startDateTime = startDate.toISOString();
-        // eslint-disable-next-line no-console
-        console.log(' Fixed start date to next year:', startDateTime);
-      }
+    // Validate dates - only check for required fields, don't modify them
+    if (!cleanArgs.startDateTime) {
+      console.error('❌ Cannot create event without start time');
+      return;
     }
 
-    // Fix empty or invalid end date
-    if (!endDateTime || endDateTime === '' || endDateTime === 'null') {
-      if (startDateTime) {
-        const start = new Date(startDateTime);
-        const end = new Date(start.getTime() + 60 * 60 * 1000); // Add 1 hour
-        endDateTime = end.toISOString();
-        // eslint-disable-next-line no-console
-        console.log(' Generated end date (1 hour after start):', endDateTime);
-      } else {
-        console.error('❌ Cannot create event without valid start/end times');
-        return;
-      }
+    if (!cleanArgs.endDateTime) {
+      console.error('❌ Cannot create event without end time');
+      return;
     }
 
-    // Update the cleaned args
+    // Update the cleaned args with attendees only
     eventArgs = {
       ...cleanArgs,
       attendees,
-      startDateTime,
-      endDateTime,
     };
 
     // eslint-disable-next-line no-console
@@ -113,7 +89,9 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
     if (!hasValidTokens) {
       // eslint-disable-next-line no-console
       console.log('User does not have valid Google Calendar tokens, skipping event creation');
-      return;
+      throw new Error(
+        'User does not have valid Google Calendar tokens. Please reconnect your Google Calendar account.',
+      );
     }
 
     const oauth2Client = new google.auth.OAuth2(
@@ -150,16 +128,32 @@ export async function createCalendarEvent(userId, eventArgs, emailSubject, email
       console.error('Error checking conflicts:', err);
     }
 
+    // Check if this should be an all-day event (no time specified)
+    const isAllDay = !eventArgs.startDateTime.includes('T') && !eventArgs.endDateTime.includes('T');
+
     const event = {
       summary: eventArgs.title,
       description:
         eventArgs.description ||
         `Created from email: ${emailSubject}\n\nOriginal email from: ${emailFrom}`,
       location: eventArgs.location,
-      start: { dateTime: eventArgs.startDateTime, timeZone: 'America/Los_Angeles' },
-      end: { dateTime: eventArgs.endDateTime, timeZone: 'America/Los_Angeles' },
       attendees: eventArgs.attendees?.map((email) => ({ email })) || [],
     };
+
+    if (isAllDay) {
+      // All-day event: use date format, end date is next day
+      const startDate = eventArgs.startDateTime.split('T')[0]; // Get YYYY-MM-DD part
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 1);
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      event.start = { date: startDate };
+      event.end = { date: endDateStr };
+    } else {
+      // Regular event with time
+      event.start = { dateTime: startTime.toISOString(), timeZone: 'America/Los_Angeles' };
+      event.end = { dateTime: endTime.toISOString(), timeZone: 'America/Los_Angeles' };
+    }
 
     const res = await calendar.events.insert({ calendarId: 'primary', resource: event });
     // eslint-disable-next-line no-console
@@ -374,12 +368,15 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
 
 CALENDAR EVENTS: Only create calendar events for emails with:
 1. Clear appointment keywords (appointment, meeting, interview, doctor, dentist, call scheduled)
-2. Specific date AND time mentioned (not copyright dates)
+2. Specific date mentioned (time is optional)
 3. Actual scheduling context (not newsletters/job listings)
 
 NEVER create events for: job newsletters, marketing emails, general announcements, or notifications.
 
-When creating calendar events, use current year ${currentYear}. If a date appears to be in the past, assume next year.
+When creating calendar events:
+- If date AND time are specified: create regular timed event
+- If only date is specified: create all-day event (use date format like "2025-09-26" for startDateTime and "2025-09-27" for endDateTime)
+- Use current year ${currentYear}. If a date appears to be in the past, assume next year.
 
 Focus on web development emails: jobs, interviews, tech events, learning platforms, tools, developer community content.`;
 
@@ -559,6 +556,15 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
             }
           } catch (error) {
             console.error('❌ Error invoking tool call:', error);
+
+            // Check if this is a token expiration error
+            if (
+              error.message &&
+              error.message.includes('User does not have valid Google Calendar tokens')
+            ) {
+              console.info('🔑 Google Calendar token expired - this will be handled by the UI');
+              // Don't throw here, just log and continue - the UI will handle the token refresh
+            }
           }
         }
       }

@@ -5,9 +5,11 @@ import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import { useChatContext } from '../../contexts/ChatContext';
 import ConfirmationDialog from '../ConfirmationDialog/ConfirmationDialog';
 import { getChatList, deleteChat } from '../../services/fetch-utils';
+import { useUser } from '../../hooks/useUser.js';
 
-const ChatList = ({ userId }) => {
+const ChatList = () => {
   const { chats, setChats, setRefreshChatList } = useChatContext();
+  const { userId } = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

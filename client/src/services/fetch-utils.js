@@ -210,3 +210,16 @@ export async function stopChat(userId, chatId) {
     throw error;
   }
 }
+
+export const fetchContextPercent = async (chatId, userId, mode) => {
+  try {
+    const response = await fetch(`/api/chatbot/context/${userId}/${chatId}?mode=${mode}`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.contextPercent || 0;
+    }
+  } catch (error) {
+    console.error('Error fetching context percentage:', error);
+  }
+  return 0;
+};

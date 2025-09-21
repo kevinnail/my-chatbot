@@ -3,14 +3,15 @@ import { useNavigate, useParams, useMatch } from 'react-router-dom';
 import ChatMessages from '../ChatMessages/ChatMessages';
 import MessageInput from '../MessageInput/MessageInput';
 import ContextProgressBar from '../ContextProgressBar/ContextProgressBar';
-import FolderSelector from '../FolderSelector/FolderSelector';
 import { useChatContext } from '../../contexts/ChatContext';
 import './Chat.css';
 import ChatLoadingInline from '../ChatLoadingInline/ChatLoadingInline.js';
 import { useLoading } from '../../contexts/LoadingContext.js';
-import { processFolder } from '../../services/fetch-utils';
+import { fetchContextPercent } from '../../services/fetch-utils';
+import { useUser } from '../../hooks/useUser.js';
 
-const Chat = ({ userId }) => {
+const Chat = () => {
+  const { userId } = useUser();
   const navigate = useNavigate();
   const { chatId: urlChatId } = useParams();
   const isNewChatPage = useMatch('/chat');
@@ -34,20 +35,6 @@ const Chat = ({ userId }) => {
   const [coachOrChat, setCoachOrChat] = useState('chat');
 
   const [initialChatLoad, setInitialChatLoad] = useState(false);
-
-  // Fetch context percentage from backend
-  const fetchContextPercent = async (chatId, userId, mode) => {
-    try {
-      const response = await fetch(`/api/chatbot/context/${userId}/${chatId}?mode=${mode}`);
-      if (response.ok) {
-        const data = await response.json();
-        return data.contextPercent || 0;
-      }
-    } catch (error) {
-      console.error('Error fetching context percentage:', error);
-    }
-    return 0;
-  };
 
   useEffect(() => {
     if (urlChatId) {
@@ -222,10 +209,6 @@ const Chat = ({ userId }) => {
     });
   };
 
-  const handleFolderProcess = async (files) => {
-    return await processFolder(files, userId);
-  };
-
   const messageLabel = 'messages';
 
   return (
@@ -276,10 +259,6 @@ const Chat = ({ userId }) => {
           >
             Job Search
           </button>
-          <FolderSelector
-            onFolderProcess={handleFolderProcess}
-            disabled={loading || isAnyLoading}
-          />
         </div>
       </div>
 

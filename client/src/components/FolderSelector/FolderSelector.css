@@ -1,7 +1,6 @@
 .folder-header-button {
   background: transparent;
-  border: 1px solid #639cff;
-  color: #639cff;
+  /* color: #639cff; */
   padding: 5px 8px;
   border-radius: 5px;
   cursor: pointer;
@@ -12,11 +11,20 @@
   justify-content: center;
   min-width: 32px;
   height: 32px;
+  gap: 0.5rem;
 }
 
-.folder-header-button:hover {
-  background: #639cff;
-  color: white;
+.folder-header-button.compact {
+  padding: 0.5rem;
+  border-radius: 8px;
+  min-width: auto;
+  height: auto;
+  font-size: 1rem;
+}
+
+.folder-text {
+  font-size: 0.9rem;
+  font-weight: normal;
 }
 
 .process-header-button {

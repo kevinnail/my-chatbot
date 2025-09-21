@@ -3,7 +3,7 @@ import { UserContext } from '../contexts/UserContext.js';
 import { authUser } from '../services/auth.js';
 
 export function useUser() {
-  const { user, setUser, loading, error, setError } = useContext(UserContext);
+  const { user, setUser, loading, error, setError, userId, setUserId } = useContext(UserContext);
 
   const logInUser = async (email, password, type) => {
     const user = await authUser(email, password, type);
@@ -11,5 +11,5 @@ export function useUser() {
     setUser(user);
   };
 
-  return { user, setUser, error, setError, logInUser, loading };
+  return { user, setUser, error, setError, logInUser, loading, userId, setUserId };
 }

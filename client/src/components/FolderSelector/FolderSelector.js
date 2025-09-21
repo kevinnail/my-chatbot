@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './FolderSelector.css';
 
-const FolderSelector = ({ onFolderProcess, disabled }) => {
+const FolderSelector = ({ onFolderProcess, disabled, compact = false }) => {
   const [selectedFolder, setSelectedFolder] = useState('');
   const [processing, setProcessing] = useState(false);
   const [status, setStatus] = useState('');
@@ -47,9 +47,11 @@ const FolderSelector = ({ onFolderProcess, disabled }) => {
         id="folder-input"
         style={{ display: 'none' }}
       />
-      <label htmlFor="folder-input" className="folder-header-button">
-        {processing ? '⏳' : '📁'}
+      <label htmlFor="folder-input" className={`folder-header-button ${compact ? 'compact' : ''}`}>
+        {processing ? '⏳' : 'File Upload'}
+        {!compact && <span className="folder-text">Upload Files</span>}
       </label>
+      {/* <div className="menu-item">File Upload</div> */}
     </>
   );
 };

@@ -733,7 +733,7 @@ router.post('/summarize', async (req, res) => {
       response = await axios.post(
         `${process.env.OLLAMA_URL}/api/chat`,
         {
-          model: process.env.OLLAMA_MODEL,
+          model: process.env.OLLAMA_SMALL_MODEL,
           messages: [
             {
               role: 'system',

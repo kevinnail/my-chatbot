@@ -32,9 +32,10 @@ _Note: You need all 4 services running (Ubuntu, Frontend, Backend, MCP Server) f
 ## Features
 
 - **AI-Powered Chat**: Integrated with Ollama for local LLM inference
+- **MCP Server**: HTTP SSE transport, provides Google Calendar event creation tool for LLM
 - **Dual Mode Operation**: Switch between coding assistant and career coach modes
 - **Gmail Integration**: IMAP-based email sync with intelligent job-search email analysis
-- **Google Calendar Integration**: OAuth-connected calendar with automatic appointment creation
+- **Google Calendar Integration**: OAuth-connected calendar with AI agent appointment creation
 - **Smart Memory**: Vector-based semantic search for conversation history
 - **Persistent Storage**: PostgreSQL with pgvector extension for embeddings
 - **Hybrid Memory System**: Combines recent and semantically relevant messages
