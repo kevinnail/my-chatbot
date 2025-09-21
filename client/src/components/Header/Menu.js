@@ -77,7 +77,7 @@ const Menu = ({ isOnChatPage }) => {
       {/* Menu Button */}
       <button className="menu-button" onClick={toggleMenu} disabled={isAnyLoading}>
         <span className="menu-icon">☰</span>
-        <span className="menu-text">Menu</span>
+        {/* <span className="menu-text">Menu</span> */}
       </button>
 
       {/* Menu Dropdown */}
