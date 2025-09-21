@@ -248,6 +248,12 @@ export class ChatManager {
     } catch (error) {
       console.error('Error sending message:', error);
 
+      // Handle auth errors by redirecting instead of showing error message
+      if (error.message === 'AUTHENTICATION_REQUIRED') {
+        window.location.href = '/auth/signin';
+        return;
+      }
+
       onBotMessageError(
         messageId,
         error.message || 'Unable to get response from server. Please try again.',

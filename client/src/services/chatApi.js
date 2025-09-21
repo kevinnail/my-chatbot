@@ -33,6 +33,12 @@ export async function sendChatMessage({ msg, userId, coachOrChat, chatId, messag
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       throw new Error(errorData.error || 'Failed to send message');
     }
@@ -54,6 +60,12 @@ export async function checkChatTitle({ chatId, userId }) {
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       throw new Error('Failed to check chat title');
     }
 
@@ -74,6 +86,12 @@ export async function summarizeChat({ prompt, chatId, userId }) {
     });
 
     if (!response.ok) {
+      // Handle 401 specifically
+      if (response.status === 401) {
+        // Let the component handle the redirect
+        throw new Error('AUTHENTICATION_REQUIRED');
+      }
+
       throw new Error('Failed to summarize chat');
     }
 
