@@ -44,9 +44,14 @@ router.post('/process-folder', upload.array('files'), async (req, res) => {
     console.info(`Processing ${files.length} files for user ${userId}`);
 
     let totalChunks = 0;
+    let processedFiles = 0;
 
-    for (const file of files) {
-      console.info(`Processing file: ${file.originalname}`);
+    for (let fileIndex = 0; fileIndex < files.length; fileIndex++) {
+      const file = files[fileIndex];
+      const currentIndex = fileIndex + 1;
+      const totalFiles = files.length;
+
+      console.info(`Processing ${currentIndex} out of ${totalFiles}: ${file.originalname}`);
 
       // Skip binary/problematic file types
       const skipExtensions = [
@@ -88,15 +93,55 @@ router.post('/process-folder', upload.array('files'), async (req, res) => {
         '.pptx',
       ];
 
+      // Skip problematic directories and paths
+      const skipPaths = [
+        '.git/',
+        'node_modules/',
+        '.vscode/',
+        '.idea/',
+        'dist/',
+        'build/',
+        'coverage/',
+        '.nyc_output/',
+        'logs/',
+        'tmp/',
+        'temp/',
+      ];
+
       const ext = path.extname(file.originalname).toLowerCase();
+      const filePath = file.originalname.toLowerCase();
+
+      // Check if file has problematic extension
       if (skipExtensions.includes(ext)) {
         console.info(`⚠️ Skipping binary file: ${file.originalname}`);
+        continue;
+      }
+
+      // Check if file is in a problematic directory
+      if (skipPaths.some((skipPath) => filePath.includes(skipPath))) {
+        console.info(`⚠️ Skipping file in excluded directory: ${file.originalname}`);
+        continue;
+      }
+
+      // Check for binary content before processing
+      const isBinary = file.buffer.some(
+        (byte) => byte === 0 || (byte < 32 && byte !== 9 && byte !== 10 && byte !== 13),
+      );
+      if (isBinary) {
+        console.info(`⚠️ Skipping binary file detected by content: ${file.originalname}`);
         continue;
       }
 
       // Convert buffer to string
       const content = file.buffer.toString('utf-8');
       const fileType = getFileType(file.originalname);
+
+      // Check if file already exists for this user BEFORE starting transaction
+      const existingFile = await RAG.getFileByName({ userId, filename: file.originalname });
+      if (existingFile) {
+        console.info(`⚠️ File already exists, skipping: ${file.originalname}`);
+        continue;
+      }
 
       // Use transaction for file and chunk operations
       const client = await pool.connect();
@@ -161,7 +206,10 @@ router.post('/process-folder', upload.array('files'), async (req, res) => {
         await RAG.updateFileChunkCount({ fileId, totalChunks: chunks.length });
 
         await client.query('COMMIT');
-        console.info(`✅ Stored ${chunks.length} chunks for file: ${file.originalname}`);
+        processedFiles++;
+        console.info(
+          `✅ Completed processing ${currentIndex} out of ${totalFiles}: ${file.originalname} (${chunks.length} chunks stored)`,
+        );
       } catch (fileError) {
         await client.query('ROLLBACK');
         console.error(`Error processing file ${file.originalname}:`, fileError);
@@ -171,11 +219,14 @@ router.post('/process-folder', upload.array('files'), async (req, res) => {
       }
     }
 
-    console.info(`✅ Successfully processed ${files.length} files into ${totalChunks} chunks`);
+    console.info(
+      `✅ Successfully processed ${processedFiles} out of ${files.length} files into ${totalChunks} chunks`,
+    );
 
     res.json({
-      message: `Successfully processed ${files.length} files into ${totalChunks} chunks`,
-      filesProcessed: files.length,
+      message: `Successfully processed ${processedFiles} out of ${files.length} files into ${totalChunks} chunks`,
+      filesProcessed: processedFiles,
+      totalFiles: files.length,
       totalChunks,
     });
   } catch (error) {
