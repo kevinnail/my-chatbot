@@ -3,6 +3,91 @@ import GoogleCalendar from '../models/GoogleCalendar.js';
 
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
 
+// Generate LLM-powered summary and draft response for calendar events
+async function generateLLMCalendarSummary(eventDetails) {
+  try {
+    const { title, startDateTime, location, emailSubject, emailFrom, emailBody } = eventDetails;
+
+    const prompt = `Please summarize this email and provide a draft response:
+
+EMAIL SUBJECT: ${emailSubject}
+FROM: ${emailFrom}
+EMAIL BODY: ${emailBody}
+
+CALENDAR EVENT CREATED:
+- Title: ${title}
+- Date: ${startDateTime}
+- Location: ${location || 'Not specified'}
+
+Respond with ONLY this JSON format (no other text):
+{
+  "summary": "Brief summary of the email content",
+  "draftResponse": "Suggested email response to send back"
+}`;
+
+    const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: process.env.OLLAMA_SMALL_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        stream: false,
+        options: {
+          temperature: 0.1,
+          top_p: 0.9,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Ollama API error: ${response.status} - ${errBody}`);
+    }
+
+    const data = await response.json();
+
+    const content =
+      data.message && typeof data.message.content === 'string' ? data.message.content.trim() : null;
+
+    if (!content) {
+      throw new Error('No content received from LLM');
+    }
+
+    // Debug: Log the raw content to see what LLM is returning
+    console.info(' LLM Calendar Summary Raw Response:', content);
+
+    // Try to parse JSON response
+    try {
+      const parsed = JSON.parse(content);
+
+      // Handle normal summary format
+      if (parsed.summary && parsed.draftResponse) {
+        return parsed;
+      }
+
+      // Fallback if format is unexpected
+      return {
+        summary: content,
+        draftResponse: 'Please review the calendar event and respond as appropriate.',
+      };
+    } catch {
+      // If JSON parsing fails, return a structured response with the raw content
+      return {
+        summary: content,
+        draftResponse: 'Please review the calendar event and respond as appropriate.',
+      };
+    }
+  } catch (error) {
+    console.error('Error generating LLM calendar summary:', error);
+    return null;
+  }
+}
+
 export async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
   // Clean and validate event arguments
   try {
@@ -363,8 +448,10 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   "summary": "Brief summary of the email content",
   "actionItems": ["action1", "action2"],
   "sentiment": "positive|negative|neutral",
-  "draftResponse": "Suggested response if appropriate, or null"
+  "draftResponse": "Suggested response"
 }
+
+IMPORTANT: You must ALWAYS return this JSON structure in your response content. Never return tool call formats or other structures.
 
 CALENDAR EVENTS: Only create calendar events for emails with:
 1. Clear appointment keywords (appointment, meeting, interview, doctor, dentist, call scheduled)
@@ -426,68 +513,19 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
     }
 
     const data = await response.json();
-
-    let raw =
+    const raw =
       data.message && typeof data.message.content === 'string'
         ? data.message.content.trim()
         : JSON.stringify(data);
-
     const toolsCalled = data.message?.tool_calls || [];
 
     // Track calendar events created
     const calendarEvents = [];
 
-    // If we have tool calls but empty content, generate a contextual analysis
+    // If we have tool calls but empty content, skip fallback - let LLM calendar summary handle it
     if (toolsCalled.length > 0 && (!raw || raw === '')) {
-      // ! THIS FIRES WHETHER OR NOT A CALENDAR EVENT WAS CREATED
-      // eslint-disable-next-line no-console
-      console.log(' Empty content with tool calls detected, generating contextual analysis');
-
-      // Determine category based on email content
-      const emailContent = `${subject} ${body} ${from}`.toLowerCase();
-      let category = 'event';
-      let priority = 'high';
-      let summary = `Calendar event created for: ${subject}`;
-      let actionItems = ['Calendar event has been created', 'Check your calendar for details'];
-
-      // Check if it's a job newsletter or similar (shouldn't have gotten a calendar event)
-      const isJobNewsletter =
-        emailContent.includes('job matches') ||
-        emailContent.includes('job recommendations') ||
-        emailContent.includes('builtin') ||
-        emailContent.includes('built in') ||
-        emailContent.includes('linkedin') ||
-        emailContent.includes('indeed') ||
-        emailContent.includes('newsletter') ||
-        emailContent.includes('unsubscribe') ||
-        emailContent.includes('update email frequency') ||
-        emailContent.includes('job preferences') ||
-        emailContent.includes('salary') ||
-        emailContent.includes('remote') ||
-        emailContent.includes('hybrid') ||
-        (emailContent.includes('job') && emailContent.includes('board'));
-
-      if (isJobNewsletter) {
-        category = 'newsletter';
-        priority = 'low';
-        summary = `Job newsletter from ${from}`;
-        actionItems = ['Review job opportunities', 'Apply to relevant positions'];
-        // eslint-disable-next-line no-console
-        console.log(
-          '⚠️ WARNING: Calendar event was created for a job newsletter - this should not happen!',
-        );
-      }
-
-      raw = JSON.stringify({
-        isWebDevRelated: true,
-        category,
-        priority,
-        summary,
-        actionItems,
-        sentiment: 'neutral',
-        draftResponse: null,
-        calendarEvents: [], // Add calendar events to contextual analysis
-      });
+      console.info(' Tool calls detected with empty content - will use LLM calendar summary');
+      // Don't generate fallback - let the LLM calendar summary be used instead
     }
     // Invoke calendar tool with safety checks
     if (userId && toolsCalled.length) {
@@ -548,6 +586,29 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
                     location: args.location,
                   });
                   console.info('✅ Calendar event captured via MCP:', content.eventLink);
+
+                  // Generate LLM-powered summary and draft response for the calendar event
+                  try {
+                    console.info('Generate email summary');
+                    const summary = await generateLLMCalendarSummary({
+                      title: args.title,
+                      startDateTime: args.startDateTime,
+                      endDateTime: args.endDateTime,
+                      location: args.location,
+                      attendees: args.attendees,
+                      eventLink: content.eventLink,
+                      emailSubject: subject,
+                      emailFrom: from,
+                      emailBody: body,
+                    });
+
+                    if (summary) {
+                      calendarEvents[calendarEvents.length - 1].summary = summary;
+                      console.info('✅ LLM calendar summary generated');
+                    }
+                  } catch (summaryError) {
+                    console.error('❌ Failed to generate LLM calendar summary:', summaryError);
+                  }
                 }
               }
             } else {
@@ -570,60 +631,125 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
       }
     }
 
-    try {
-      // Try to parse the raw response as JSON directly first
-      const parsed = JSON.parse(raw);
-
-      // Add calendar events to the parsed analysis
-      if (calendarEvents.length > 0) {
-        parsed.calendarEvents = calendarEvents;
-      }
-
-      return parsed;
-    } catch {
+    // Handle the two different response types from Ollama
+    if (toolsCalled.length > 0) {
+      // When tools are used, Ollama returns empty content - use fallback logic
+      console.info('Tool calls detected - using fallback analysis structure');
+    } else if (raw && raw.trim() !== '') {
+      // When no tools are used, Ollama returns JSON content - parse it
       try {
-        // If that fails, try to extract JSON from the response
-        const jsonMatch = raw.match(/\{[\s\S]*?\}/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
-        }
-      } catch {
-        // Ignore nested catch
-      }
+        console.info('raw =========================', raw);
+        const cleanedRaw = raw.trim();
+        const parsed = JSON.parse(cleanedRaw);
 
-      try {
-        // Handle the case where LLM returns function call format with embedded JSON
-        const functionCallMatch = raw.match(/"required_json":\s*"([^"]+)"/);
-        if (functionCallMatch) {
-          const escapedJson = functionCallMatch[1];
-          const unescapedJson = escapedJson.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-
-          return JSON.parse(unescapedJson);
+        // Add calendar events to the parsed analysis
+        if (calendarEvents.length > 0) {
+          parsed.calendarEvents = calendarEvents;
         }
+
+        return parsed;
       } catch (parseError) {
-        console.error(' Failed to parse embedded JSON:', parseError);
+        console.error('JSON parse error:', parseError);
+        console.error('Raw response that failed to parse:', raw);
       }
-
-      // If all JSON parsing fails, return fallback
-      // eslint-disable-next-line no-console
-      console.warn(' Falling back to default analysis structure');
-      const fallback = {
-        summary: raw.slice(0, 150),
-        actionItems: [],
-        sentiment: 'neutral',
-        isWebDevRelated: false,
-        category: 'other',
-        priority: 'low',
-        draftResponse: null,
-      };
-
-      // Add calendar events to fallback if any were created
-      if (calendarEvents.length > 0) {
-        fallback.calendarEvents = calendarEvents;
-      }
-
-      return fallback;
     }
+
+    // Fallback logic for when tools are used OR JSON parsing fails
+    console.info('Using fallback analysis structure');
+
+    // Generate actual analysis from the email content
+    const emailContent = `${subject} ${body}`.toLowerCase();
+
+    // Determine if web dev related
+    const webDevKeywords = [
+      'developer',
+      'programming',
+      'code',
+      'software',
+      'tech',
+      'javascript',
+      'react',
+      'node',
+      'api',
+      'frontend',
+      'backend',
+      'fullstack',
+      'web development',
+      'coding',
+      'github',
+      'git',
+    ];
+    const isWebDevRelated = webDevKeywords.some((keyword) => emailContent.includes(keyword));
+
+    // Determine category
+    let category = 'other';
+    if (emailContent.includes('interview') || emailContent.includes('meeting'))
+      category = 'job_interview';
+    else if (
+      emailContent.includes('job') &&
+      (emailContent.includes('offer') || emailContent.includes('congratulations'))
+    )
+      category = 'job_offer';
+    else if (
+      emailContent.includes('job') &&
+      (emailContent.includes('application') || emailContent.includes('apply'))
+    )
+      category = 'job_application';
+    else if (emailContent.includes('rejected') || emailContent.includes('unfortunately'))
+      category = 'job_rejection';
+    else if (
+      emailContent.includes('event') ||
+      emailContent.includes('meetup') ||
+      emailContent.includes('conference')
+    )
+      category = 'event';
+    else if (emailContent.includes('newsletter') || emailContent.includes('update'))
+      category = 'newsletter';
+
+    // Determine priority
+    const highPriorityKeywords = ['urgent', 'asap', 'immediate', 'interview', 'offer', 'deadline'];
+    const priority = highPriorityKeywords.some((keyword) => emailContent.includes(keyword))
+      ? 'high'
+      : 'medium';
+
+    // Generate summary
+    let summary = `Email from ${from} regarding ${subject}`;
+    let draftResponse = null;
+
+    // Check if we have LLM calendar summary from calendar events
+    console.info('Calendar events array:', JSON.stringify(calendarEvents, null, 2));
+
+    if (calendarEvents.length > 0 && calendarEvents[calendarEvents.length - 1].summary) {
+      const llmSummary = calendarEvents[calendarEvents.length - 1].summary;
+      summary = llmSummary.summary || summary;
+      draftResponse = llmSummary.draftResponse || null;
+      console.info('Using LLM calendar summary:', summary);
+    } else {
+      console.info('No LLM calendar summary found in calendar events');
+    }
+
+    // Generate action items
+    const actionItems = [];
+    if (category === 'job_interview') actionItems.push('Prepare for interview');
+    if (category === 'job_offer') actionItems.push('Review offer details', 'Respond to offer');
+    if (calendarEvents.length > 0) actionItems.push('Calendar event created');
+
+    const analysis = {
+      summary,
+      actionItems,
+      sentiment: 'neutral',
+      isWebDevRelated,
+      category,
+      priority,
+      draftResponse,
+    };
+
+    // Add calendar events if any were created
+    if (calendarEvents.length > 0) {
+      analysis.calendarEvents = calendarEvents;
+    }
+
+    return analysis;
   } catch (err) {
     console.error('LLM analysis error:', err);
     return { summary: 'Analysis failed', actionItems: [], sentiment: 'neutral' };

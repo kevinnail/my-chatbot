@@ -112,14 +112,12 @@ class EmailMemory {
     }));
   }
 
-  // Get emails that need LLM analysis (high similarity OR appointment-related but not yet analyzed)
-  static async getEmailsNeedingAnalysis({ userId, minSimilarity, limit = 10 }) {
+  // Get emails that need LLM analysis (all stored unanalyzed emails)
+  static async getEmailsNeedingAnalysis({ userId, limit = 10 }) {
     // eslint-disable-next-line no-console
-    console.log(
-      ` Getting emails needing analysis for user ${userId} with minSimilarity ${minSimilarity}`,
-    );
+    console.log(` Getting emails needing analysis for user ${userId}`);
 
-    // First get all unanalyzed emails for this user
+    // Get all unanalyzed emails for this user
     const { rows } = await pool.query(
       `
       SELECT 
@@ -129,48 +127,19 @@ class EmailMemory {
       ORDER BY similarity_score DESC, email_date DESC
       LIMIT $2
     `,
-      [userId, limit * 2], // Get more than needed to filter
+      [userId, limit],
     );
 
-    // Filter emails that need analysis (high similarity OR appointment-related)
-    const emailsNeedingAnalysis = rows
-      .filter((row) => {
-        const decryptedSubject = decrypt(row.subject);
-        const decryptedBody = decrypt(row.body);
-        const decryptedSender = decrypt(row.sender);
-        const emailContent = `${decryptedSubject} ${decryptedBody} ${decryptedSender}`;
-
-        // Check if high similarity
-        if (row.similarity_score >= minSimilarity) {
-          return true;
-        }
-
-        // Check if appointment-related using same logic as storeEmail
-        const isAppointmentRelated =
-          /\b(appointment|appt|meeting|call|schedule|scheduled|reschedule|confirm|confirmation|reminder|calendar|invite|invitation|doctor|dentist|medical|clinic|hospital|consultation|follow-up|follow up|catch up|phone call|video call|zoom|teams|meet|coffee|lunch|dinner|one-on-one|standup|sync|check-in|service|maintenance)\b/i.test(
-            emailContent,
-          );
-
-        return isAppointmentRelated;
-      })
-      .slice(0, limit); // Limit to requested amount
-
-    // Add selection reason
-    const emailsWithReason = emailsNeedingAnalysis.map((row) => ({
-      ...row,
-      selection_reason: row.similarity_score >= minSimilarity ? 'web_dev' : 'appointment',
-    }));
-
     // eslint-disable-next-line no-console
-    console.log(` Found ${emailsWithReason.length} emails needing analysis:`);
-    emailsWithReason.forEach((row) => {
+    console.log(` Found ${rows.length} emails needing analysis:`);
+    rows.forEach((row) => {
       // eslint-disable-next-line no-console
       console.log(
-        `  - "${decrypt(row.subject)}" (${row.selection_reason}, similarity: ${row.similarity_score?.toFixed(3)})`,
+        `  - "${decrypt(row.subject)}" (similarity: ${row.similarity_score?.toFixed(3)})`,
       );
     });
 
-    return emailsWithReason.map((row) => ({
+    return rows.map((row) => ({
       ...row,
       subject: decrypt(row.subject),
       sender: decrypt(row.sender),

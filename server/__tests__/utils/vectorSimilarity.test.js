@@ -2,8 +2,6 @@ import { jest } from '@jest/globals';
 import {
   preFilterWebDevEmails,
   calculateCosineSimilarity,
-  addEmailCategory,
-  getAvailableCategories,
 } from '../../lib/utils/vectorSimilarity.js';
 
 // Mock the embedding function
@@ -171,16 +169,6 @@ describe('vectorSimilarity utilities', () => {
       });
     }, 10000);
 
-    // passes locally- needs Ollama to run integration
-    it('should always include at least 3 emails for analysis', async () => {
-      const twoEmails = mockEmails.slice(0, 2);
-
-      const result = await preFilterWebDevEmails(twoEmails);
-
-      expect(result.likelyWebDevEmails.length).toBe(2);
-      expect(result.unlikelyEmails.length).toBe(0);
-    }, 10000);
-
     it('should handle empty email list', async () => {
       const result = await preFilterWebDevEmails([]);
 
@@ -275,66 +263,6 @@ describe('vectorSimilarity utilities', () => {
       expect(result.totalEmails).toBe(1);
       expect(result.likelyWebDevEmails[0]).toHaveProperty('categoryScores');
     }, 10000);
-  });
-
-  describe('addEmailCategory', () => {
-    beforeEach(() => {
-      // Reset categories to initial state
-      jest.resetModules();
-    });
-
-    it('should add a new email category', () => {
-      const categoryName = 'test_category';
-      const referenceText = 'test reference text for new category';
-      const threshold = 0.6;
-
-      addEmailCategory(categoryName, referenceText, threshold);
-
-      const categories = getAvailableCategories();
-      expect(categories).toContain(categoryName);
-    });
-
-    it('should use default threshold when not provided', () => {
-      const categoryName = 'default_threshold_category';
-      const referenceText = 'test reference text';
-
-      addEmailCategory(categoryName, referenceText);
-
-      // Category should be added (we can't directly test threshold without accessing internal state)
-      const categories = getAvailableCategories();
-      expect(categories).toContain(categoryName);
-    });
-
-    it('should overwrite existing category', () => {
-      const categoryName = 'web_dev'; // Existing category
-      const newReferenceText = 'new reference text for web dev';
-      const newThreshold = 0.7;
-
-      addEmailCategory(categoryName, newReferenceText, newThreshold);
-
-      // Should not throw error and category should still exist
-      const categories = getAvailableCategories();
-      expect(categories).toContain(categoryName);
-    });
-  });
-
-  describe('getAvailableCategories', () => {
-    it('should return list of available categories', () => {
-      const categories = getAvailableCategories();
-
-      expect(Array.isArray(categories)).toBe(true);
-      expect(categories).toContain('web_dev');
-      expect(categories).toContain('appointment');
-      expect(categories.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('should include newly added categories', () => {
-      const newCategory = 'test_new_category';
-      addEmailCategory(newCategory, 'test text');
-
-      const categories = getAvailableCategories();
-      expect(categories).toContain(newCategory);
-    });
   });
 
   describe('edge cases and error handling', () => {

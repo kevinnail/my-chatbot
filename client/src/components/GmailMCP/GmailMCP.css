@@ -555,6 +555,10 @@
   margin-bottom: 10px;
 }
 
+.email-header-compact {
+  max-width: 50%;
+}
+
 .email-main-info {
   display: flex;
   justify-content: space-between;
@@ -747,7 +751,6 @@
   margin: 10px 0;
   padding: 10px;
   background: rgba(255, 136, 0, 0.1);
-  border-left: 3px solid #ff8800;
   border-radius: 5px;
 }
 
@@ -816,7 +819,6 @@
 
 .calendar-event {
   background: rgba(0, 255, 136, 0.1);
-  border-left: 3px solid #00ff88;
   padding: 8px;
   margin: 5px 0;
   border-radius: 5px;
@@ -846,9 +848,9 @@
 }
 
 .draft-response-button {
-  border: 1px solid #ff8800;
+  border: none;
   color: white;
-  background-color: black;
+  background-color: #333;
   padding: 6px 12px;
   font-size: 0.85rem;
   border-radius: 15px;
@@ -857,7 +859,7 @@
 }
 
 .draft-response-button:hover {
-  background: #ff9922;
+  background: #444;
 }
 
 .event-link {
@@ -915,9 +917,6 @@
 /* ^  Responsive start ==================================================================== */
 
 @media (max-width: 768px) {
-  .gmail-mcp {
-    /* width: 90%; */
-  }
 }
 
 @media (max-width: 1284px) {

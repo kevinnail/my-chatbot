@@ -94,7 +94,7 @@ router.post('/sync', authenticate, async (req, res) => {
       }
     } // eslint-disable-next-line no-console
     console.log(
-      `✨ Found ${newEmails.length} new emails (${rawEmails.length - newEmails.length} already stored)`,
+      `Found ${newEmails.length} new emails (${rawEmails.length - newEmails.length} already stored)`,
     );
 
     let newEmailsStored = 0;
@@ -107,27 +107,8 @@ router.post('/sync', authenticate, async (req, res) => {
         ` Pre-filter results: ${filterResults.likelyWebDevEmails.length} likely web-dev emails, ${filterResults.reductionPercentage}% reduction`,
       );
 
-      // Store likely web-dev emails with their similarity scores
+      // Store ONLY likely web-dev emails with their similarity scores
       for (const email of filterResults.likelyWebDevEmails) {
-        try {
-          await EmailMemory.storeEmail({
-            userId,
-            emailId: email.id,
-            subject: email.subject,
-            sender: email.from,
-            body: email.body,
-            emailDate: email.date,
-            similarityScore: email.similarity,
-            llmAnalysis: null,
-          });
-
-          newEmailsStored++;
-        } catch (error) {
-          console.error('Error storing email:', error);
-        }
-      }
-      // Optionally store unlikely emails with low similarity (for completeness)
-      for (const email of filterResults.unlikelyEmails) {
         try {
           await EmailMemory.storeEmail({
             userId,
@@ -154,10 +135,9 @@ router.post('/sync', authenticate, async (req, res) => {
       since: null,
     });
 
-    // Also get emails that meet similarity threshold but haven't been analyzed yet
+    // Also get emails that need analysis (all stored emails that haven't been analyzed)
     const pendingAnalysisEmails = await EmailMemory.getEmailsNeedingAnalysis({
       userId,
-      minSimilarity: 0.52,
       limit: 10,
     });
 
@@ -232,7 +212,7 @@ router.post('/sync', authenticate, async (req, res) => {
 
         // eslint-disable-next-line no-console
         console.log(
-          `🤖 Background analysis starting for ${emailsNeedingAnalysis.length} emails from preliminary results`,
+          `Background analysis starting for ${emailsNeedingAnalysis.length} emails from preliminary results`,
         );
 
         // Run LLM analysis on emails shown to user that need analysis
