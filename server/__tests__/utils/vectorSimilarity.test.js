@@ -169,16 +169,6 @@ describe('vectorSimilarity utilities', () => {
       });
     }, 10000);
 
-    // passes locally- needs Ollama to run integration
-    it('should always include at least 3 emails for analysis', async () => {
-      const twoEmails = mockEmails.slice(0, 2);
-
-      const result = await preFilterWebDevEmails(twoEmails);
-
-      expect(result.likelyWebDevEmails.length).toBe(2);
-      expect(result.unlikelyEmails.length).toBe(0);
-    }, 10000);
-
     it('should handle empty email list', async () => {
       const result = await preFilterWebDevEmails([]);
 
