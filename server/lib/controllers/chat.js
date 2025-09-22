@@ -95,7 +95,7 @@ Retrieved ${relevantDocs.length} relevant chunks (${totalTokens} tokens):
 
 ${documentsContext}
 
-🎯 CRITICAL INSTRUCTIONS: 
+CRITICAL INSTRUCTIONS: 
 1. READ the document chunks above carefully - they contain answers to the user's question
 2. If the chunks contain relevant information, use it directly in your response
 3. Quote or reference the specific information from the chunks when answering
