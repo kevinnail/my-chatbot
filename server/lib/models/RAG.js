@@ -46,6 +46,14 @@ export default class RAG {
     return rows;
   }
 
+  static async getFileByName({ userId, filename }) {
+    const { rows } = await pool.query(
+      'SELECT id, filename, file_type, total_chunks FROM files WHERE user_id = $1 AND filename = $2',
+      [userId, filename],
+    );
+    return rows[0] || null;
+  }
+
   static async getRelevantChunks({ queryEmbedding, userId, limit }) {
     const { rows } = await pool.query(
       `SELECT fc.id, fc.content, fc.chunk_type, fc.token_count, f.filename,
