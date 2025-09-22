@@ -1,5 +1,4 @@
 import { google } from 'googleapis';
-import axios from 'axios';
 import GoogleCalendar from '../models/GoogleCalendar.js';
 
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
@@ -7,57 +6,53 @@ const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
 // Generate LLM-powered summary and draft response for calendar events
 async function generateLLMCalendarSummary(eventDetails) {
   try {
-    const {
-      title,
-      startDateTime,
-      endDateTime,
-      location,
-      attendees,
-      eventLink,
-      emailSubject,
-      emailFrom,
-      emailBody,
-    } = eventDetails;
+    const { title, startDateTime, location, emailSubject, emailFrom, emailBody } = eventDetails;
 
-    const prompt = `I have successfully created a calendar event in Google Calendar. Please provide a summary and draft response for this event.
+    const prompt = `Please summarize this email and provide a draft response:
 
-EVENT DETAILS:
+EMAIL SUBJECT: ${emailSubject}
+FROM: ${emailFrom}
+EMAIL BODY: ${emailBody}
+
+CALENDAR EVENT CREATED:
 - Title: ${title}
-- Start: ${startDateTime}
-- End: ${endDateTime}
+- Date: ${startDateTime}
 - Location: ${location || 'Not specified'}
-- Attendees: ${attendees ? attendees.join(', ') : 'None'}
-- Event Link: ${eventLink}
 
-ORIGINAL EMAIL CONTEXT:
-- Subject: ${emailSubject}
-- From: ${emailFrom}
-- Body: ${emailBody.substring(0, 500)}${emailBody.length > 500 ? '...' : ''}
-
-IMPORTANT: You must respond with ONLY valid JSON. Do not include any other text, explanations, or formatting.
-
-Required JSON format:
+Respond with ONLY this JSON format (no other text):
 {
-  "summary": "Brief summary of the calendar event created",
+  "summary": "Brief summary of the email content",
   "draftResponse": "Suggested email response to send back"
 }`;
 
-    const response = await axios.post(`${process.env.OLLAMA_URL}/api/chat`, {
-      model: process.env.OLLAMA_SMALL_MODEL,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
+    const response = await fetch(`${process.env.OLLAMA_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: process.env.OLLAMA_SMALL_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        stream: false,
+        options: {
+          temperature: 0.1,
+          top_p: 0.9,
         },
-      ],
-      stream: false,
-      options: {
-        temperature: 0.3,
-        top_p: 0.9,
-      },
+      }),
     });
 
-    const content = response.data.message?.content?.trim() || null;
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Ollama API error: ${response.status} - ${errBody}`);
+    }
+
+    const data = await response.json();
+
+    const content =
+      data.message && typeof data.message.content === 'string' ? data.message.content.trim() : null;
 
     if (!content) {
       throw new Error('No content received from LLM');
@@ -69,15 +64,6 @@ Required JSON format:
     // Try to parse JSON response
     try {
       const parsed = JSON.parse(content);
-
-      // Handle case where LLM returns function call format instead of summary format
-      if (parsed.name && parsed.parameters) {
-        const params = parsed.parameters;
-        return {
-          summary: `Calendar event created: ${params.title} on ${params.startDateTime}`,
-          draftResponse: `I've added "${params.title}" to my calendar for ${params.startDateTime}. ${params.description ? params.description : ''}`,
-        };
-      }
 
       // Handle normal summary format
       if (parsed.summary && parsed.draftResponse) {
@@ -525,19 +511,11 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
     }
 
     const data = await response.json();
-
     const raw =
       data.message && typeof data.message.content === 'string'
         ? data.message.content.trim()
         : JSON.stringify(data);
-
     const toolsCalled = data.message?.tool_calls || [];
-
-    console.log('LLM Response Debug:');
-    console.log('- Raw content:', raw);
-    console.log('- Tools called:', toolsCalled.length);
-    console.log('- Message content type:', typeof data.message?.content);
-    console.log('- Full data.message:', JSON.stringify(data.message, null, 2));
 
     // Track calendar events created
     const calendarEvents = [];
@@ -654,7 +632,6 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
     try {
       // Clean the raw response - remove any extra whitespace and newlines
       const cleanedRaw = raw.trim();
-
       // Try to parse the raw response as JSON directly first
       const parsed = JSON.parse(cleanedRaw);
 
