@@ -555,6 +555,10 @@
   margin-bottom: 10px;
 }
 
+.email-header-compact {
+  max-width: 50%;
+}
+
 .email-main-info {
   display: flex;
   justify-content: space-between;

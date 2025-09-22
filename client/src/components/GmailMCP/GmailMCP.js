@@ -769,7 +769,7 @@ const GmailMCP = () => {
                           </div>
                         )}
                       </div>
-                      <div>
+                      <div style={{ maxWidth: '40%' }}>
                         {' '}
                         {(() => {
                           if (
@@ -822,7 +822,14 @@ const GmailMCP = () => {
                         className="email-actions-compact"
                         style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
                       >
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                        <div
+                          style={{
+                            display: 'grid',
+                            minWidth: '120px',
+                            gap: '10px',
+                            marginBottom: '10px',
+                          }}
+                        >
                           <button
                             onClick={() => window.open(email.webLink, '_blank')}
                             className="view-email-button"
