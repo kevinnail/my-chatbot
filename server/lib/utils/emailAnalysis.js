@@ -1,7 +1,106 @@
 import { google } from 'googleapis';
+import axios from 'axios';
 import GoogleCalendar from '../models/GoogleCalendar.js';
 
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL;
+
+// Generate LLM-powered summary and draft response for calendar events
+async function generateLLMCalendarSummary(eventDetails) {
+  try {
+    const {
+      title,
+      startDateTime,
+      endDateTime,
+      location,
+      attendees,
+      eventLink,
+      emailSubject,
+      emailFrom,
+      emailBody,
+    } = eventDetails;
+
+    const prompt = `I have successfully created a calendar event in Google Calendar. Please provide a summary and draft response for this event.
+
+EVENT DETAILS:
+- Title: ${title}
+- Start: ${startDateTime}
+- End: ${endDateTime}
+- Location: ${location || 'Not specified'}
+- Attendees: ${attendees ? attendees.join(', ') : 'None'}
+- Event Link: ${eventLink}
+
+ORIGINAL EMAIL CONTEXT:
+- Subject: ${emailSubject}
+- From: ${emailFrom}
+- Body: ${emailBody.substring(0, 500)}${emailBody.length > 500 ? '...' : ''}
+
+IMPORTANT: You must respond with ONLY valid JSON. Do not include any other text, explanations, or formatting.
+
+Required JSON format:
+{
+  "summary": "Brief summary of the calendar event created",
+  "draftResponse": "Suggested email response to send back"
+}`;
+
+    const response = await axios.post(`${process.env.OLLAMA_URL}/api/chat`, {
+      model: process.env.OLLAMA_SMALL_MODEL,
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      stream: false,
+      options: {
+        temperature: 0.3,
+        top_p: 0.9,
+      },
+    });
+
+    const content = response.data.message?.content?.trim() || null;
+
+    if (!content) {
+      throw new Error('No content received from LLM');
+    }
+
+    // Debug: Log the raw content to see what LLM is returning
+    console.info(' LLM Calendar Summary Raw Response:', content);
+
+    // Try to parse JSON response
+    try {
+      const parsed = JSON.parse(content);
+
+      // Handle case where LLM returns function call format instead of summary format
+      if (parsed.name && parsed.parameters) {
+        const params = parsed.parameters;
+        return {
+          summary: `Calendar event created: ${params.title} on ${params.startDateTime}`,
+          draftResponse: `I've added "${params.title}" to my calendar for ${params.startDateTime}. ${params.description ? params.description : ''}`,
+        };
+      }
+
+      // Handle normal summary format
+      if (parsed.summary && parsed.draftResponse) {
+        return parsed;
+      }
+
+      // Fallback if format is unexpected
+      return {
+        summary: content,
+        draftResponse: 'Please review the calendar event and respond as appropriate.',
+      };
+    } catch {
+      // If JSON parsing fails, return a structured response with the raw content
+      return {
+        summary: content,
+        draftResponse: 'Please review the calendar event and respond as appropriate.',
+      };
+    }
+  } catch (error) {
+    console.error('Error generating LLM calendar summary:', error);
+    return null;
+  }
+}
 
 export async function createCalendarEvent(userId, eventArgs, emailSubject, emailFrom) {
   // Clean and validate event arguments
@@ -363,7 +462,7 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   "summary": "Brief summary of the email content",
   "actionItems": ["action1", "action2"],
   "sentiment": "positive|negative|neutral",
-  "draftResponse": "Suggested response if appropriate, or null"
+  "draftResponse": "Suggested response"
 }
 
 CALENDAR EVENTS: Only create calendar events for emails with:
@@ -427,67 +526,26 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
 
     const data = await response.json();
 
-    let raw =
+    const raw =
       data.message && typeof data.message.content === 'string'
         ? data.message.content.trim()
         : JSON.stringify(data);
 
     const toolsCalled = data.message?.tool_calls || [];
 
+    console.log('LLM Response Debug:');
+    console.log('- Raw content:', raw);
+    console.log('- Tools called:', toolsCalled.length);
+    console.log('- Message content type:', typeof data.message?.content);
+    console.log('- Full data.message:', JSON.stringify(data.message, null, 2));
+
     // Track calendar events created
     const calendarEvents = [];
 
-    // If we have tool calls but empty content, generate a contextual analysis
+    // If we have tool calls but empty content, skip fallback - let LLM calendar summary handle it
     if (toolsCalled.length > 0 && (!raw || raw === '')) {
-      // ! THIS FIRES WHETHER OR NOT A CALENDAR EVENT WAS CREATED
-      // eslint-disable-next-line no-console
-      console.log(' Empty content with tool calls detected, generating contextual analysis');
-
-      // Determine category based on email content
-      const emailContent = `${subject} ${body} ${from}`.toLowerCase();
-      let category = 'event';
-      let priority = 'high';
-      let summary = `Calendar event created for: ${subject}`;
-      let actionItems = ['Calendar event has been created', 'Check your calendar for details'];
-
-      // Check if it's a job newsletter or similar (shouldn't have gotten a calendar event)
-      const isJobNewsletter =
-        emailContent.includes('job matches') ||
-        emailContent.includes('job recommendations') ||
-        emailContent.includes('builtin') ||
-        emailContent.includes('built in') ||
-        emailContent.includes('linkedin') ||
-        emailContent.includes('indeed') ||
-        emailContent.includes('newsletter') ||
-        emailContent.includes('unsubscribe') ||
-        emailContent.includes('update email frequency') ||
-        emailContent.includes('job preferences') ||
-        emailContent.includes('salary') ||
-        emailContent.includes('remote') ||
-        emailContent.includes('hybrid') ||
-        (emailContent.includes('job') && emailContent.includes('board'));
-
-      if (isJobNewsletter) {
-        category = 'newsletter';
-        priority = 'low';
-        summary = `Job newsletter from ${from}`;
-        actionItems = ['Review job opportunities', 'Apply to relevant positions'];
-        // eslint-disable-next-line no-console
-        console.log(
-          '⚠️ WARNING: Calendar event was created for a job newsletter - this should not happen!',
-        );
-      }
-
-      raw = JSON.stringify({
-        isWebDevRelated: true,
-        category,
-        priority,
-        summary,
-        actionItems,
-        sentiment: 'neutral',
-        draftResponse: null,
-        calendarEvents: [], // Add calendar events to contextual analysis
-      });
+      console.log(' Tool calls detected with empty content - will use LLM calendar summary');
+      // Don't generate fallback - let the LLM calendar summary be used instead
     }
     // Invoke calendar tool with safety checks
     if (userId && toolsCalled.length) {
@@ -548,6 +606,29 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
                     location: args.location,
                   });
                   console.info('✅ Calendar event captured via MCP:', content.eventLink);
+
+                  // Generate LLM-powered summary and draft response for the calendar event
+                  try {
+                    console.info('Generate email summary');
+                    const summary = await generateLLMCalendarSummary({
+                      title: args.title,
+                      startDateTime: args.startDateTime,
+                      endDateTime: args.endDateTime,
+                      location: args.location,
+                      attendees: args.attendees,
+                      eventLink: content.eventLink,
+                      emailSubject: subject,
+                      emailFrom: from,
+                      emailBody: body,
+                    });
+
+                    if (summary) {
+                      calendarEvents[calendarEvents.length - 1].summary = summary;
+                      console.info('✅ LLM calendar summary generated');
+                    }
+                  } catch (summaryError) {
+                    console.error('❌ Failed to generate LLM calendar summary:', summaryError);
+                  }
                 }
               }
             } else {
@@ -571,8 +652,11 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
     }
 
     try {
+      // Clean the raw response - remove any extra whitespace and newlines
+      const cleanedRaw = raw.trim();
+
       // Try to parse the raw response as JSON directly first
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(cleanedRaw);
 
       // Add calendar events to the parsed analysis
       if (calendarEvents.length > 0) {
@@ -580,7 +664,9 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
       }
 
       return parsed;
-    } catch {
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Raw response that failed to parse:', raw);
       try {
         // If that fails, try to extract JSON from the response
         const jsonMatch = raw.match(/\{[\s\S]*?\}/);
@@ -607,14 +693,30 @@ Focus on web development emails: jobs, interviews, tech events, learning platfor
       // If all JSON parsing fails, return fallback
       // eslint-disable-next-line no-console
       console.warn(' Falling back to default analysis structure');
+
+      // Check if we have LLM calendar summary from calendar events
+      let summary = raw;
+      let draftResponse = null;
+
+      console.log('Calendar events array:', JSON.stringify(calendarEvents, null, 2));
+
+      if (calendarEvents.length > 0 && calendarEvents[calendarEvents.length - 1].summary) {
+        const llmSummary = calendarEvents[calendarEvents.length - 1].summary;
+        summary = llmSummary.summary || summary;
+        draftResponse = llmSummary.draftResponse || null;
+        console.log('Using LLM calendar summary:', summary);
+      } else {
+        console.log('No LLM calendar summary found in calendar events');
+      }
+
       const fallback = {
-        summary: raw.slice(0, 150),
+        summary,
         actionItems: [],
         sentiment: 'neutral',
         isWebDevRelated: false,
         category: 'other',
         priority: 'low',
-        draftResponse: null,
+        draftResponse,
       };
 
       // Add calendar events to fallback if any were created
