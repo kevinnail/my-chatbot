@@ -3,7 +3,7 @@ import { getEmbedding } from './ollamaEmbed.js';
 // Email category definitions - easily extensible for new types
 const EMAIL_CATEGORIES = {
   web_dev: {
-    threshold: 0.52,
+    threshold: 0.45,
     referenceText: `
       web development job application matches interview position software engineer developer     
        rejection not selected moved forward resume react javascript node.js express typescript      
@@ -24,7 +24,9 @@ const EMAIL_CATEGORIES = {
       soft skills communication skills problem solving career growth leadership mentorship
       deep learning neural network data science ML engineer data engineer AI engineer NLP
       natural language processing computer vision transformer GPT BERT LLM embeddings
-      RAG vector database
+      RAG vector database systems administrator network administrator indeed linkedin
+      job board job search career opportunity employment hiring manager recruiter
+      technical role IT position computer science engineering technology
     `,
   },
   appointment: {
