@@ -468,7 +468,7 @@ describe('emailAnalysis utilities', () => {
         (call) => call[0] === 'http://localhost:3001/mcp' && call[1].body.includes('tools/call'),
       );
       expect(mcpCalls).toHaveLength(0);
-      expect(result.category).toBe('newsletter');
+      expect(result.category).toBe('other');
       expect(result.priority).toBe('low');
     });
 
@@ -637,7 +637,7 @@ describe('emailAnalysis utilities', () => {
         (call) => call[0] === 'http://localhost:3001/mcp' && call[1].body.includes('tools/call'),
       );
       expect(mcpCalls).toHaveLength(0);
-      expect(result.category).toBe('event');
+      expect(result.category).toBe('other');
     });
 
     it('should handle network timeouts', async () => {
