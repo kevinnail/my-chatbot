@@ -439,7 +439,7 @@ async function executeToolViaMcp(toolCall, userId) {
 // Email analysis with Ollama
 export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   const currentYear = new Date().getFullYear();
-  const systemPrompt = `You are an email analysis agent. You must ALWAYS return valid JSON in this exact format, even when using tools:
+  const systemPrompt = `You are an email analysis agent. You must ALWAYS return valid JSON in this exact format:
 
 {
   "isWebDevRelated": true/false,
@@ -451,7 +451,7 @@ export async function analyzeEmailWithLLM(subject, body, from, userId = null) {
   "draftResponse": "Suggested response"
 }
 
-IMPORTANT: You must return this JSON structure in your response content AND use tools when needed. Do both, not one or the other.
+IMPORTANT: You must ALWAYS return this JSON structure in your response content. Never return tool call formats or other structures.
 
 CALENDAR EVENTS: Only create calendar events for emails with:
 1. Clear appointment keywords (appointment, meeting, interview, doctor, dentist, call scheduled)
