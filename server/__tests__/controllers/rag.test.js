@@ -74,7 +74,7 @@ describe('RAG routes', () => {
 
       console.info('response', response.body);
       expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Successfully processed 2 files into 2 chunks');
+      expect(response.body.message).toBe('Successfully processed 2 out of 2 files into 2 chunks');
       expect(response.body.filesProcessed).toBe(2);
       expect(mockGetEmbedding).toHaveBeenCalledTimes(2);
     });
