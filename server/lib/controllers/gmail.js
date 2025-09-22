@@ -157,7 +157,7 @@ router.post('/sync', authenticate, async (req, res) => {
     // Also get emails that meet similarity threshold but haven't been analyzed yet
     const pendingAnalysisEmails = await EmailMemory.getEmailsNeedingAnalysis({
       userId,
-      minSimilarity: 0.52,
+      minSimilarity: 0.45,
       limit: 10,
     });
 
