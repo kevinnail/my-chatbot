@@ -832,8 +832,8 @@ const GmailMCP = () => {
                           {email.analysis?.draftResponse && (
                             <button
                               onClick={() => {
-                                const mailtoLink = `mailto:${email.from}?subject=Re: ${email.subject}&body=${encodeURIComponent(email.analysis.draftResponse)}`;
-                                window.isLocal && window.open(mailtoLink);
+                                const emailComposeUrl = `${process.env.REACT_APP_EMAIL_COMPOSE_URL}?to=${encodeURIComponent(email.from)}&subject=${encodeURIComponent(`Re: ${email.subject}`)}&body=${encodeURIComponent(email.analysis.draftResponse)}`;
+                                window.open(emailComposeUrl, '_blank');
                               }}
                               className="draft-response-button"
                             >
