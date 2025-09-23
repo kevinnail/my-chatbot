@@ -16,10 +16,17 @@ const ChatList = () => {
   const [chatToDelete, setChatToDelete] = useState(null);
   const navigate = useNavigate();
 
+  // Fetch chat list when component mounts
   useEffect(() => {
     fetchChatList();
   }, [userId]);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Set refresh chat list function
   useEffect(() => {
     setRefreshChatList(() => fetchChatList);
   }, [setRefreshChatList]);
