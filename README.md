@@ -227,6 +227,17 @@ Create environment files for the server:
 touch server/.env
 ```
 
+**IMPORTANT FOR WSL USERS**: If you're running the application from Windows you must use the WSL IP address instead of 'localhost' for the database connection.
+
+**To find your WSL IP address:**
+
+```bash
+# In WSL terminal, run:
+ip addr show eth0 | grep inet
+# OR
+hostname -I
+```
+
 Add the following to `server/.env`:
 
 ```env
@@ -238,7 +249,7 @@ SECURE_COOKIES=false
 
 # PostgreSQL Configuration
 PG_USER=your_username
-PG_HOST=localhost
+PG_HOST=localhost  # For WSL users: Use WSL IP address (e.g., 172.20.240.2)
 PG_DATABASE=my_chatbot_db
 PG_PASSWORD=your_password
 PG_PORT=5432
