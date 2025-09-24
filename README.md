@@ -254,19 +254,23 @@ PG_DATABASE=my_chatbot_db
 PG_PASSWORD=your_password
 PG_PORT=5432
 
-#^ Encryption Key
+# Encryption Key
 ENCRYPTION_KEY=your_encryption_key
 
 # Server Configuration
 PORT=4000
 API_URL=http://localhost
 
+# MCP Server Configuration
+MCP_SERVER_PORT=4001
+MCP_SERVER_URL=http://localhost:4001
+
 # Ollama Configuration (try your own mix of models)
 OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=Llama3.2:3b
 OLLAMA_SMALL_MODEL=Llama3.2:3b-instruct-q4_K_M
 
-#^ Gmail IMAP Configuration (instead of OAuth)
+# Gmail IMAP Configuration (instead of OAuth)
 GMAIL_USER=your_name@email.com
 GMAIL_APP_PASSWORD=abcdefghijklmnopqrstuvwxyz
 GMAIL_IMAP_HOST=imap.gmail.com
@@ -294,6 +298,12 @@ Add the following to `client/.env.development`:
 ```env
 # Backend API URL
 REACT_APP_BASE_URL='http://localhost:3000'
+
+# Google User ID (for OAuth integration)
+REACT_APP_GOOGLE_USER_ID=your_google_user_id
+
+# Email Compose URL (for Gmail integration)
+REACT_APP_EMAIL_COMPOSE_URL=https://mail.google.com/mail/?view=cm&fs=1
 ```
 
 ### 3. Database Schema Setup
