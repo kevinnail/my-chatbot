@@ -192,6 +192,50 @@ ollama pull mxbai-embed-large        # Embedding model (required)
 ollama list
 ```
 
+### Quick Ollama Command Cheat-Sheet
+
+These are the Ollama commands you’ll use most while setting up and running this project:
+
+```bash
+# Pull a model (required before you can run it)
+ollama pull llama3.1:8b
+ollama pull mxbai-embed-large
+
+# List installed models
+ollama list
+
+# Run a model (starts an interactive session)
+ollama run llama3.1:8b
+
+# Show details about a model
+ollama show llama3.1:8b
+
+# List running models
+ollama ps
+
+# Stop a running model
+ollama stop llama3.1:8b
+
+# Remove a model
+ollama rm llama3.1:8b
+```
+
+### Model Size vs RAM (Practical Guide)
+
+How “big” of a model you can run depends mostly on **system RAM**, **quantization** (4-bit vs 8-bit, etc.), and your **context length** (longer context = more memory). The numbers below are intentionally conservative ballparks for typical Ollama usage on CPU.
+
+- **8 GB RAM**: 3B models are comfortable; 7B can work with 4-bit quantization if you keep context modest and close other apps.
+- **16 GB RAM**: 7B/8B models are comfortable; 13B is often possible in 4-bit.
+- **32 GB RAM**: 13B/14B models are comfortable; 30–34B may work in 4-bit depending on context and what else is running.
+- **64 GB RAM**: 30–34B are comfortable; 70B becomes feasible in 4-bit on CPU (still slower), especially with reasonable context.
+
+Notes:
+
+- **It's still running on a CPU not a GPU so expect some lag**: Depending on the system and/ or user prompt as well as context processing time can be anywhere from 1-10+ minutes.
+- **Quantization matters a lot**: a 4-bit model can use roughly ~half the RAM of an 8-bit equivalent.
+- **Context length increases RAM use**: if you hit OOM issues, try a smaller model _or_ reduce context.
+- **Embedding model**: this project uses an embedding model (e.g. `mxbai-embed-large`) for vector search; it also consumes RAM during embedding calls, so leave some headroom.
+
 **Note**: The embedding model `mxbai-embed-large` is required for the vector search functionality. The chat model can be adjusted based on your hardware capabilities. Ollama must be running locally on port 11434 (this happens automatically when you pull models).
 
 ## Application Setup
