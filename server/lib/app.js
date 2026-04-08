@@ -19,6 +19,7 @@ app.use(
     allowedHeaders: ['Content-Type', 'Mcp-Session-Id'],
   }),
 );
+
 app.use(express.json());
 app.use(cookieParser());
 

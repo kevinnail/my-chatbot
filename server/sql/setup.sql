@@ -55,7 +55,8 @@ CREATE TABLE chat_memory_chunks (
     content TEXT NOT NULL,
     embedding VECTOR(1024),
     chunk_type VARCHAR(20) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (message_id) REFERENCES chat_memory(message_id) ON DELETE CASCADE
 );
 
 -- Create gmail_sync_status table (OAuth tokens not needed for IMAP)
