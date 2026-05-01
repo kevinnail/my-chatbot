@@ -92,46 +92,64 @@
   pointer-events: auto;
 }
 
-.coding-button {
-  font-size: 0.9rem;
-  border-radius: 8px;
-  padding: 8px 12px;
-  background: none;
-  font-weight: bold;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition:
-    background 0.3s,
-    transform 0.15s;
+.mode-toggle {
   display: inline-flex;
-  align-items: center;
-  gap: 0.7em;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(99, 156, 255, 0.06);
+  border: 1px solid rgba(99, 156, 255, 0.18);
+  border-radius: 999px;
+}
+
+.mode-button {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 6px 14px;
+  border-radius: 999px;
   border: 1px solid transparent;
-}
-
-.coding-button:hover {
-  background: rgba(99, 156, 255, 0.1);
-}
-
-.job-search-button {
-  font-size: 0.9rem;
-  border-radius: 8px;
-  padding: 8px 12px;
-  background: none;
-  font-weight: bold;
-  letter-spacing: 0.08em;
+  background: transparent;
+  color: rgb(99, 156, 255);
   cursor: pointer;
+  white-space: nowrap;
   transition:
-    background 0.3s,
-    transform 0.15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7em;
-  border: 1px solid transparent;
+    background 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
 }
 
-.job-search-button:hover {
-  background: rgba(99, 156, 255, 0.1);
+.mode-button:hover:not(.mode-button-active) {
+  background: rgba(99, 156, 255, 0.14);
+}
+
+.mode-button:active:not(.mode-button-active) {
+  transform: scale(0.96);
+}
+
+.mode-button:focus-visible {
+  outline: 2px solid rgba(99, 156, 255, 0.65);
+  outline-offset: 2px;
+}
+
+.mode-button-active {
+  background: rgb(99, 156, 255);
+  color: white;
+  cursor: default;
+  box-shadow: 0 1px 6px rgba(99, 156, 255, 0.35);
+}
+
+@media (max-width: 600px) {
+  .mode-button {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+    letter-spacing: 0.03em;
+  }
+
+  .mode-toggle {
+    gap: 2px;
+    padding: 3px;
+  }
 }
 
 .back-to-chats-button {
