@@ -1,7 +1,7 @@
 export async function getEmbedding(input) {
   const startTime = performance.now();
-  // eslint-disable-next-line no-console
-  console.log('Starting embedding generation...');
+   
+  // console.log('Starting embedding generation...');
 
   try {
     const res = await fetch('http://localhost:11434/api/embed', {
@@ -37,10 +37,10 @@ export async function getEmbedding(input) {
       throw new Error('Embedding is not an array');
     }
 
-    const endTime = performance.now();
-    const duration = ((endTime - startTime) / 1000).toFixed(3);
-    // eslint-disable-next-line no-console
-    console.log(`Embedding generation completed in ${duration} seconds`);
+    // const endTime = performance.now();
+    // const duration = ((endTime - startTime) / 1000).toFixed(3);
+     
+    // console.log(`Embedding generation completed in ${duration} seconds`);
 
     // Convert array to PostgreSQL vector format: [0.1, 0.2, 0.3]
     return `[${embedding.join(',')}]`;
