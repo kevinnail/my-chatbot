@@ -3,7 +3,7 @@ import multer from 'multer';
 import axios from 'axios';
 import { buildPromptWithMemory } from '../utils/buildPrompt.js';
 import ChatMemory from '../models/ChatMemory.js';
-import { careerCoach, codingAssistant } from '../utils/chatPrompts.js';
+import { careerCoach, codingAssistant, writingAssistant } from '../utils/chatPrompts.js';
 import { retrieveRelevantDocuments } from './rag.js';
 
 const router = Router();
@@ -32,6 +32,119 @@ export function countTokens(messages) {
   return messages.reduce((acc, msg) => acc + Math.ceil(msg.content.length / 4), 0);
 }
 
+// Streams one LLM completion. Each chunk is appended to both the local piece string and to
+// `accumulator.value` (cumulative across iterations of the writer-mode loop), and emitted as a
+// `chat-chunk` with the cumulative fullResponse so the UI shows one continuous message.
+async function streamOneCompletion({ messages, controller, io, userId, messageId, accumulator }) {
+  const response = await axios.post(
+    `${process.env.OLLAMA_URL}/api/chat`,
+    {
+      model: process.env.OLLAMA_MODEL,
+      messages,
+      keep_alive: '60m',
+      options: {
+        min_p: 0.05,
+        // temperature: 0.2,
+        temperature: 1.5,
+        top_p: 0.9,
+        mirostat: 0,
+        repeat_penalty: 1.5,
+        top_k: 40,
+      },
+      stream: true,
+    },
+    {
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      timeout: 0,
+      responseType: 'stream',
+    },
+  );
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`LLM server error: ${response.status}`);
+  }
+
+  return new Promise((resolve, reject) => {
+    let piece = '';
+    let chunkCount = 0;
+    const maxChunks = 10000;
+    let hasReceivedContent = false;
+    let buffer = '';
+    let settled = false;
+
+    const finish = (fn, val) => {
+      if (settled) return;
+      settled = true;
+      fn(val);
+    };
+
+    response.data.on('data', (chunk) => {
+      chunkCount++;
+      if (chunkCount >= maxChunks) {
+        return finish(reject, new Error('Response too long - processing stopped for safety'));
+      }
+
+      buffer += chunk.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const data = JSON.parse(line);
+
+          if (data.error) {
+            return finish(reject, new Error(`LLM error: ${data.error}`));
+          }
+
+          let content = '';
+          if (data.message && data.message.content) {
+            content = data.message.content;
+          } else if (data.response) {
+            content = data.response;
+          }
+
+          if (content) {
+            piece += content;
+            accumulator.value += content;
+            hasReceivedContent = true;
+
+            io.to(`chat-${userId}`).emit('chat-chunk', {
+              messageId,
+              content,
+              fullResponse: accumulator.value,
+              done: false,
+            });
+          }
+
+          if (data.done) {
+            if (!hasReceivedContent) {
+              return finish(reject, new Error('No response content received from LLM'));
+            }
+            return finish(resolve, piece);
+          }
+        } catch (parseError) {
+          console.error('Error parsing streaming chunk:', parseError, 'Line:', line);
+          // Continue processing other lines
+        }
+      }
+    });
+
+    response.data.on('end', () => {
+      if (!hasReceivedContent) {
+        finish(reject, new Error('No response content received from LLM'));
+      } else {
+        finish(resolve, piece);
+      }
+    });
+
+    response.data.on('error', (streamError) => {
+      finish(reject, streamError);
+    });
+  });
+}
+
 router.post('/', upload.single('image'), async (req, res) => {
   try {
     const { msg, userId, coachOrChat, chatId } = req.body;
@@ -45,9 +158,13 @@ router.post('/', upload.single('image'), async (req, res) => {
     let memories, relevantDocs;
     try {
       memories = await buildPromptWithMemory({ chatId: currentChatId, userId, userInput: msg });
-      // Retrieve relevant documents based on user query
-      relevantDocs = await retrieveRelevantDocuments(userId, msg);
-      console.info(`Retrieved ${relevantDocs.length} relevant documents for query`);
+      // Retrieve relevant documents based on user query (skip for writer mode - self-reflective writing should stay grounded in user input only)
+      if (coachOrChat === 'writer') {
+        relevantDocs = [];
+      } else {
+        relevantDocs = await retrieveRelevantDocuments(userId, msg);
+        console.info(`Retrieved ${relevantDocs.length} relevant documents for query`);
+      }
     } catch (memoryError) {
       console.error('Error retrieving memories or documents:', memoryError);
       return res.status(500).json({ error: 'Failed to retrieve context' });
@@ -68,7 +185,22 @@ router.post('/', upload.single('image'), async (req, res) => {
     // Get Socket.IO instance
     const io = req.app.get('io');
 
-    const systemPrompt = coachOrChat === 'coach' ? careerCoach : codingAssistant;
+    const systemPrompt =
+      coachOrChat === 'coach'
+        ? careerCoach
+        : coachOrChat === 'writer'
+          ? writingAssistant
+          : codingAssistant;
+
+    console.log(
+      `[mode=${coachOrChat}] systemPrompt=${
+        systemPrompt === writingAssistant
+          ? 'writingAssistant'
+          : systemPrompt === careerCoach
+            ? 'careerCoach'
+            : 'codingAssistant'
+      } memoriesCount=${memories.length}`,
+    );
 
     // Build messages array with relevant documents context
     const messages = [{ role: 'system', content: systemPrompt }, ...memories];
@@ -145,7 +277,6 @@ ${documentsContext}
 
     // eslint-disable-next-line no-console
     console.log(imageFile ? 'calling Vision LLM...' : 'calling LLM...');
-    let response;
     try {
       if (imageFile) {
         // Use vision model for image + text - handle with axios directly
@@ -298,58 +429,6 @@ ${documentsContext}
         });
 
         return; // Exit early for vision processing
-      } else {
-        // Use regular chat model for text only
-        response = await axios.post(
-          `${process.env.OLLAMA_URL}/api/chat`,
-          {
-            model: process.env.OLLAMA_MODEL,
-            messages,
-            keep_alive: '60m',
-            // tools: availableTools,  //^ maybe add a helper for questions on coding?
-            options: {
-              min_p: 0.05,
-              temperature: 0.2,
-              top_p: 0.9,
-              mirostat: 0,
-              repeat_penalty: 1.05,
-              top_k: 40,
-              // optional settings for coding
-              // min_p: 0.9,
-              // temperature: 0.2,
-              // top_p: 1,
-              // mirostat: 0,
-              // repeat_penalty: 1.05,
-              // top_k: 40,
-            },
-            stream: true,
-          },
-          {
-            headers: { 'Content-Type': 'application/json' },
-            signal: controller.signal,
-            timeout: 0,
-            responseType: 'stream',
-          },
-        );
-      }
-
-      clearTimeout(timeoutId);
-
-      // Check if response is ok before processing
-      if (response.status < 200 || response.status >= 300) {
-        console.error('LLM API error:', response.status);
-        io.to(`chat-${userId}`).emit('chat-error', {
-          messageId,
-          error: `LLM server error: ${response.status}`,
-        });
-
-        // Clean up controller and timeout on response error
-        const controllerData = activeControllers.get(controllerKey);
-        if (controllerData) {
-          clearTimeout(controllerData.timeoutId);
-          activeControllers.delete(controllerKey);
-        }
-        return;
       }
     } catch (fetchError) {
       clearTimeout(timeoutId);
@@ -372,191 +451,82 @@ ${documentsContext}
       return;
     }
 
-    // Handle streaming response via WebSocket
-    let fullResponse = '';
-    let chunkCount = 0;
-    const maxChunks = 10000; // Safety limit to prevent infinite loops
-    let hasReceivedContent = false;
-    let buffer = '';
-
-    // Send initial response to confirm request received
+    // Text path: stream the LLM response, optionally looping for writer mode to produce a
+    // longer continuous piece (since the local model tends to produce short responses).
     res.json({ streaming: true, message: 'Streaming response via WebSocket' });
 
-    // Handle axios stream events
-    response.data.on('data', (chunk) => {
-      chunkCount++;
-      if (chunkCount >= maxChunks) {
-        console.error('Stream processing hit safety limit');
-        io.to(`chat-${userId}`).emit('chat-error', {
+    const accumulator = { value: '' };
+    const iterations = coachOrChat === 'writer' ? 2 : 1;
+
+    
+    const continuationPrompt =
+      'Continue. Build directly on what you just wrote — do not restart, do not summarize, do not transition with phrases like "let me also add". Keep writing as if it is one continuous piece, going deeper into the details and exploring more angles from what I shared.';
+
+    try {
+      
+      for (let i = 0; i < iterations; i++) {
+        if (i > 0) {
+          messages.push({ role: 'assistant', content: accumulator.value });
+          messages.push({ role: 'user', content: continuationPrompt });
+        }
+        console.log(`LOOP ITERATION ${i + 1}`);
+        
+        await streamOneCompletion({
+          messages,
+          controller,
+          io,
+          userId,
           messageId,
-          error: 'Response too long - processing stopped for safety',
+          accumulator,
         });
-
-        // Clean up controller and timeout on max chunks exceeded
-        const controllerData = activeControllers.get(controllerKey);
-        if (controllerData) {
-          clearTimeout(controllerData.timeoutId);
-          activeControllers.delete(controllerKey);
-        }
-        return;
       }
 
-      buffer += chunk.toString();
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-
-        try {
-          const data = JSON.parse(line);
-
-          // Check for error responses from LLM
-          if (data.error) {
-            console.error('LLM streaming error:', data.error);
-            io.to(`chat-${userId}`).emit('chat-error', {
-              messageId,
-              error: `LLM error: ${data.error}`,
-            });
-
-            // Clean up controller and timeout on LLM error
-            const controllerData = activeControllers.get(controllerKey);
-            if (controllerData) {
-              clearTimeout(controllerData.timeoutId);
-              activeControllers.delete(controllerKey);
-            }
-            return;
-          }
-
-          // Handle both chat API format (data.message.content) and vision API format (data.response)
-          let content = '';
-          if (data.message && data.message.content) {
-            content = data.message.content; // Chat API format
-          } else if (data.response) {
-            content = data.response; // Vision API format
-          }
-
-          if (content) {
-            fullResponse += content;
-            hasReceivedContent = true;
-
-            // Emit streaming chunk via WebSocket
-            io.to(`chat-${userId}`).emit('chat-chunk', {
-              messageId,
-              content,
-              fullResponse,
-              done: false,
-            });
-          }
-
-          if (data.done) {
-            // Validate we received some content
-            if (!hasReceivedContent) {
-              console.error('Stream completed but no content received');
-              io.to(`chat-${userId}`).emit('chat-error', {
-                messageId,
-                error: 'No response content received from LLM',
-              });
-
-              // Clean up controller and timeout on no content
-              const controllerData = activeControllers.get(controllerKey);
-              if (controllerData) {
-                clearTimeout(controllerData.timeoutId);
-                activeControllers.delete(controllerKey);
-              }
-              return;
-            }
-
-            // Store the complete response
-            ChatMemory.storeMessage({
-              chatId: currentChatId,
-              userId,
-              role: 'bot',
-              content: fullResponse,
-            })
-              .then(async () => {
-                // Calculate context percentage
-                const allMessages = await ChatMemory.getAllMessages({
-                  chatId: currentChatId,
-                  userId,
-                });
-                const allMessagesWithSystem = [
-                  { role: 'system', content: systemPrompt },
-                  ...allMessages,
-                ];
-                const totalTokens = countTokens(allMessagesWithSystem);
-                const contextPercent = Math.min(100, (totalTokens / 8000) * 100).toFixed(4);
-
-                // Emit completion via WebSocket
-                io.to(`chat-${userId}`).emit('chat-complete', {
-                  messageId,
-                  fullResponse,
-                  contextPercent,
-                  chatId: currentChatId,
-                  done: true,
-                });
-
-                // Clean up controller and timeout on successful completion
-                const controllerData = activeControllers.get(controllerKey);
-                if (controllerData) {
-                  clearTimeout(controllerData.timeoutId);
-                  activeControllers.delete(controllerKey);
-                }
-              })
-              .catch((storageError) => {
-                console.error('Error storing bot message:', storageError);
-                io.to(`chat-${userId}`).emit('chat-error', {
-                  messageId,
-                  error: 'Failed to save response. Please try again.',
-                });
-
-                // Clean up controller and timeout on storage error
-                const controllerData = activeControllers.get(controllerKey);
-                if (controllerData) {
-                  clearTimeout(controllerData.timeoutId);
-                  activeControllers.delete(controllerKey);
-                }
-              });
-            return;
-          }
-        } catch (parseError) {
-          console.error('Error parsing streaming chunk:', parseError, 'Line:', line);
-          // Continue processing other lines instead of failing completely
-        }
-      }
-    });
-
-    response.data.on('end', () => {
-      if (!hasReceivedContent) {
-        console.error('Stream ended without content');
-        io.to(`chat-${userId}`).emit('chat-error', {
-          messageId,
-          error: 'No response content received from LLM',
-        });
-
-        // Clean up controller and timeout on no content
-        const controllerData = activeControllers.get(controllerKey);
-        if (controllerData) {
-          clearTimeout(controllerData.timeoutId);
-          activeControllers.delete(controllerKey);
-        }
-      }
-    });
-
-    response.data.on('error', (streamError) => {
-      console.error('Error reading stream:', streamError);
-      io.to(`chat-${userId}`).emit('chat-error', {
-        messageId,
-        error: 'Streaming error occurred',
+      // Store the complete response (one DB row even when looping across iterations)
+      await ChatMemory.storeMessage({
+        chatId: currentChatId,
+        userId,
+        role: 'bot',
+        content: accumulator.value,
       });
 
-      // Clean up controller and timeout on stream error
+      const allMessages = await ChatMemory.getAllMessages({ chatId: currentChatId, userId });
+      const allMessagesWithSystem = [
+        { role: 'system', content: systemPrompt },
+        ...allMessages,
+      ];
+      const totalTokens = countTokens(allMessagesWithSystem);
+      const contextPercent = Math.min(100, (totalTokens / 8000) * 100).toFixed(4);
+
+      io.to(`chat-${userId}`).emit('chat-complete', {
+        messageId,
+        fullResponse: accumulator.value,
+        contextPercent,
+        chatId: currentChatId,
+        done: true,
+      });
+
       const controllerData = activeControllers.get(controllerKey);
       if (controllerData) {
         clearTimeout(controllerData.timeoutId);
         activeControllers.delete(controllerKey);
       }
-    });
+    } catch (streamError) {
+      console.error('Error during chat streaming:', streamError);
+
+      // /stop already emits chat-stopped and removes the controller; skip chat-error in that case
+      const wasUserStop = !activeControllers.has(controllerKey);
+      if (!wasUserStop) {
+        io.to(`chat-${userId}`).emit('chat-error', {
+          messageId,
+          error: streamError.message || 'Streaming error occurred',
+        });
+        const controllerData = activeControllers.get(controllerKey);
+        if (controllerData) {
+          clearTimeout(controllerData.timeoutId);
+          activeControllers.delete(controllerKey);
+        }
+      }
+    }
   } catch (error) {
     console.error('Error in chat controller:', error);
 
@@ -651,7 +621,8 @@ router.get('/context/:userId/:chatId', async (req, res) => {
     const messages = await ChatMemory.getAllMessages({ chatId, userId });
 
     // Build the same messages array that would be sent to LLM
-    const systemPrompt = mode === 'coach' ? careerCoach : codingAssistant;
+    const systemPrompt =
+      mode === 'coach' ? careerCoach : mode === 'writer' ? writingAssistant : codingAssistant;
     const allMessages = [
       { role: 'system', content: systemPrompt },
       ...messages.map((msg) => ({ role: msg.role, content: msg.content })),
@@ -742,6 +713,7 @@ router.post('/summarize', async (req, res) => {
             You are a title generator. 
             Return only ONE sentence, max 15 words, max 150 characters. 
             Do not add explanations or commentary. 
+            Do not add quotations around the output. 
             
             
             `,
