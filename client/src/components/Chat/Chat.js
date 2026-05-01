@@ -197,10 +197,16 @@ const Chat = () => {
     return () => observer.disconnect();
   }, [log]);
 
-  const handleChatOption = () => {
-    const newMode = coachOrChat === 'chat' ? 'coach' : 'chat';
-    setCoachOrChat(newMode);
+  const handleChatOption = (mode) => {
+    setCoachOrChat(mode);
   };
+
+  const headerTitle =
+    coachOrChat === 'coach'
+      ? 'Career Coach'
+      : coachOrChat === 'writer'
+        ? 'Writing Assistant'
+        : 'Code Assistant';
 
   const scrollToBottom = () => {
     window.scrollTo({
@@ -236,29 +242,28 @@ const Chat = () => {
               <span className="back-text-short">Back</span>
             </button>
           }
-          <span className="chat-header-title">
-            {coachOrChat === 'chat' ? 'Code Assistant' : 'Career Coach'}
-          </span>
-          <button
-            onClick={coachOrChat === 'coach' ? handleChatOption : null}
-            className="coding-button"
-            style={{
-              color: coachOrChat === 'coach' ? 'white' : 'rgb(99, 156, 255)',
-              border: coachOrChat === 'chat' ? '1px solid rgb(99, 156, 255' : 'none',
-            }}
-          >
-            Coding
-          </button>
-          <button
-            onClick={coachOrChat === 'chat' ? handleChatOption : null}
-            className="job-search-button"
-            style={{
-              color: coachOrChat === 'coach' ? 'rgb(99, 156, 255)' : 'white',
-              border: coachOrChat === 'coach' ? '1px solid rgb(99, 156, 255' : 'none',
-            }}
-          >
-            Job Search
-          </button>
+          <span className="chat-header-title">{headerTitle}</span>
+          <div className="mode-toggle" role="tablist" aria-label="Chat mode">
+            {[
+              { value: 'chat', label: 'Coding' },
+              { value: 'coach', label: 'Job Search' },
+              { value: 'writer', label: 'Writing' },
+            ].map(({ value, label }) => {
+              const active = coachOrChat === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={`mode-button${active ? ' mode-button-active' : ''}`}
+                  onClick={active ? undefined : () => handleChatOption(value)}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
