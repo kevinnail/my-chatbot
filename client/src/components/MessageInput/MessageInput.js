@@ -100,13 +100,15 @@ const MessageInput = ({
         ref={textareaRef}
         className="message-input"
         style={{
-          display: loading ? 'none' : 'block',
+          display: loading ? 'none' : 'block', marginTop:'15px'
         }}
         value={input}
         placeholder={
           coachOrChat === 'chat'
             ? "Let's code!  What can I help build for you?"
-            : 'What can I do to help with your job search?'
+            : coachOrChat === 'writer'
+              ? "Tell me about yourself - experiences, projects, struggles, wins. I'll write."
+              : 'What can I do to help with your job search?'
         }
         disabled={loading}
         onChange={handleTextareaChange}
