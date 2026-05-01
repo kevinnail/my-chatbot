@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check lib/controllers/chat.js)",
+      "Bash(node --check lib/utils/chatPrompts.js)",
+      "Bash(npx eslint *)",
+      "Bash(npm test *)",
+      "Bash(python *)"
+    ]
+  }
+}
